@@ -20,3 +20,6 @@ Receber autorização explícita da etapa N; reler requisitos; revisar implement
 
 ## Restrições de aceite
 Sem perda de IFC, GlobalIds, vínculos, cronogramas, controles, cortes, medições, vistas, simulação, Ghost, projetos salvos ou exportações. Sem mistura de projetos. Preservar modo técnico. O visual realista é camada adicional e reversível. Evidências de testes obrigatórias, inclusive falhas.
+
+## ADENDO OBRIGATÓRIO — Revisões, realizado e entregas
+Leia também integralmente `docs/EVOLUCAO_4D/05-REVISOES-PROGRESSO-E-ENTREGAS.md`. Este documento amplia o escopo e introduz Etapa 4B; prevalece para requisitos de atualização IFC/XML, baseline, percentual físico, data de corte, forecast, viewpoints e exportação separada de fotos/vídeo. Na Etapa 0, auditar esses fluxos. Não avançar ou implementar sem aprovação.
