@@ -34,3 +34,6 @@ Criar relatório `docs/EVOLUCAO_4D/RELATORIO-ETAPA-N.md` com: SHA inicial/final;
 
 ## Prompt de execução para Codex
 'Leia integralmente docs/EVOLUCAO_4D/00-LEIA-PRIMEIRO.md, 01-ETAPAS-E-ACEITE.md, 02-UX-E-ARQUITETURA.md e 03-TESTES-E-REGRESSAO.md. Execute APENAS a Etapa 0. Antes de editar código, audite fluxos e testes atuais, registre baseline com evidências e reporte riscos. Não faça alterações funcionais, não faça merge, não avance sem aprovação. Após aprovação explícita, prossiga para a etapa indicada, sempre com testes de regressão e relatório de evidências.'
+
+## ADENDO OBRIGATÓRIO — Revisões, realizado e entregas
+Leia também integralmente `docs/EVOLUCAO_4D/05-REVISOES-PROGRESSO-E-ENTREGAS.md`. Este documento amplia o escopo e introduz Etapa 4B; prevalece para requisitos de atualização IFC/XML, baseline, percentual físico, data de corte, forecast, viewpoints e exportação separada de fotos/vídeo. Na Etapa 0, auditar esses fluxos. Não avançar ou implementar sem aprovação.
