@@ -49,6 +49,8 @@ O roteiro anterior aceitava automaticamente a caixa de nome do navegador. Reprod
 
 A criação agora acontece no painel Projetos, com campo de nome, aviso ao trocar de obra, ação Criar obra e cancelamento. O roteiro `tests/new-project.browser.mjs` passou no Edge com os dois bloqueios ativos, incluindo mouse, teclado, validação de nome, cancelamento, salvamento e reabertura. `tests/desktop.browser.mjs` passou no Electron 33.2.1, com reabertura após reiniciar. A compilação e a suíte local passaram, com 312 testes aprovados e cinco condicionais pulados.
 
+Um teste posterior reproduziu a obra aberta e ausente da biblioteca antes de **Salvar**. **Criar obra** agora grava a entrada antes de abrir a obra. O teste conferiu a entrada imediata, a persistência após recarregar o Edge e reiniciar o Electron e a atualização da mesma entrada por **Salvar**. Em uma falha simulada de armazenamento, a interface exibiu o erro e manteve a obra anterior aberta.
+
 ## Ordem de trabalho após o aceite da base
 
 1. Concluir a Etapa 4 com vínculo de quatro paredes de um IFC específico, prévia, conflito, auditoria, atualização e reabertura.

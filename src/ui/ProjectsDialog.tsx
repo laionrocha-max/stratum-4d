@@ -20,7 +20,7 @@ export function ProjectsDialog({
   onClose: () => void;
   onOpen: (id: string) => Promise<void>;
   onSave: (asNew: boolean) => Promise<void>;
-  onNew: (name: string) => void;
+  onNew: (name: string) => Promise<void>;
   onMetadata: (id: string, project: StratumProject, previousVersion: number, version: number) => void;
   onDeleted: (id: string) => void;
   onImportP6: (schedule: Schedule, connection: P6Connection) => void;
@@ -87,22 +87,23 @@ export function ProjectsDialog({
   };
   const createNew = () => {
     const title = newName?.trim();
-    if (title && !locked) onNew(title);
+    if (title && !locked) void run(() => onNew(title));
   };
+  const hasError = /conflict|error|cannot|someone else|fail|não foi possível/i.test(msg);
 
   return (
-    <div className="help-backdrop" onClick={onClose}>
+    <div className="help-backdrop" onClick={busy ? undefined : onClose}>
       <div className="help settings" role="dialog" aria-label="Projetos" onClick={(e) => e.stopPropagation()}>
         <div className="settings-head">
           <h2>Projetos</h2>
-          <button onClick={onClose}>Fechar</button>
+          <button disabled={busy} onClick={onClose}>Fechar</button>
         </div>
         <p className="muted">{backend.label}</p>
         <div className="tabs">
-          <button className={tab === "database" ? "active" : ""} onClick={() => setTab("database")}>
+          <button className={tab === "database" ? "active" : ""} disabled={busy} onClick={() => setTab("database")}>
             Biblioteca
           </button>
-          <button className={tab === "p6" ? "active" : ""} onClick={() => setTab("p6")}>
+          <button className={tab === "p6" ? "active" : ""} disabled={busy} onClick={() => setTab("p6")}>
             Importar do P6
           </button>
         </div>
@@ -147,11 +148,12 @@ export function ProjectsDialog({
                   className="stack"
                   role="group"
                   aria-label="Criar nova obra"
+                  aria-busy={busy}
                   onKeyDown={(event) => {
                     if (event.key === "Escape") {
                       event.preventDefault();
                       event.stopPropagation();
-                      cancelNew();
+                      if (!busy) cancelNew();
                     }
                   }}
                 >
@@ -159,6 +161,7 @@ export function ProjectsDialog({
                     Nome da nova obra
                     <input
                       autoFocus
+                      disabled={busy}
                       value={newName}
                       onChange={(event) => setNewName(event.target.value)}
                       onKeyDown={(event) => {
@@ -172,7 +175,7 @@ export function ProjectsDialog({
                   {projectKey && <p>A obra atual será fechada ao criar outra. Salve antes as alterações que deseja guardar.</p>}
                   <div className="row">
                     <button className="primary" type="button" disabled={locked || !newName.trim()} onClick={createNew}>Criar obra</button>
-                    <button type="button" onClick={cancelNew}>Cancelar</button>
+                    <button type="button" disabled={busy} onClick={cancelNew}>Cancelar</button>
                   </div>
                 </div>
               )}
@@ -234,7 +237,7 @@ export function ProjectsDialog({
             </div>
           )}
           {tab === "p6" && <P6Import onImport={onImportP6} onClose={onClose} />}
-          {msg && <p className={/conflict|error|cannot|someone else|fail/i.test(msg) ? "bad" : "muted"}>{msg}</p>}
+          {msg && <p role={hasError ? "alert" : "status"} className={hasError ? "bad" : "muted"}>{msg}</p>}
         </div>
       </div>
     </div>

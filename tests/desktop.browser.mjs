@@ -37,8 +37,6 @@ try {
   await creation.getByRole("textbox", { name: "Nome da nova obra" }).fill("Obra no Electron");
   await creation.getByRole("button", { name: "Criar obra", exact: true }).click();
   await page.locator(".status").getByText(/Obra Obra no Electron criada/).waitFor();
-  await page.getByTitle("Salvar obra na biblioteca (Ctrl+S)").click();
-  await page.locator(".status").getByText(/Projeto .* salvo/).waitFor();
   await application.close();
   application = await launch();
   page = await application.firstWindow();

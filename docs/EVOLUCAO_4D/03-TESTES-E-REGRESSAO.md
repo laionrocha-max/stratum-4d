@@ -5,6 +5,8 @@ Não confiar somente em build verde. Executar unitários, integração, E2E de U
 
 Toda mudança de interface deve ser testada na compilação que será disponibilizada. Use os controles que o usuário realmente aciona e confira o resultado. Se o fluxo grava dados, verifique também a reabertura. Para **Projetos → Nova obra**, execute `tests/new-project.browser.mjs` em um painel com caixas nativas e envio de formulários bloqueados e `tests/desktop.browser.mjs` no Electron. Registre o resultado antes de entregar a atualização.
 
+No teste de **Nova obra**, confira a entrada na biblioteca logo após criar e após reiniciar ou recarregar, antes de acionar **Salvar**. Verifique que um salvamento posterior atualiza a mesma entrada e que uma falha de gravação mantém a obra anterior aberta.
+
 ## Comandos baseline (confirmar ambiente)
 ```sh
 npm ci

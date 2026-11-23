@@ -27,9 +27,10 @@ try {
     contentType: "text/html",
     body: `<iframe title="Stratum em painel incorporado" src=${JSON.stringify(url)} width="1350" height="850" sandbox="allow-scripts allow-same-origin"></iframe>`,
   }));
-  await page.goto(shell);
+  await page.goto(shell, { waitUntil: "domcontentloaded", timeout: 45000 });
   const app = page.frameLocator("iframe");
   const library = app.getByRole("dialog", { name: "Projetos" });
+  await app.locator(".viewport canvas").waitFor({ state: "attached", timeout: 45000 });
   const openLibrary = async () => {
     if (!await library.isVisible()) await app.getByTitle("Abrir a biblioteca de projetos").click();
   };
@@ -52,8 +53,9 @@ try {
   await name.fill("  Obra do painel  ");
   await name.press("Enter");
   await app.locator(".status").getByText(/Obra Obra do painel criada/).waitFor();
-  await app.getByTitle("Salvar obra na biblioteca (Ctrl+S)").click();
-  await app.locator(".status").getByText(/Projeto Obra do painel salvo/).waitFor();
+  await openLibrary();
+  const first = library.getByRole("row", { name: /Obra do painel/ });
+  await first.waitFor();
   await start();
   await library.getByText(/A obra atual será fechada/).waitFor();
   await name.fill("Cancelar esta obra");
@@ -63,18 +65,38 @@ try {
   assert.equal(await app.locator(".project-active").innerText(), "Obra do painel");
   assert.equal(await library.getByRole("row", { name: /Cancelar esta obra/ }).count(), 0);
   await start();
+  await name.fill("Criação com falha");
+  await library.evaluate((dialog) => {
+    const db = dialog.ownerDocument.defaultView.indexedDB;
+    const open = db.open;
+    db.open = function (database, ...args) {
+      if (database === "stratum-local") {
+        db.open = open;
+        throw new DOMException("Armazenamento indisponível no teste", "QuotaExceededError");
+      }
+      return open.call(this, database, ...args);
+    };
+  });
+  await create.click();
+  await library.getByRole("alert").filter({ hasText: /Não foi possível criar a obra/ }).waitFor();
+  assert.equal(await app.locator(".project-active").innerText(), "Obra do painel");
+  assert.equal(await library.getByRole("row", { name: /Criação com falha/ }).count(), 0);
   await name.fill("Segunda obra");
   await create.click();
   await app.locator(".status").getByText(/Obra Segunda obra criada/).waitFor();
-  await app.getByTitle("Salvar obra na biblioteca (Ctrl+S)").click();
-  await app.locator(".status").getByText(/Projeto Segunda obra salvo/).waitFor();
-  await page.reload();
-  await library.waitFor();
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 45000 });
+  await library.waitFor({ timeout: 45000 });
   await library.getByRole("row", { name: /Segunda obra/ }).waitFor();
+  assert.equal(await library.getByRole("row", { name: /Criação com falha/ }).count(), 0);
   await library.getByRole("row", { name: /Obra do painel/ }).getByRole("button", { name: "Abrir", exact: true }).click();
   await app.locator(".status").getByText(/Projeto Obra do painel aberto/).waitFor();
+  await app.getByTitle("Salvar obra na biblioteca (Ctrl+S)").click();
+  await app.locator(".status").getByText(/Projeto Obra do painel salvo \(versão 2\)/).waitFor();
+  await openLibrary();
+  await first.waitFor();
+  assert.equal(await first.count(), 1);
   assert.deepEqual(errors, []);
-  console.log("Nova obra em painel sem diálogos nativos: nome, teclado, validação, cancelamento, troca, salvamento e reabertura.");
+  console.log("Nova obra aparece na biblioteca ao criar e reabre após atualizar a página. Falha de gravação preserva a obra ativa. Salvar mantém a mesma entrada.");
 } finally {
   await browser?.close();
   if (server) await new Promise((resolve) => server.httpServer.close(resolve));

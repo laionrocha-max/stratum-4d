@@ -591,6 +591,20 @@ function Workspace() {
     profiles: structuredClone(DEFAULT_PROFILES),
   });
 
+  const createProject = async (title: string) => {
+    const project = { ...emptyProject(title), savedAt: new Date().toISOString() };
+    const id = uid("prj");
+    const request = projectAction.current;
+    const backend = useConfig.getState().backend;
+    const version = await backend.saveProject(id, project).catch((error: unknown) => {
+      throw new Error(`Não foi possível criar a obra. ${error instanceof Error ? error.message : String(error)}`);
+    });
+    if (request !== projectAction.current || backend !== useConfig.getState().backend) return;
+    applyProject(project, undefined, undefined, id, version);
+    setProjectsTab(null);
+    store.setStatus(`Obra ${title} criada e salva na biblioteca. Importe os modelos e o cronograma em qualquer ordem.`);
+  };
+
   const saveToDb = async (asNew = false) => {
     const st = useStore.getState();
     if (!st.schedule && !st.projectKey && !st.models?.files.length) return;
@@ -1557,12 +1571,7 @@ function Workspace() {
             setProjectsTab(null);
           }}
           onSave={saveToDb}
-          onNew={(name) => {
-            applyProject(emptyProject(name));
-            setRestore(null);
-            setProjectsTab(null);
-            store.setStatus(`Obra ${name} criada. Importe os modelos e o cronograma em qualquer ordem.`);
-          }}
+          onNew={createProject}
           onMetadata={(id, project, previous, version) => {
             const current = useStore.getState();
             if (id === current.currentProjectId && current.currentVersion === previous) {
