@@ -16,10 +16,10 @@
     "dist:mac": "npm run build && npm run build:electron && electron-builder --mac --x64 --publish never && electron-builder --mac --arm64 --publish never",
     "dist:linux": "npm run build && npm run build:electron && electron-builder --linux --publish never",
     "samples": "vite-node scripts/gen-samples.ts",
-    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node20 --format=cjs --outfile=server-dist/server.cjs --external:playwright --external:playwright-core --external:oracledb --external:pg-native --log-level=warning && cp node_modules/sql.js/dist/sql-wasm.wasm server-dist/",
+    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node20 --format=cjs --outfile=server-dist/server.cjs --external:playwright --external:playwright-core --external:oracledb --external:pg-native --log-level=warning && node scripts/copy-sql-wasm.mjs server-dist",
     "server": "node server-dist/server.cjs",
-    "build:mcp": "esbuild mcp/server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=mcp/dist/stratum-mcp.cjs --external:oracledb --external:pg-native --external:playwright --external:playwright-core --log-level=warning && cp node_modules/sql.js/dist/sql-wasm.wasm mcp/dist/",
-    "build:electron": "esbuild electron/host.ts --bundle --platform=node --target=node20 --format=cjs --outfile=electron/host.cjs --external:electron --external:oracledb --external:pg-native --external:playwright --external:playwright-core --log-level=warning && cp node_modules/sql.js/dist/sql-wasm.wasm electron/"
+    "build:mcp": "esbuild mcp/server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=mcp/dist/stratum-mcp.cjs --external:oracledb --external:pg-native --external:playwright --external:playwright-core --log-level=warning && node scripts/copy-sql-wasm.mjs mcp/dist",
+    "build:electron": "esbuild electron/host.ts --bundle --platform=node --target=node20 --format=cjs --outfile=electron/host.cjs --external:electron --external:oracledb --external:pg-native --external:playwright --external:playwright-core --log-level=warning && node scripts/copy-sql-wasm.mjs electron"
   },
   "license": "UNLICENSED",
   "dependencies": {
