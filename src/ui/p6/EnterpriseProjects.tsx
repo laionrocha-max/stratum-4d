@@ -8,15 +8,16 @@ import type { ProjectSummary } from "../../backend/types";
 import { capacityPlan, type CapacityPlan } from "../../core/capacity";
 import { combineSchedules, epsNode, epsTree, isCombined, mergeReflection, reflect, reflectionChanges, splitSchedule } from "../../core/multiproject";
 import { uid } from "../../core/ops";
-import type { StratumProject } from "../../core/project";
+import { PROJECT_FORMAT, PROJECT_VERSION, type StratumProject } from "../../core/project";
 import type { Schedule } from "../../core/types";
 import { fmtDate, useStore } from "../store";
 import { useP6 } from "./commands";
 import { closeDlg, DetailTabs, ListHead, P6Dlg, SideArrows, SideBtn, SideGap, SideHelp } from "./P6Dlg";
 
 const payload = (schedule: Schedule, old?: StratumProject | null): StratumProject => ({
-  format: "stratum-project",
-  version: 2,
+  ...old,
+  format: PROJECT_FORMAT,
+  version: PROJECT_VERSION,
   savedAt: new Date().toISOString(),
   modelFileName: old?.modelFileName ?? null,
   schedule,
@@ -49,17 +50,6 @@ export async function saveCombined(): Promise<string> {
   return `Saved ${parts.length} projects (${parts.map((p) => p.schedule.projectCode).join(", ")}).`;
 }
 
-function openCombined(schedule: Schedule) {
-  const st = useStore.getState();
-  st.setSchedule(schedule);
-  st.setLinks([]);
-  st.setPaths([]);
-  st.setPresentation({ viewpoints: [], animations: [] });
-  st.setLastUpdate(null);
-  st.setScheduleReport(null);
-  st.setCurrentProject(null, null);
-}
-
 type Row = ProjectSummary & { eps: string[]; reflectionOf: string | null; activities: number; priority: number; baseline: string; baselineDate: number | null };
 
 // EPS nodes with no project yet live on this device (P6 keeps them in the EPS table).
@@ -67,7 +57,7 @@ type Row = ProjectSummary & { eps: string[]; reflectionOf: string | null; activi
 const loadEmptyEps = (): string[][] => sharedGet<string[][]>("stratum.eps.v1", []);
 const saveEmptyEps = (v: string[][]) => sharedSet("stratum.eps.v1", v);
 
-export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { onOpenOne: (id: string) => Promise<void>; onImport?: () => void; onImportToDb?: (eps: string[]) => Promise<void>; onSave?: () => Promise<void> }) {
+export function EnterpriseProjectsWindow({ onOpenOne, onOpenCombined, onImportToDb, onSave }: { onOpenOne: (id: string) => Promise<void>; onOpenCombined: (schedule: Schedule) => void; onImport?: () => void; onImportToDb?: (eps: string[]) => Promise<void>; onSave?: () => Promise<void> }) {
   const backend = useConfig((c) => c.backend);
   const schedule = useStore((s) => s.schedule);
   const currentId = useStore((s) => s.currentProjectId);
@@ -88,7 +78,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
 
   const load = async () => {
     try {
-      const rows = await backend.listProjects();
+      const rows = (await backend.listProjects()).filter((row) => !row.archived);
       // Details live in each project; read them once per saved version.
       const full = await Promise.all(
         rows.map(async (r) => {
@@ -171,7 +161,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
         if (r?.project.schedule) parts.push({ dbId: id, version: r.version, schedule: r.project.schedule });
       }
       const c = combineSchedules(parts);
-      openCombined(c);
+      onOpenCombined(c);
       useStore.getState().setStatus(`Opened ${parts.length} projects together: ${c.projectCode}. Press F9 to schedule them as one network; Commit saves each project back.`);
       useP6.getState().show("activities");
     });

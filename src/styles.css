@@ -2121,3 +2121,19 @@ html[data-theme="dark"] .pr-panel, html[data-theme="dark"] .pr-anim, html[data-t
 table.data.audit td { font-size: 12px; vertical-align: top; }
 table.data.audit td:last-child { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 table.data tr.warn td { background: color-mix(in srgb, #e11d48 8%, transparent); }
+.model-menu-entry {
+  border-top: 1px solid var(--line, #9995);
+  display: grid;
+  gap: 2px;
+  padding: 6px 4px;
+}
+.model-menu-entry b, .project-active {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 225px;
+}
+.model-menu-entry small { opacity: 0.75; }
+.project-row-menu { display: inline-block; margin-inline-start: 6px; }
+.project-row-menu summary { cursor: pointer; }
+.project-row-menu button { display: block; margin-top: 4px; }

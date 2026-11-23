@@ -1,8 +1,7 @@
 // Autosave the working project to IndexedDB so a browser crash or closed tab
-// doesn't lose links and rules. The IFC model itself is not stored; links are
-// re-matched by GlobalId when the model is opened again.
+// doesn't lose links and rules. The manifest refers to local model assets.
 
-import { parseProject, serializeProject, type StratumProject } from "../core/project";
+import { parseProject, type StratumProject } from "../core/project";
 import { useStore } from "./store";
 
 const DB = "stratum";
@@ -55,7 +54,7 @@ export async function clearAutosave(): Promise<void> {
 }
 
 /** Start saving 2 s after the last change to project data. Returns an unsubscribe function. */
-export function startAutosave(onSaved?: (at: Date) => void): () => void {
+export function startAutosave(snapshot: () => StratumProject, onSaved?: (at: Date) => void): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const unsub = useStore.subscribe((s, prev) => {
     if (
@@ -66,27 +65,19 @@ export function startAutosave(onSaved?: (at: Date) => void): () => void {
       s.segments === prev.segments &&
       s.groups === prev.groups &&
       s.paths === prev.paths &&
-      s.presentation === prev.presentation
+      s.presentation === prev.presentation &&
+      s.view3d === prev.view3d &&
+      s.sim === prev.sim &&
+      s.models === prev.models &&
+      s.projectTitle === prev.projectTitle &&
+      s.workspaceRevision === prev.workspaceRevision
     )
       return;
-    if (!s.schedule) return;
     if (timer) clearTimeout(timer);
+    if (!s.schedule && !s.models?.files.length && !s.projectTitle) return;
     timer = setTimeout(async () => {
-      const st = useStore.getState();
       try {
-        await put(
-          serializeProject({
-            modelFileName: st.modelFileName,
-            schedule: st.schedule,
-            links: st.links,
-            rules: st.rules,
-            profiles: st.profiles,
-            segments: st.segments,
-            groups: st.groups,
-            paths: st.paths,
-            presentation: st.presentation,
-          }),
-        );
+        await put(JSON.stringify(snapshot()));
         onSaved?.(new Date());
       } catch {
         // Quota exceeded or storage blocked: ignore, the user can still save manually.

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useConfig } from "../backend/config";
 import type { P6ProjectInfo, ProjectSummary } from "../backend/types";
 import type { P6Connection } from "../core/reporting";
+import { PROJECT_VERSION, type StratumProject } from "../core/project";
 import type { Schedule } from "../core/types";
 import { fmtDate, useStore } from "./store";
 import { useTerms } from "./terms";
@@ -10,22 +11,30 @@ export function ProjectsDialog({
   onClose,
   onOpen,
   onSave,
+  onNew,
+  onMetadata,
+  onDeleted,
   onImportP6,
   initialTab = "database",
 }: {
   onClose: () => void;
   onOpen: (id: string) => Promise<void>;
   onSave: (asNew: boolean) => Promise<void>;
+  onNew: (name: string) => void;
+  onMetadata: (id: string, project: StratumProject, previousVersion: number, version: number) => void;
+  onDeleted: (id: string) => void;
   onImportP6: (schedule: Schedule, connection: P6Connection) => void;
   initialTab?: "database" | "p6";
 }) {
   const { backend } = useConfig();
   const t = useTerms();
-  const { currentProjectId, schedule } = useStore();
+  const { currentProjectId, schedule, projectKey, busy: workspaceBusy } = useStore();
   const [tab, setTab] = useState<"database" | "p6">(initialTab);
   const [list, setList] = useState<ProjectSummary[] | null>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const load = () =>
     backend
@@ -36,117 +45,137 @@ export function ProjectsDialog({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backend]);
+  const visible = list?.filter((project) => (showArchived || !project.archived) &&
+    `${project.code} ${project.name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    setMsg("");
+    try {
+      await action();
+    } catch (error) {
+      setMsg((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const manage = (p: ProjectSummary, kind: "rename" | "duplicate" | "archive") => void run(async () => {
+    const title = kind === "archive" ? undefined : window.prompt(kind === "rename" ? "Nome da obra" : "Nome da cópia", kind === "rename" ? p.name : `${p.name} (cópia)`)?.trim();
+    if (kind !== "archive" && !title) return;
+    const saved = await backend.getProject(p.id);
+    if (!saved) throw new Error("A obra não está mais na biblioteca.");
+    const duplicate = kind === "duplicate";
+    const id = duplicate ? crypto.randomUUID() : p.id;
+    const project = {
+      ...saved.project,
+      version: Math.max(saved.project.version, PROJECT_VERSION),
+      title: title ?? saved.project.title,
+      savedAt: new Date().toISOString(),
+      projectKey: duplicate ? id : saved.project.projectKey ?? p.id,
+      archived: kind === "archive" ? !saved.project.archived : duplicate ? undefined : saved.project.archived,
+    };
+    const version = await backend.saveProject(id, project, duplicate ? undefined : saved.version);
+    if (!duplicate) onMetadata(id, project, saved.version, version);
+    await load();
+    setMsg(duplicate ? "Cópia criada." : "Biblioteca atualizada.");
+  });
+  const locked = busy || workspaceBusy;
 
   return (
     <div className="help-backdrop" onClick={onClose}>
-      <div className="help settings" role="dialog" aria-label={t.projects} onClick={(e) => e.stopPropagation()}>
+      <div className="help settings" role="dialog" aria-label="Projetos" onClick={(e) => e.stopPropagation()}>
         <div className="settings-head">
-          <h2>{t.projects}</h2>
-          <button onClick={onClose}>Close</button>
+          <h2>Projetos</h2>
+          <button onClick={onClose}>Fechar</button>
         </div>
         <p className="muted">{backend.label}</p>
         <div className="tabs">
           <button className={tab === "database" ? "active" : ""} onClick={() => setTab("database")}>
-            Database
+            Biblioteca
           </button>
           <button className={tab === "p6" ? "active" : ""} onClick={() => setTab("p6")}>
-            Import from P6
+            Importar do P6
           </button>
         </div>
         <div className="settings-body">
           {tab === "database" && (
             <div className="stack">
               <div className="row">
+                <button className="primary" disabled={locked} onClick={() => {
+                  const name = window.prompt("Nome da nova obra")?.trim();
+                  if (name) onNew(name);
+                }}>Nova obra</button>
                 <button
-                  className="primary"
-                  disabled={!schedule || busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      await onSave(false);
-                      setMsg("Saved.");
-                      await load();
-                    } catch (e) {
-                      setMsg((e as Error).message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
+                  disabled={(!schedule && !projectKey) || locked}
+                  onClick={() => void run(async () => {
+                    await onSave(false);
+                    setMsg("Obra salva.");
+                    await load();
+                  })}
                 >
-                  {currentProjectId ? "Save" : "Save to database"}
+                  Salvar obra atual
                 </button>
                 {currentProjectId && (
                   <button
-                    disabled={!schedule || busy}
-                    onClick={async () => {
+                    disabled={(!schedule && !projectKey) || locked}
+                    onClick={() => void run(async () => {
                       await onSave(true);
-                      setMsg("Saved as a new project.");
+                      setMsg("Obra salva como nova.");
                       await load();
-                    }}
+                    })}
                   >
-                    Save as new
+                    Salvar como nova
                   </button>
                 )}
               </div>
+              <div className="row">
+                <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar obras" placeholder="Buscar por nome ou código" />
+                <label><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Mostrar arquivadas</label>
+              </div>
               {list === null ? (
-                <p className="muted">Loading…</p>
-              ) : list.length === 0 ? (
-                <p className="muted">No projects in the database yet. Open or import a schedule, then Save.</p>
+                <p className="muted">Carregando…</p>
+              ) : visible?.length === 0 ? (
+                <p className="muted">{list.length ? "Nenhuma obra corresponde à busca." : "Crie uma obra ou salve na biblioteca a obra que está aberta."}</p>
               ) : (
                 <table className="data">
                   <thead>
                     <tr>
                       <th>{t.project}</th>
-                      <th>Name</th>
+                      <th>Nome</th>
                       <th>{t.dataDate}</th>
-                      <th>Saved</th>
-                      <th>By</th>
+                      <th>Salva em</th>
+                      <th>Por</th>
                       <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {list.map((p) => (
+                    {visible?.map((p) => (
                       <tr key={p.id} className={p.id === currentProjectId ? "current" : ""}>
                         <td>
                           <b>{p.code}</b>
                         </td>
-                        <td>{p.name}</td>
+                        <td>{p.name}{p.archived ? " (arquivada)" : ""}</td>
                         <td>{fmtDate(p.dataDate)}</td>
                         <td>
                           {new Date(p.updatedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} (v{p.version})
                         </td>
                         <td>{p.updatedBy ?? ""}</td>
                         <td>
-                          <button
-                            className="link"
-                            onClick={async () => {
-                              setBusy(true);
-                              try {
-                                await onOpen(p.id);
-                                onClose();
-                              } catch (e) {
-                                setMsg((e as Error).message);
-                              } finally {
-                                setBusy(false);
-                              }
-                            }}
-                          >
-                            open
-                          </button>
-                          <button
-                            className="link"
-                            onClick={async () => {
-                              if (!window.confirm(`Delete ${p.code} – ${p.name} from the database?`)) return;
-                              try {
-                                await backend.deleteProject(p.id);
-                                await load();
-                              } catch (e) {
-                                setMsg((e as Error).message);
-                              }
-                            }}
-                          >
-                            delete
-                          </button>
+                          <button className="link" disabled={locked} onClick={() => void run(async () => {
+                            await onOpen(p.id);
+                            onClose();
+                          })}>Abrir</button>
+                          <details className="project-row-menu">
+                            <summary>Ações</summary>
+                            <button disabled={locked} onClick={() => manage(p, "rename")}>Renomear</button>
+                            <button disabled={locked} onClick={() => manage(p, "duplicate")}>Duplicar</button>
+                            <button disabled={locked} onClick={() => manage(p, "archive")}>{p.archived ? "Restaurar" : "Arquivar"}</button>
+                            <button disabled={locked} onClick={() => void run(async () => {
+                              if (!window.confirm(`Excluir "${p.name}" da biblioteca? Cronograma, vínculos e vistas desta cópia serão excluídos. Os IFCs originais não serão apagados.`)) return;
+                              await backend.deleteProject(p.id);
+                              onDeleted(p.id);
+                              await load();
+                            })}>Excluir</button>
+                          </details>
                         </td>
                       </tr>
                     ))}

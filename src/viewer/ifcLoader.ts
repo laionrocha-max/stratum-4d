@@ -6,9 +6,13 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import * as WebIFC from "web-ifc";
 import type { ModelElement } from "../core/types";
 
-export interface LoadedIfc {
+export interface LoadedGeometry {
   elements: ModelElement[];
   objects: Map<string, THREE.Object3D>;
+}
+
+export interface LoadedIfc extends LoadedGeometry {
+  coordination: number[];
 }
 
 let api: WebIFC.IfcAPI | null = null;
@@ -28,15 +32,17 @@ function str(v: unknown): string {
   return String(v);
 }
 
-export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => void): Promise<LoadedIfc> {
+export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => void, coordination?: number[]): Promise<LoadedIfc> {
   const ifc = await getApi();
   onProgress?.("Opening model…");
-  const modelID = ifc.OpenModel(bytes, { COORDINATE_TO_ORIGIN: true });
+  const modelID = ifc.OpenModel(bytes, { COORDINATE_TO_ORIGIN: !coordination });
+  const objects = new Map<string, THREE.Object3D>();
+  const materials = new Map<string, THREE.MeshLambertMaterial>();
   try {
-    const objects = new Map<string, THREE.Object3D>();
+    if (coordination) ifc.SetGeometryTransformation(modelID, coordination);
     const expressToKey = new Map<number, string>();
     const elements: ModelElement[] = [];
-    const materials = new Map<string, THREE.MeshLambertMaterial>();
+    const duplicates = new Set<string>();
 
     onProgress?.("Reading geometry…");
     let streamed = 0;
@@ -86,10 +92,16 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
       if (++streamed % 2000 === 0) onProgress?.(`Reading geometry… ${streamed} elements`);
       const line = ifc.GetLine(modelID, mesh.expressID);
       const key = str(line?.GlobalId) || `express-${mesh.expressID}`;
+      if (objects.has(key)) {
+        duplicates.add(key);
+        for (const mesh of group.children as THREE.Mesh[]) mesh.geometry.dispose();
+        return;
+      }
       group.userData.elementId = key;
       objects.set(key, group);
       expressToKey.set(mesh.expressID, key);
     });
+    if (duplicates.size) throw new Error(`IFC com ${duplicates.size} GlobalId(s) duplicado(s). Corrija os IDs no modelo de origem: ${[...duplicates].slice(0, 4).join(", ")}`);
 
     onProgress?.(`Reading properties for ${objects.size} elements…`);
     const storeyOf = await spatialStoreys(ifc, modelID);
@@ -131,7 +143,11 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
       });
       if (++n % 500 === 0) onProgress?.(`Reading properties… ${n}/${expressToKey.size}`);
     }
-    return { elements, objects };
+    return { elements, objects, coordination: coordination ?? ifc.GetCoordinationMatrix(modelID) };
+  } catch (error) {
+    for (const object of objects.values()) for (const mesh of object.children as THREE.Mesh[]) mesh.geometry.dispose();
+    for (const material of materials.values()) material.dispose();
+    throw error;
   } finally {
     ifc.CloseModel(modelID);
   }

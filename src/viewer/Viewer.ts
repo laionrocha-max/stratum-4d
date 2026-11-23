@@ -157,6 +157,7 @@ export class Viewer {
 
   dispose() {
     this.disposed = true;
+    this.clear();
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.renderer.dispose();
@@ -175,11 +176,16 @@ export class Viewer {
   }
 
   clear() {
+    for (const entry of this.entries.values()) {
+      for (const [mesh, material] of entry.originals) mesh.material = material;
+      for (const material of entry.overrides?.values() ?? []) material.dispose();
+    }
     this.root.clear();
     this.entries.clear();
     this.selected.clear();
     this.states.clear();
     this.motions.clear();
+    this.focus = null;
     this.needsRender = true;
   }
 

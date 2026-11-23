@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { expandElements } from "../core/motion";
 import { EMPTY_PRESENTATION, EMPTY_VIEW, type Presentation, type ViewSettings } from "../core/presentation";
 import { DEFAULT_PROFILES } from "../core/profiles";
+import type { ModelManifest } from "../core/project";
 import { DEFAULT_SIM_OPTIONS, scheduleRange, type SimulationOptions } from "../core/simulation";
 import type {
   Activity,
@@ -52,6 +53,11 @@ export interface AppState {
   /** Live 3D view settings: section planes, section box, legend. */
   view3d: ViewSettings;
   modelFileName: string | null;
+  models?: ModelManifest;
+  projectKey: string | null;
+  projectTitle: string | null;
+  projectArchived: boolean;
+  workspaceRevision: number;
   links: Link[];
   rules: LinkRule[];
   profiles: AppearanceProfile[];
@@ -167,6 +173,10 @@ export const useStore = create<AppState>((set) => {
     presentation: EMPTY_PRESENTATION,
     view3d: EMPTY_VIEW,
     modelFileName: null,
+    projectKey: null,
+    projectTitle: null,
+    projectArchived: false,
+    workspaceRevision: 0,
     links: [],
     rules: [],
     profiles: structuredClone(DEFAULT_PROFILES),

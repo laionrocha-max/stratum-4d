@@ -7,7 +7,7 @@
 
 import * as THREE from "three";
 import type { ModelElement } from "../core/types";
-import type { LoadedIfc } from "./ifcLoader";
+import type { LoadedGeometry } from "./ifcLoader";
 
 export const MESH_FORMATS = /\.(glb|gltf|obj|stl|fbx)$/i;
 const ID_KEYS = ["GlobalId", "globalId", "IfcGUID", "guid", "GUID", "ElementId", "UniqueId", "id"];
@@ -67,7 +67,7 @@ function named(o: THREE.Object3D): string {
   return "";
 }
 
-export async function loadMeshModel(name: string, bytes: Uint8Array, onProgress?: (msg: string) => void): Promise<LoadedIfc & { scaled: number }> {
+export async function loadMeshModel(name: string, bytes: Uint8Array, onProgress?: (msg: string) => void): Promise<LoadedGeometry & { scaled: number }> {
   onProgress?.("Reading the model…");
   const root = await parse(name, bytes);
   root.updateMatrixWorld(true);
