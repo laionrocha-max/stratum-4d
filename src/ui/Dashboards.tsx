@@ -332,44 +332,44 @@ export function DashboardsView({ onClose }: { onClose: () => void }) {
       <header className="reports-topbar">
         <img className="logo logo-light" src="./stratum-logo.png" alt="Stratum 4D by Miqyas Labs" />
         <img className="logo logo-dark" src="./stratum-logo-dark.png" alt="" />
-        <b className="reports-brand">Reports</b>
+        <b className="reports-brand">Relatórios</b>
         <span className="muted reports-sub">{open ? `${open.projectCode} – ${open.projectName}` : "No project open"}</span>
         <span className="spacer" />
         <ModeSwitch />
         <TrainingButton className="tb" />
         <ThemeButton />
-        <button className="tb icon-only" title="Back to the schedule" onClick={onClose} aria-label="Back to the schedule">
+        <button className="tb icon-only" title="Voltar ao cronograma" onClick={onClose} aria-label="Voltar ao cronograma">
           <X size={16} aria-hidden />
         </button>
       </header>
       <div className="dash-shell">
         <aside className="dash-list">
-          <div className="dash-list-head">Dashboards</div>
+          <div className="dash-list-head">Painéis</div>
           {dashboards.map((d) => (
             <button key={d.id} className={`dash-item ${d.id === sel ? "active" : ""}`} onClick={() => (setSel(d.id), setEdit(false))}>
               {d.name}
               <span className="muted">
-                {d.projectId ? (projects.find((p) => p.id === d.projectId)?.code ?? "project") : "open project"} · {d.widgets.length} widgets
+                {d.projectId ? (projects.find((p) => p.id === d.projectId)?.code ?? "project") : "open project"} · {d.widgets.length} componentes
               </span>
             </button>
           ))}
-          {list && !dashboards.length && <p className="muted">No dashboards yet. Start from a template below, then change anything.</p>}
-          {templates.length > 0 && <div className="dash-list-head">My templates</div>}
+          {list && !dashboards.length && <p className="muted">Nenhum painel salvo. Comece com um modelo abaixo e personalize-o.</p>}
+          {templates.length > 0 && <div className="dash-list-head">Meus modelos</div>}
           {templates.map((d) => (
             <div key={d.id} className={`dash-item tpl ${d.id === sel ? "active" : ""}`}>
               <button className="link" onClick={() => (setSel(d.id), setEdit(false))}>
                 {d.name}
               </button>
-              <button className="mini" title="New dashboard from this template" onClick={() => create(d.id)}>
-                <Plus size={13} aria-hidden /> Use
+              <button className="mini" title="Criar painel a partir deste modelo" onClick={() => create(d.id)}>
+                <Plus size={13} aria-hidden /> Usar
               </button>
             </div>
           ))}
-          <div className="dash-list-head">New</div>
-          <button className="dash-new" onClick={() => setWizard("new")} title="Choose the project, baseline and template, and check the prerequisites">
+          <div className="dash-list-head">Novo</div>
+          <button className="dash-new" onClick={() => setWizard("new")} title="Escolher o projeto, a linha de base e o modelo e verificar os pré-requisitos">
             <Wand2 size={14} aria-hidden />
             <span>
-              Dashboard wizard…<small className="muted">Project, baseline, template, prerequisite check</small>
+              Assistente de painéis…<small className="muted">Projeto, linha de base, modelo e verificação de pré-requisitos</small>
             </span>
           </button>
           {BUILTIN_TEMPLATES.map((t) => (
@@ -384,13 +384,13 @@ export function DashboardsView({ onClose }: { onClose: () => void }) {
           <button className="dash-new" onClick={blank}>
             <Plus size={14} aria-hidden />
             <span>
-              Blank dashboard<small className="muted">Build it from the widget gallery</small>
+              Painel em branco<small className="muted">Montar a partir da galeria de componentes</small>
             </span>
           </button>
           <button className="dash-new" onClick={() => importRef.current?.click()}>
             <Upload size={14} aria-hidden />
             <span>
-              Import…<small className="muted">A dashboard file shared by a colleague</small>
+              Importar…<small className="muted">Arquivo de painel compartilhado por um colega</small>
             </span>
           </button>
           <input ref={importRef} type="file" accept=".json,application/json" hidden onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
@@ -398,20 +398,20 @@ export function DashboardsView({ onClose }: { onClose: () => void }) {
 
         <main className="dash-main">
           {!dash ? (
-            <div className="empty">{list === null ? "Loading…" : "Pick a template on the left to begin."}</div>
+            <div className="empty">{list === null ? "Carregando…" : "Pick a template on the left to begin."}</div>
           ) : (
             <>
               <div className="dash-bar">
                 {edit ? (
-                  <input className="dash-title-input" value={dash.name} onChange={(e) => persist({ ...dash, name: e.target.value })} aria-label="Dashboard name" />
+                  <input className="dash-title-input" value={dash.name} onChange={(e) => persist({ ...dash, name: e.target.value })} aria-label="Nome do painel" />
                 ) : (
                   <h2>
                     {dash.name}
-                    {dash.isTemplate && <span className="tag">template</span>}
+                    {dash.isTemplate && <span className="tag">modelo</span>}
                   </h2>
                 )}
-                <select value={dash.projectId ?? ""} onChange={(e) => persist({ ...dash, projectId: e.target.value || null })} title="Project shown by this dashboard">
-                  <option value="">Open project{open ? ` (${open.projectCode})` : ""}</option>
+                <select value={dash.projectId ?? ""} onChange={(e) => persist({ ...dash, projectId: e.target.value || null })} title="Projeto exibido neste painel">
+                  <option value="">Abrir projeto{open ? ` (${open.projectCode})` : ""}</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.code} – {p.name}
@@ -419,42 +419,42 @@ export function DashboardsView({ onClose }: { onClose: () => void }) {
                   ))}
                 </select>
                 {(dash.slices?.length ?? 0) > 0 && (
-                  <button className="mini" onClick={() => persist({ ...dash, slices: [] })} title="Clear every slicer selection">
-                    Clear filters ({dash.slices!.reduce((t, x) => t + x.values.length, 0)})
+                  <button className="mini" onClick={() => persist({ ...dash, slices: [] })} title="Limpar todas as seleções dos filtros interativos">
+                    Limpar filtros ({dash.slices!.reduce((t, x) => t + x.values.length, 0)})
                   </button>
                 )}
                 <span className="spacer" />
                 {edit && (
                   <>
-                    <button className="icon-only" title="Undo (Ctrl+Z)" onClick={undo} disabled={!history.current.past.length}>
+                    <button className="icon-only" title="Desfazer (Ctrl+Z)" onClick={undo} disabled={!history.current.past.length}>
                       <Undo2 size={15} aria-hidden />
                     </button>
-                    <button className="icon-only" title="Redo (Ctrl+Y)" onClick={redo} disabled={!history.current.future.length}>
+                    <button className="icon-only" title="Refazer (Ctrl+Y)" onClick={redo} disabled={!history.current.future.length}>
                       <Redo2 size={15} aria-hidden />
                     </button>
-                    <button className={!selWidget ? "active" : ""} onClick={() => setSelWidget(null)} title="Widget gallery and page set-up">
-                      <Plus size={15} aria-hidden /> Add / Page
+                    <button className={!selWidget ? "active" : ""} onClick={() => setSelWidget(null)} title="Galeria de componentes e configuração da página">
+                      <Plus size={15} aria-hidden /> Adicionar / Página
                     </button>
                   </>
                 )}
                 <button className={edit ? "primary" : ""} onClick={() => (edit ? (setEdit(false), setSelWidget(null)) : setEdit(true))}>
                   {edit ? (
                     <>
-                      <Check size={15} aria-hidden /> Done
+                      <Check size={15} aria-hidden /> Concluído
                     </>
                   ) : (
                     <>
-                      <Pencil size={15} aria-hidden /> Customise
+                      <Pencil size={15} aria-hidden /> Personalizar
                     </>
                   )}
                 </button>
                 <Menu
-                  label="More"
+                  label="Mais"
                   items={[
-                    { label: "Setup: project and baseline…", onClick: () => setWizard("edit") },
-                    { label: "Duplicate dashboard", onClick: () => createFrom(cloneDashboard(dash, `${dash.name} (copy)`)) },
+                    { label: "Configurar projeto e linha de base…", onClick: () => setWizard("edit") },
+                    { label: "Duplicar painel", onClick: () => createFrom(cloneDashboard(dash, `${dash.name} (copy)`)) },
                     {
-                      label: "Save as template",
+                      label: "Salvar como modelo",
                       onClick: async () => {
                         const t = cloneDashboard(dash, `${dash.name} (template)`, true);
                         await backend.saveDashboard(t);
@@ -462,9 +462,9 @@ export function DashboardsView({ onClose }: { onClose: () => void }) {
                         setMsg(`Saved "${t.name}" under My templates.`);
                       },
                     },
-                    { label: "Export dashboard file (.json)", onClick: exportJson },
+                    { label: "Exportar arquivo do painel (.json)", onClick: exportJson },
                     {
-                      label: "Delete dashboard",
+                      label: "Excluir painel",
                       danger: true,
                       onClick: async () => {
                         if (!window.confirm(`Delete dashboard "${dash.name}" and its email schedules?`)) return;
@@ -477,17 +477,17 @@ export function DashboardsView({ onClose }: { onClose: () => void }) {
                 />
                 {!edit && (
                   <>
-                    <button onClick={() => void printPage()} title="Print or save as PDF">
+                    <button onClick={() => void printPage()} title="Imprimir ou salvar em PDF">
                       <Printer size={15} aria-hidden /> PDF
                     </button>
-                    <button onClick={exportExcel} title="Excel workbook">
+                    <button onClick={exportExcel} title="Pasta de trabalho do Excel">
                       <FileSpreadsheet size={15} aria-hidden /> Excel
                     </button>
-                    <button onClick={() => void exportPptx()} title="PowerPoint: editable native charts and tables">
+                    <button onClick={() => void exportPptx()} title="PowerPoint com gráficos e tabelas editáveis">
                       <Presentation size={15} aria-hidden /> PowerPoint
                     </button>
                     <button className={panel === "email" ? "active" : ""} onClick={() => setPanel(panel === "email" ? "none" : "email")}>
-                      <Mail size={15} aria-hidden /> Email
+                      <Mail size={15} aria-hidden /> E-mail
                     </button>
                   </>
                 )}
@@ -669,19 +669,19 @@ function DashCanvas({
               onDrop={() => dragId && move(dragId, w.id)}
               onDragEnd={() => (setDragId(null), setOverId(null))}
               onClick={edit ? () => onSelect(w.id) : undefined}
-              header={edit ? <GripVertical className="grip" size={14} aria-label="Drag to move" /> : undefined}
+              header={edit ? <GripVertical className="grip" size={14} aria-label="Arraste para mover" /> : undefined}
               tools={
                 edit ? (
                   <span className="widget-tools">
-                    <span className="size-chip" title="Width × height">
+                    <span className="size-chip" title="Largura × altura">
                       {widgetCols(w.w)}×{w.h}
                     </span>
-                    <button className="icon-only" title="Duplicate" onClick={(e) => (e.stopPropagation(), duplicate(w))}>
+                    <button className="icon-only" title="Duplicar" onClick={(e) => (e.stopPropagation(), duplicate(w))}>
                       <Copy size={13} aria-hidden />
                     </button>
                     <button
                       className="icon-only"
-                      title="Remove"
+                      title="Remover"
                       onClick={(e) => {
                         e.stopPropagation();
                         onChange({ ...dash, widgets: dash.widgets.filter((x) => x.id !== w.id) });
@@ -696,21 +696,21 @@ function DashCanvas({
             >
               {!blOk && widgetNeedsBaseline(w) && !w.projectId ? (
                 <div className="widget-needs">
-                  <b>Needs a baseline</b>
+                  <b>Requer uma linha de base</b>
                   <span className="muted small">{checks.filter((c) => c.level === "required" && !c.ok).map((c) => c.label).join(", ")} missing. Open Setup to choose a baseline.</span>
                 </div>
               ) : (
                 <WidgetView w={w} schedule={sched} portfolio={data.portfolio} slice={{ slices: dash.slices ?? [], onSlices: (slices) => onChange({ ...dash, slices }), raw: data.rawFor(w) }} />
               )}
-              {edit && <span className="resize-handle" title="Drag to resize" onPointerDown={(e) => startResize(e, w0)} />}
+              {edit && <span className="resize-handle" title="Arraste para redimensionar" onPointerDown={(e) => startResize(e, w0)} />}
             </WidgetFrame>
           );
         })}
         {edit && !dash.widgets.length && (
           <div className="dash-empty-hint">
             <LayoutGrid size={28} aria-hidden />
-            <b>Empty dashboard</b>
-            <span className="muted">Pick widgets from the gallery on the right. Drag a card&apos;s header to move it and its corner to resize it.</span>
+            <b>Painel vazio</b>
+            <span className="muted">Escolha componentes na galeria à direita. Arraste o cabeçalho do cartão para movê-lo ou o canto para redimensioná-lo.</span>
           </div>
         )}
       </div>
@@ -733,7 +733,7 @@ function ColorPick({ value, onChange, options = SWATCHES, none = "Default" }: { 
       {options.filter(Boolean).map((c) => (
         <button key={c} className={`sw ${value === c ? "on" : ""}`} style={{ background: c }} title={c} aria-label={c} onClick={() => onChange(c)} />
       ))}
-      <input type="color" value={value ?? "#2a78d6"} onChange={(e) => onChange(e.target.value)} title="Any colour" />
+      <input type="color" value={value ?? "#2a78d6"} onChange={(e) => onChange(e.target.value)} title="Qualquer cor" />
     </div>
   );
 }
@@ -780,10 +780,10 @@ function Inspector({
       <aside className="inspector">
         <div className="tabs">
           <button className={side === "add" ? "active" : ""} onClick={() => setSide("add")}>
-            Add widget
+            Adicionar componente
           </button>
           <button className={side === "page" ? "active" : ""} onClick={() => setSide("page")}>
-            Page &amp; theme
+            Página e tema
           </button>
         </div>
         {side === "add" ? (
@@ -818,14 +818,14 @@ function Inspector({
         <WidgetIcon kind={w.kind} />
         <b>{WIDGET_KINDS.find((k) => k.kind === w.kind)?.label}</b>
         <span className="spacer" />
-        <button className="icon-only" title="Close (Esc)" onClick={() => onSelect(null)}>
+        <button className="icon-only" title="Fechar (Esc)" onClick={() => onSelect(null)}>
           <X size={15} aria-hidden />
         </button>
       </div>
       <div className="tabs">
         {(["data", "style", "filter"] as const).map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-            {t === "data" ? "Data" : t === "style" ? "Look" : `Filter${w.where?.length || w.ignoreSlicers ? " •" : ""}`}
+            {t === "data" ? "Dados" : t === "style" ? "Aparência" : `Filter${w.where?.length || w.ignoreSlicers ? " •" : ""}`}
           </button>
         ))}
       </div>
@@ -834,16 +834,16 @@ function Inspector({
         {tab === "style" && (
           <div className="form-grid">
             <label className="span-all">
-              Size
+              Tamanho
               <span className="row">
-                <select value={widgetCols(w.w)} onChange={(e) => upd({ ...w, w: Number(e.target.value) })} title="Width in twelfths">
+                <select value={widgetCols(w.w)} onChange={(e) => upd({ ...w, w: Number(e.target.value) })} title="Largura em doze avos">
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
                       {n}/12{n === 12 ? " (full)" : n === 6 ? " (half)" : n === 4 ? " (third)" : n === 3 ? " (quarter)" : ""}
                     </option>
                   ))}
                 </select>
-                <select value={w.h} onChange={(e) => upd({ ...w, h: Number(e.target.value) })} title="Height">
+                <select value={w.h} onChange={(e) => upd({ ...w, h: Number(e.target.value) })} title="Altura">
                   {Array.from({ length: 16 }, (_, i) => (i + 1) / 2).map((n) => (
                     <option key={n} value={n}>
                       {n} × row
@@ -854,43 +854,43 @@ function Inspector({
               <small className="muted">Or drag the card&apos;s bottom-right corner.</small>
             </label>
             <label className="check span-all">
-              <input type="checkbox" checked={!!st.hideTitle} onChange={(e) => setStyle({ hideTitle: e.target.checked || undefined })} /> Hide the title
+              <input type="checkbox" checked={!!st.hideTitle} onChange={(e) => setStyle({ hideTitle: e.target.checked || undefined })} /> Ocultar título
             </label>
             <label className="span-all">
-              Title bar
+              Barra de título
               <Seg
                 value={st.header ?? "plain"}
                 onChange={(v) => setStyle({ header: v === "plain" ? undefined : v })}
                 options={[
-                  { v: "plain", label: "Plain" },
-                  { v: "underline", label: "Underline" },
-                  { v: "filled", label: "Filled" },
+                  { v: "plain", label: "Simples" },
+                  { v: "underline", label: "Sublinhada" },
+                  { v: "filled", label: "Preenchida" },
                 ]}
               />
             </label>
             <label className="span-all">
-              Accent colour
+              Cor de destaque
               <ColorPick value={st.accent} onChange={(v) => setStyle({ accent: v })} none="Page" />
             </label>
             <label className="span-all">
-              Card background
+              Fundo do cartão
               <ColorPick value={st.background} onChange={(v) => setStyle({ background: v, color: v && isDark(v) ? "#ffffff" : undefined })} options={BACKGROUNDS} />
             </label>
             <label className="span-all">
-              Card style
+              Estilo do cartão
               <Seg
                 value={st.border ?? "page"}
                 onChange={(v) => setStyle({ border: v === "page" ? undefined : (v as "card" | "line" | "none") })}
                 options={[
-                  { v: "page", label: "Page default" },
-                  { v: "card", label: "Card" },
-                  { v: "line", label: "Outline" },
-                  { v: "none", label: "None" },
+                  { v: "page", label: "Padrão da página" },
+                  { v: "card", label: "Cartão" },
+                  { v: "line", label: "Estrutura de tópicos" },
+                  { v: "none", label: "Nenhum" },
                 ]}
               />
             </label>
             <label>
-              Text size
+              Tamanho do texto
               <select value={st.fontScale ?? 1} onChange={(e) => setStyle({ fontScale: Number(e.target.value) === 1 ? undefined : Number(e.target.value) })}>
                 {[0.85, 1, 1.15, 1.3, 1.5].map((n) => (
                   <option key={n} value={n}>
@@ -900,28 +900,28 @@ function Inspector({
               </select>
             </label>
             <label>
-              Align
+              Alinhamento
               <select value={st.align ?? ""} onChange={(e) => setStyle({ align: (e.target.value || undefined) as "left" | "center" | "right" | undefined })}>
-                <option value="">Default</option>
-                <option value="left">Left</option>
-                <option value="center">Centre</option>
-                <option value="right">Right</option>
+                <option value="">Padrão</option>
+                <option value="left">Esquerda</option>
+                <option value="center">Centro</option>
+                <option value="right">Direita</option>
               </select>
             </label>
             {CHARTS.includes(w.kind) && (
               <>
                 <label>
-                  Chart
+                  Gráfico
                   <select value={w.chart ?? "line"} onChange={(e) => upd({ ...w, chart: e.target.value as "line" | "area" })}>
-                    <option value="line">Lines</option>
-                    <option value="area">Shaded area</option>
+                    <option value="line">Linhas</option>
+                    <option value="area">Área sombreada</option>
                   </select>
                 </label>
                 <label className="check">
-                  <input type="checkbox" checked={w.showLegend !== false} onChange={(e) => upd({ ...w, showLegend: e.target.checked ? undefined : false })} /> Legend
+                  <input type="checkbox" checked={w.showLegend !== false} onChange={(e) => upd({ ...w, showLegend: e.target.checked ? undefined : false })} /> Legenda
                 </label>
                 <div className="span-all">
-                  <span className="muted">Series shown</span>
+                  <span className="muted">Séries exibidas</span>
                   <div className="row wrap">
                     {(SERIES_IDS[w.kind] ?? []).map(([id, label]) => {
                       const hidden = w.hiddenSeries ?? (w.kind === "groupbars" ? ["forecast"] : []);
@@ -953,9 +953,9 @@ function Inspector({
             ws.splice(Math.max(0, i - 1), 0, x);
             onChange({ ...dash, widgets: ws });
           }}
-          title="Move earlier"
+          title="Mover para antes"
         >
-          ← Earlier
+          ← Antes
         </button>
         <button
           onClick={() => {
@@ -965,9 +965,9 @@ function Inspector({
             ws.splice(Math.min(ws.length, i + 1), 0, x);
             onChange({ ...dash, widgets: ws });
           }}
-          title="Move later"
+          title="Mover para depois"
         >
-          Later →
+          Depois →
         </button>
         <span className="spacer" />
         <button
@@ -977,7 +977,7 @@ function Inspector({
             onSelect(null);
           }}
         >
-          <Trash2 size={14} aria-hidden /> Remove
+          <Trash2 size={14} aria-hidden /> Remover
         </button>
       </div>
     </aside>
@@ -1063,58 +1063,58 @@ function PageSettings({ dash, onChange }: { dash: Dashboard; onChange: (d: Dashb
   return (
     <div className="form-grid insp-body">
       <label className="span-all">
-        Theme
+        Tema
         <Seg
           value={dash.theme ?? "classic"}
           onChange={(v) => onChange({ ...dash, theme: v })}
           options={[
             { v: "classic", label: "Stratum" },
-            { v: "report", label: "EPC report" },
-            { v: "executive", label: "Executive" },
+            { v: "report", label: "Relatório EPC" },
+            { v: "executive", label: "Executivo" },
           ]}
         />
       </label>
       <label className="span-all">
-        Main colour
+        Cor principal
         <ColorPick value={pg.accent} onChange={(v) => set({ accent: v })} />
       </label>
       <label className="span-all">
-        Page background
+        Fundo da página
         <ColorPick value={pg.background} onChange={(v) => set({ background: v })} options={BACKGROUNDS} />
       </label>
       <label className="span-all">
-        Cards
+        Cartões
         <Seg
           value={pg.border ?? "card"}
           onChange={(v) => set({ border: v })}
           options={[
-            { v: "card", label: "Card" },
-            { v: "line", label: "Outline" },
-            { v: "none", label: "Flat" },
+            { v: "card", label: "Cartão" },
+            { v: "line", label: "Estrutura de tópicos" },
+            { v: "none", label: "Plano" },
           ]}
         />
       </label>
       <label className="span-all">
-        Spacing {pg.gap ?? 12}px
+        Espaçamento {pg.gap ?? 12}px
         <input type="range" min={0} max={28} step={2} value={pg.gap ?? 12} onChange={(e) => set({ gap: Number(e.target.value) })} />
       </label>
       <label className="span-all">
-        Header
+        Cabeçalho
         <input value={pg.header ?? ""} onChange={(e) => set({ header: e.target.value })} placeholder="{project}" />
       </label>
       <label className="span-all">
-        Subtitle
+        Subtítulo
         <input value={pg.subtitle ?? ""} onChange={(e) => set({ subtitle: e.target.value })} placeholder="Monthly progress report · data date {datadate}" />
       </label>
       <label className="check span-all">
-        <input type="checkbox" checked={!!pg.showDataDate} onChange={(e) => set({ showDataDate: e.target.checked })} /> Show the data date at top right
+        <input type="checkbox" checked={!!pg.showDataDate} onChange={(e) => set({ showDataDate: e.target.checked })} /> Mostrar a data de corte no canto superior direito
       </label>
       <div className="span-all">
-        <span className="muted">Company logo</span>
+        <span className="muted">Logotipo da empresa</span>
         <div className="row">
           {pg.logo && <img src={pg.logo} alt="Logo" className="logo-preview" />}
           <button onClick={() => logoRef.current?.click()}>{pg.logo ? "Change…" : "Choose image…"}</button>
-          {pg.logo && <button onClick={() => set({ logo: undefined })}>Remove</button>}
+          {pg.logo && <button onClick={() => set({ logo: undefined })}>Remover</button>}
         </div>
         <input
           ref={logoRef}
@@ -1133,22 +1133,22 @@ function PageSettings({ dash, onChange }: { dash: Dashboard; onChange: (d: Dashb
         {err && <p className="bad">{err}</p>}
       </div>
       <label className="span-all">
-        Footer
-        <input value={pg.footer ?? ""} onChange={(e) => set({ footer: e.target.value })} placeholder="Company · Confidential" />
+        Rodapé
+        <input value={pg.footer ?? ""} onChange={(e) => set({ footer: e.target.value })} placeholder="Empresa · Confidencial" />
       </label>
       <label className="span-all">
-        PDF page
+        Página do PDF
         <Seg
           value={pg.orientation ?? "landscape"}
           onChange={(v) => set({ orientation: v })}
           options={[
-            { v: "landscape", label: "A4 landscape" },
-            { v: "portrait", label: "A4 portrait" },
+            { v: "landscape", label: "A4 paisagem" },
+            { v: "portrait", label: "A4 retrato" },
           ]}
         />
       </label>
       <p className="muted span-all">
-        Placeholders: {"{project}"}, {"{datadate}"}. These settings also apply to the PDF that email schedules send.
+        Campos dinâmicos: {"{project}"}, {"{datadate}"}. These settings also apply to the PDF that email schedules send.
       </p>
     </div>
   );
@@ -1187,9 +1187,9 @@ function FilterSettings({ w, onChange, raw }: { w: Widget; onChange: (w: Widget)
   };
   return (
     <div className="form-grid">
-      <p className="muted span-all">Show only part of the project in this widget, whatever the slicer buttons say. Other widgets are not affected.</p>
+      <p className="muted span-all">Limite os dados exibidos neste componente. Os filtros dos demais componentes continuam funcionando normalmente.</p>
       <label className="span-all">
-        Filter by
+        Filtrar por
         <select value={dim} onChange={(e) => setDim(e.target.value)}>
           {dims.map((d) => (
             <option key={d.value} value={d.value}>
@@ -1205,7 +1205,7 @@ function FilterSettings({ w, onChange, raw }: { w: Widget; onChange: (w: Widget)
             {v}
           </button>
         ))}
-        {!values.length && <span className="muted">Open the project to list its values.</span>}
+        {!values.length && <span className="muted">Abra o projeto para listar seus valores.</span>}
       </div>
       {w.where?.length ? (
         <div className="span-all">
@@ -1217,7 +1217,7 @@ function FilterSettings({ w, onChange, raw }: { w: Widget; onChange: (w: Widget)
         </div>
       ) : null}
       <label className="check span-all">
-        <input type="checkbox" checked={!!w.ignoreSlicers} onChange={(e) => onChange({ ...w, ignoreSlicers: e.target.checked || undefined })} /> Ignore the dashboard&apos;s slicer buttons
+        <input type="checkbox" checked={!!w.ignoreSlicers} onChange={(e) => onChange({ ...w, ignoreSlicers: e.target.checked || undefined })} /> Ignorar os filtros interativos do painel
       </label>
     </div>
   );
@@ -1231,11 +1231,11 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
   return (
     <div className="form-grid">
       <label className="span-all">
-        Title
+        Título
         <input value={w.title} onChange={(e) => onChange({ ...w, title: e.target.value })} />
       </label>
       <label>
-        Type
+        Tipo
         <select value={w.kind} onChange={(e) => onChange({ ...w, kind: e.target.value as WidgetKind, ...structuredClone(WIDGET_KINDS.find((k) => k.kind === e.target.value)?.defaults ?? {}), w: w.w, h: w.h, title: w.title })}>
           {WIDGET_KINDS.map((k) => (
             <option key={k.kind} value={k.kind}>
@@ -1246,7 +1246,7 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       </label>
       {!["text", "portfolio", "image", "banner"].includes(w.kind) && (
         <label>
-          Project
+          Projeto
           <select value={w.projectId ?? ""} onChange={(e) => onChange({ ...w, projectId: e.target.value || null })}>
             <option value="">Dashboard&apos;s project</option>
             {projects.map((p) => (
@@ -1259,7 +1259,7 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       )}
       {(w.kind === "kpi" || w.kind === "gauge") && (
         <label>
-          Measure
+          Medida
           <select value={w.metric} onChange={(e) => onChange({ ...w, metric: e.target.value as KpiMetric })}>
             <KpiOptions filter={(k) => w.kind === "kpi" || !["finish", "dataDate", "finishVariance", "esFinish"].includes(k)} />
           </select>
@@ -1267,17 +1267,17 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       )}
       {(w.kind === "kpi" || w.kind === "scurve" || w.kind === "gauge") && (
         <label>
-          Values in
+          Valores em
           <select value={w.measure ?? "cost"} onChange={(e) => onChange({ ...w, measure: e.target.value as "cost" | "hours" })}>
-            <option value="cost">Cost</option>
-            <option value="hours">Labour hours</option>
+            <option value="cost">Custo</option>
+            <option value="hours">Horas de mão de obra</option>
           </select>
         </label>
       )}
       {(w.kind === "kpi" || w.kind === "gauge") && !["finish", "dataDate", "finishVariance"].includes(w.metric ?? "") && (
         <>
           <label>
-            Decimals
+            Casas decimais
             <select value={w.decimals ?? ""} onChange={(e) => onChange({ ...w, decimals: num(e.target.value) })}>
               <option value="">Auto</option>
               {[0, 1, 2, 3].map((n) => (
@@ -1288,18 +1288,18 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
             </select>
           </label>
           <label>
-            Prefix / suffix
+            Prefixo / sufixo
             <span className="row">
               <input value={w.prefix ?? ""} onChange={(e) => onChange({ ...w, prefix: e.target.value || undefined })} placeholder="AED " style={{ width: "50%" }} />
               <input value={w.suffix ?? ""} onChange={(e) => onChange({ ...w, suffix: e.target.value || undefined })} placeholder=" h" style={{ width: "50%" }} />
             </span>
           </label>
           <label>
-            Green at
+            Limite verde
             <input type="number" step="any" value={w.good ?? ""} onChange={(e) => onChange({ ...w, good: num(e.target.value) })} placeholder={w.metric === "percentComplete" ? "e.g. 45 (%)" : "e.g. 1.0"} />
           </label>
           <label>
-            Red at
+            Limite vermelho
             <input type="number" step="any" value={w.bad ?? ""} onChange={(e) => onChange({ ...w, bad: num(e.target.value) })} placeholder={w.metric === "percentComplete" ? "e.g. 40 (%)" : "e.g. 0.9"} />
           </label>
           <p className="muted span-all">Green when the value reaches “Green at”, red past “Red at”, amber between. Put the smaller number in “Green at” when lower is better.</p>
@@ -1308,7 +1308,7 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       {w.kind === "table" && (
         <>
           <label>
-            Show
+            Mostrar
             <select value={w.filter} onChange={(e) => onChange({ ...w, filter: e.target.value as TableFilter })}>
               {(Object.keys(FILTER_LABELS) as TableFilter[]).map((k) => (
                 <option key={k} value={k}>
@@ -1322,13 +1322,13 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       )}
       {(w.kind === "table" || w.kind === "milestones" || w.kind === "lookahead") && (
         <label>
-          Max rows
-          <input type="number" min={1} max={500} value={w.limit ?? ""} placeholder="All" onChange={(e) => onChange({ ...w, limit: num(e.target.value) })} />
+          Máximo de linhas
+          <input type="number" min={1} max={500} value={w.limit ?? ""} placeholder="Todos" onChange={(e) => onChange({ ...w, limit: num(e.target.value) })} />
         </label>
       )}
       {(w.filter === "starting-soon" || w.filter === "finishing-soon" || w.metric === "startingSoon") && (
         <label>
-          Window (days)
+          Intervalo (dias)
           <input type="number" min={1} value={w.days ?? 14} onChange={(e) => onChange({ ...w, days: Number(e.target.value) || 14 })} />
         </label>
       )}
@@ -1339,13 +1339,13 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
             <input type="number" min={0} value={w.days ?? 5} onChange={(e) => onChange({ ...w, days: Number(e.target.value) })} />
           </label>
           <label className="check">
-            <input type="checkbox" checked={!!w.showDone} onChange={(e) => onChange({ ...w, showDone: e.target.checked || undefined })} /> Include achieved
+            <input type="checkbox" checked={!!w.showDone} onChange={(e) => onChange({ ...w, showDone: e.target.checked || undefined })} /> Incluir concluídos
           </label>
         </>
       )}
       {w.kind === "lookahead" && (
         <label>
-          Weeks ahead
+          Semanas à frente
           <select value={w.weeks ?? 3} onChange={(e) => onChange({ ...w, weeks: Number(e.target.value) })}>
             {[1, 2, 3, 4, 6, 8, 12].map((n) => (
               <option key={n} value={n}>
@@ -1357,43 +1357,43 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       )}
       {w.kind === "donut" && (
         <label>
-          Split by
+          Separar por
           <select value={w.split ?? "status"} onChange={(e) => onChange({ ...w, split: e.target.value as Widget["split"] })}>
-            <option value="status">Progress status</option>
-            <option value="float">Total float bands</option>
-            <option value="critical">Critical vs not critical</option>
-            <option value="weight">Scope weightage by group</option>
+            <option value="status">Situação do avanço</option>
+            <option value="float">Faixas de folga total</option>
+            <option value="critical">Atividades críticas e não críticas</option>
+            <option value="weight">Peso do escopo por grupo</option>
           </select>
         </label>
       )}
       {w.kind === "slicer" && (
         <label>
-          Look
+          Aparência
           <select value={w.slicerStyle ?? "buttons"} onChange={(e) => onChange({ ...w, slicerStyle: e.target.value as Widget["slicerStyle"] })}>
-            <option value="buttons">Row of buttons</option>
-            <option value="list">Vertical list</option>
+            <option value="buttons">Linha de botões</option>
+            <option value="list">Lista vertical</option>
           </select>
         </label>
       )}
       {(w.kind === "controltable" || (w.kind === "gauge" && w.metric === "actualPct")) && (
         <label>
-          Baseline plan measured
+          Linha de base medida
           <select value={w.cutoff ?? "datadate"} onChange={(e) => onChange({ ...w, cutoff: e.target.value as Widget["cutoff"] })}>
-            <option value="datadate">At the data date</option>
-            <option value="monthstart">To the end of last month</option>
-            <option value="monthend">To the end of this month</option>
+            <option value="datadate">Na data de corte</option>
+            <option value="monthstart">Até o fim do mês passado</option>
+            <option value="monthend">Até o fim deste mês</option>
           </select>
         </label>
       )}
       {w.kind === "combo" && (
         <label className="check">
-          <input type="checkbox" checked={w.showLabels !== false} onChange={(e) => onChange({ ...w, showLabels: e.target.checked ? undefined : false })} /> Data labels
+          <input type="checkbox" checked={w.showLabels !== false} onChange={(e) => onChange({ ...w, showLabels: e.target.checked ? undefined : false })} /> Rótulos dos dados
         </label>
       )}
       {w.kind === "cards" && (
         <>
           <label>
-            Cards per row
+            Cartões por linha
             <select value={w.cardCols ?? 3} onChange={(e) => onChange({ ...w, cardCols: Number(e.target.value) })}>
               {[1, 2, 3, 4, 5, 6, 8].map((n) => (
                 <option key={n} value={n}>
@@ -1407,13 +1407,13 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       )}
       {w.kind === "quantity" && (
         <label>
-          Quantity property
+          Propriedade de quantidade
           <input value={w.quantityKey ?? "BaseQuantities.NetVolume"} onChange={(e) => onChange({ ...w, quantityKey: e.target.value })} />
         </label>
       )}
       {(w.kind === "progress" || w.kind === "slicer" || w.kind === "groupbars" || w.kind === "phasecurves" || w.kind === "controltable" || (w.kind === "donut" && w.split === "weight")) && (
         <label>
-          {w.kind === "phasecurves" ? "One curve per" : "Group by"}
+          {w.kind === "phasecurves" ? "One curve per" : "Agrupar por"}
           <select value={w.dimension ?? "wbs1"} onChange={(e) => onChange({ ...w, dimension: e.target.value, weightage: undefined })}>
             {dims.map((d) => (
               <option key={d.value} value={d.value}>
@@ -1425,32 +1425,32 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
       )}
       {(w.kind === "progress" || w.kind === "pscurve" || w.kind === "groupbars" || w.kind === "phasecurves" || w.kind === "controltable" || w.kind === "combo" || w.kind === "cards" || (w.kind === "donut" && w.split === "weight") || (w.kind === "gauge" && (w.metric === "percentComplete" || w.metric === "actualPct"))) && (
         <label>
-          Weight activities by
+          Ponderar atividades por
           <select value={w.basis ?? "cost"} onChange={(e) => onChange({ ...w, basis: e.target.value as Widget["basis"] })}>
-            <option value="cost">Budget cost</option>
-            <option value="hours">Labour hours</option>
-            <option value="duration">Duration</option>
-            <option value="equal">Equal weights</option>
+            <option value="cost">Custo orçado</option>
+            <option value="hours">Horas de mão de obra</option>
+            <option value="duration">Duração</option>
+            <option value="equal">Pesos iguais</option>
           </select>
         </label>
       )}
       {(w.kind === "pscurve" || w.kind === "phasecurves" || w.kind === "combo") && (
         <label>
-          Period
+          Período
           <select value={w.step ?? "month"} onChange={(e) => onChange({ ...w, step: e.target.value as "month" | "week" })}>
-            <option value="month">Monthly</option>
-            <option value="week">Weekly</option>
+            <option value="month">Mensal</option>
+            <option value="week">Semanal</option>
           </select>
         </label>
       )}
       {(w.kind === "progress" || w.kind === "groupbars") && (
         <>
           <label>
-            Total row label
+            Rótulo da linha de total
             <input value={w.totalLabel ?? "TOTAL"} onChange={(e) => onChange({ ...w, totalLabel: e.target.value })} />
           </label>
           <div className="span-all weightage">
-            <b>Weightage %</b> <span className="muted">(leave all blank to weight by the basis above)</span>
+            <b>Peso %</b> <span className="muted">(leave all blank to weight by the basis above)</span>
             {groups.map((g) => (
               <label key={g} className="row">
                 <span style={{ flex: 1 }}>{g}</span>
@@ -1469,16 +1469,16 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
                 />
               </label>
             ))}
-            {w.weightage && <span className="muted">Total entered: {Object.values(w.weightage).reduce((t, v) => t + v, 0)}%</span>}
+            {w.weightage && <span className="muted">Total informado: {Object.values(w.weightage).reduce((t, v) => t + v, 0)}%</span>}
           </div>
         </>
       )}
       {w.kind === "info" && <InfoRowsEditor rows={w.rows ?? []} onChange={(rows) => onChange({ ...w, rows })} />}
       {w.kind === "text" && (
         <label className="span-all">
-          Text
+          Texto
           <textarea rows={5} value={w.text ?? ""} onChange={(e) => onChange({ ...w, text: e.target.value })} />
-          <small className="muted">Placeholders: {"{project}"}, {"{datadate}"}</small>
+          <small className="muted">Campos dinâmicos: {"{project}"}, {"{datadate}"}</small>
         </label>
       )}
       {w.kind === "image" && (
@@ -1487,8 +1487,8 @@ function WidgetSettings({ w, onChange, projects, raw }: { w: Widget; onChange: (
             {w.image && <img src={w.image} alt="" className="logo-preview" />}
             <button onClick={() => imgRef.current?.click()}>{w.image ? "Change image…" : "Choose image…"}</button>
             <select value={w.fit ?? "contain"} onChange={(e) => onChange({ ...w, fit: e.target.value as "contain" | "cover" })}>
-              <option value="contain">Fit inside</option>
-              <option value="cover">Fill the card</option>
+              <option value="contain">Ajustar ao espaço</option>
+              <option value="cover">Preencher o cartão</option>
             </select>
           </div>
           <input
@@ -1521,25 +1521,25 @@ function ColumnsEditor({ w, onChange, raw }: { w: Widget; onChange: (w: Widget) 
   };
   return (
     <div className="span-all cols-editor">
-      <b>Columns</b> <span className="muted">(click a heading in the table to sort)</span>
+      <b>Colunas</b> <span className="muted">(clique no cabeçalho da tabela para classificar)</span>
       <ol>
         {cols.map((c, i) => (
           <li key={c}>
             <span>{columnLabel(c)}</span>
-            <button className="icon-only" onClick={() => mv(i, -1)} title="Move left" disabled={!i}>
+            <button className="icon-only" onClick={() => mv(i, -1)} title="Mover à esquerda" disabled={!i}>
               ↑
             </button>
-            <button className="icon-only" onClick={() => mv(i, 1)} title="Move right" disabled={i === cols.length - 1}>
+            <button className="icon-only" onClick={() => mv(i, 1)} title="Mover à direita" disabled={i === cols.length - 1}>
               ↓
             </button>
-            <button className="icon-only" onClick={() => set(cols.filter((x) => x !== c))} title="Remove column" disabled={cols.length < 2}>
+            <button className="icon-only" onClick={() => set(cols.filter((x) => x !== c))} title="Remover coluna" disabled={cols.length < 2}>
               ✕
             </button>
           </li>
         ))}
       </ol>
       <select value="" onChange={(e) => e.target.value && set([...cols, e.target.value as TableColumn])}>
-        <option value="">+ Add column…</option>
+        <option value="">+ Adicionar coluna…</option>
         {all
           .filter((c) => !cols.includes(c.id))
           .map((c) => (
@@ -1549,10 +1549,10 @@ function ColumnsEditor({ w, onChange, raw }: { w: Widget; onChange: (w: Widget) 
           ))}
       </select>
       <label>
-        Default sort
+        Classificação padrão
         <span className="row">
           <select value={w.sort?.by ?? ""} onChange={(e) => onChange({ ...w, sort: e.target.value ? { by: e.target.value as TableColumn, desc: w.sort?.desc } : undefined })}>
-            <option value="">Schedule order</option>
+            <option value="">Ordem do cronograma</option>
             {cols.map((c) => (
               <option key={c} value={c}>
                 {columnLabel(c)}
@@ -1560,8 +1560,8 @@ function ColumnsEditor({ w, onChange, raw }: { w: Widget; onChange: (w: Widget) 
             ))}
           </select>
           <select value={w.sort?.desc ? "desc" : "asc"} disabled={!w.sort} onChange={(e) => w.sort && onChange({ ...w, sort: { ...w.sort, desc: e.target.value === "desc" } })}>
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
+            <option value="asc">Crescente</option>
+            <option value="desc">Decrescente</option>
           </select>
         </span>
       </label>
@@ -1595,20 +1595,20 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
 
   return (
     <aside className="email-panel">
-      <h3>Email reports</h3>
+      <h3>Relatórios por e-mail</h3>
       {!backend.caps.email ? (
-        <p className="muted">Scheduled emails need the Stratum desktop app or a Stratum Server. You can still Print / PDF and export Excel by hand.</p>
+        <p className="muted">Os e-mails programados exigem o aplicativo para computador ou um servidor Stratum. Você pode imprimir, salvar em PDF e exportar para Excel manualmente.</p>
       ) : (
         <>
           <p className="muted">
-            {backend.caps.alwaysOn ? "Sent by the server on schedule." : "Sent by this app while it is open; missed sends go out the next time you start Stratum."} Set up the mail server in Settings → Email.
+            {backend.caps.alwaysOn ? "Sent by the server on schedule." : "Sent by this app while it is open; missed sends go out the next time you start Stratum."} Configure o servidor de e-mail em Configurações → E-mail.
           </p>
           {list.map((s) => (
             <div key={s.id} className="sched-card">
               <div className="row">
                 <b>{s.name}</b>
                 <span className="spacer" />
-                <span className={s.enabled ? "good" : "muted"}>{s.enabled ? "On" : "Paused"}</span>
+                <span className={s.enabled ? "good" : "muted"}>{s.enabled ? "Em" : "Paused"}</span>
               </div>
               <div className="muted">
                 {describe(s)} {offLabel(s.utcOffsetMinutes)} · {s.to.length + s.cc.length} recipient(s) · {s.formats.join(" + ").toUpperCase()}
@@ -1621,7 +1621,7 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
               ))}
               <div className="row">
                 <button className="link" onClick={() => startEdit(s)}>
-                  edit
+                  editar
                 </button>
                 <button
                   className="link"
@@ -1636,7 +1636,7 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
                     }
                   }}
                 >
-                  send now
+                  enviar agora
                 </button>
                 <button
                   className="link"
@@ -1645,7 +1645,7 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
                     await load();
                   }}
                 >
-                  delete
+                  excluir
                 </button>
               </div>
             </div>
@@ -1658,20 +1658,20 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
                 startEdit(s);
               }}
             >
-              + New email schedule
+              + Programar e-mail
             </button>
           )}
           {edit && (
             <div className="stack form">
               <label>
-                Name
+                Nome
                 <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
               </label>
               {!dash.projectId && (
                 <label>
-                  Project (reports need a saved project)
+                  Projeto (salve o projeto antes de gerar relatórios)
                   <select value={edit.projectId ?? ""} onChange={(e) => setEdit({ ...edit, projectId: e.target.value || null })}>
-                    <option value="">Choose…</option>
+                    <option value="">Escolher…</option>
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.code} – {p.name}
@@ -1681,7 +1681,7 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
                 </label>
               )}
               <label>
-                To (separate with ; or ,)
+                Para (separe com ponto e vírgula ou vírgula)
                 <textarea rows={2} value={edit.toText} onChange={(e) => setEdit({ ...edit, toText: e.target.value })} placeholder="pm@company.com; director@company.com" />
               </label>
               <label>
@@ -1689,19 +1689,19 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
                 <input value={edit.ccText} onChange={(e) => setEdit({ ...edit, ccText: e.target.value })} />
               </label>
               <label>
-                Subject
+                Assunto
                 <input value={edit.subject} onChange={(e) => setEdit({ ...edit, subject: e.target.value })} />
               </label>
               <label>
-                Message
+                Mensagem
                 <textarea rows={4} value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} />
               </label>
-              <p className="muted">Placeholders: {"{project}"}, {"{date}"}, {"{datadate}"}</p>
+              <p className="muted">Campos dinâmicos: {"{project}"}, {"{date}"}, {"{datadate}"}</p>
               <div className="row">
                 <select value={edit.frequency} onChange={(e) => setEdit({ ...edit, frequency: e.target.value as ReportSchedule["frequency"] })}>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
+                  <option value="daily">Diário</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensal</option>
                 </select>
                 <input type="time" value={edit.time} onChange={(e) => setEdit({ ...edit, time: e.target.value })} />
                 <select value={edit.utcOffsetMinutes} onChange={(e) => setEdit({ ...edit, utcOffsetMinutes: Number(e.target.value) })}>
@@ -1729,14 +1729,14 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
               )}
               {edit.frequency === "monthly" && (
                 <label>
-                  Day of month
+                  Dia do mês
                   <select value={edit.monthDay} onChange={(e) => setEdit({ ...edit, monthDay: Number(e.target.value) })}>
                     {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
                       <option key={d} value={d}>
                         {d}
                       </option>
                     ))}
-                    <option value={-1}>Last day</option>
+                    <option value={-1}>Último dia</option>
                   </select>
                 </label>
               )}
@@ -1748,17 +1748,17 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
                       checked={edit.formats.includes(f)}
                       onChange={(e) => setEdit({ ...edit, formats: e.target.checked ? [...edit.formats, f] : edit.formats.filter((x) => x !== f) })}
                     />
-                    {f === "pdf" ? "PDF of the dashboard" : "Excel workbook"}
+                    {f === "pdf" ? "PDF of the dashboard" : "Pasta de trabalho do Excel"}
                   </label>
                 ))}
                 <label className="check">
                   <input type="checkbox" checked={edit.enabled} onChange={(e) => setEdit({ ...edit, enabled: e.target.checked })} />
-                  Enabled
+                  Ativado
                 </label>
               </div>
               {(() => {
                 try {
-                  return <p className="muted">First send: {new Date(computeNextRun(edit, Date.now())).toLocaleString()}</p>;
+                  return <p className="muted">Primeiro envio: {new Date(computeNextRun(edit, Date.now())).toLocaleString()}</p>;
                 } catch {
                   return null;
                 }
@@ -1786,9 +1786,9 @@ function EmailPanel({ dash, projects }: { dash: Dashboard; projects: ProjectSumm
                     }
                   }}
                 >
-                  Save schedule
+                  Salvar programação
                 </button>
-                <button onClick={() => setEdit(null)}>Cancel</button>
+                <button onClick={() => setEdit(null)}>Cancelar</button>
               </div>
             </div>
           )}
@@ -1803,12 +1803,12 @@ function InfoRowsEditor({ rows, onChange }: { rows: InfoRow[]; onChange: (r: Inf
   const set = (i: number, r: InfoRow) => onChange(rows.map((x, k) => (k === i ? r : x)));
   return (
     <div className="span-all info-editor">
-      <b>Rows</b>
+      <b>Linhas</b>
       {rows.map((r, i) => (
         <div className="row" key={i}>
           <input value={r.label} onChange={(e) => set(i, { ...r, label: e.target.value })} style={{ flex: 2 }} />
           <select value={r.metric ?? ""} onChange={(e) => set(i, { ...r, metric: (e.target.value || null) as KpiMetric | null })} style={{ flex: 1 }}>
-            <option value="">Typed value</option>
+            <option value="">Valor digitado</option>
             <KpiOptions />
           </select>
           {!r.metric && <input value={r.value ?? ""} onChange={(e) => set(i, { ...r, value: e.target.value })} placeholder="value" style={{ flex: 1 }} />}
@@ -1817,7 +1817,7 @@ function InfoRowsEditor({ rows, onChange }: { rows: InfoRow[]; onChange: (r: Inf
           </button>
         </div>
       ))}
-      <button onClick={() => onChange([...rows, { label: "New row", metric: null, value: "" }])}>+ Row</button>
+      <button onClick={() => onChange([...rows, { label: "Nova linha", metric: null, value: "" }])}>+ Linha</button>
     </div>
   );
 }
@@ -1831,7 +1831,7 @@ function ReadinessBar({ checks, dash, schedule, onChange }: { checks: ReadinessC
   return (
     <div className={`dash-ready no-print ${req.length ? "bad" : bad.length ? "warn" : "ok"}`} onClick={(e) => e.stopPropagation()}>
       <label className="row" style={{ gap: 6 }}>
-        Baseline
+        Linha de base
         <select value={dash.baselineId ?? ""} onChange={(e) => onChange({ ...dash, baselineId: e.target.value || null })}>
           {opts.map((o) => (
             <option key={o.id ?? ""} value={o.id ?? ""}>

@@ -51,7 +51,7 @@ const setDef = (kind: "road" | "solar" | "hotel" | "pipeline", label: string): S
 
 export const SAMPLES: Record<SampleKind, SampleDef> = {
   gis: {
-    label: "220 kV GIS substation (UAE)",
+    label: "Subestação GIS de 220 kV (EAU)",
     model: gisModel,
     xer: gisXer,
     paths: gisPaths,
@@ -61,7 +61,7 @@ export const SAMPLES: Record<SampleKind, SampleDef> = {
     done: "Sample loaded: 220/33 kV GIS substation, Abu Dhabi (fictional). Data date 19-Oct-2026.",
   },
   rc: {
-    label: "Small RC building",
+    label: "Edifício de concreto armado",
     model: demoModel,
     xer: demoXer,
     paths: demoPaths,
@@ -75,10 +75,10 @@ export const SAMPLES: Record<SampleKind, SampleDef> = {
     eps: ["Miqyas Demo", "Buildings"],
     done: "Demo loaded: two-storey RC building.",
   },
-  road: setDef("road", "12 km dual carriageway"),
-  solar: setDef("solar", "50 MWp solar PV plant"),
-  hotel: setDef("hotel", "Hotel MEP fit-out (G+6)"),
-  pipeline: setDef("pipeline", "25 km water pipeline"),
+  road: setDef("road", "Rodovia duplicada de 12 km"),
+  solar: setDef("solar", "Usina solar fotovoltaica de 50 MWp"),
+  hotel: setDef("hotel", "Instalações de hotel (térreo + 6 pavimentos)"),
+  pipeline: setDef("pipeline", "Adutora de 25 km"),
 };
 
 /** Samples in the order the File menu and a new demo session list them. */

@@ -159,7 +159,7 @@ export const DEFAULT_COLUMNS: ColumnSpec[] = [
 ];
 
 export const DEFAULT_LAYOUT: P6Layout = {
-  name: "Classic Schedule Layout",
+  name: "Layout clássico do cronograma",
   columns: DEFAULT_COLUMNS,
   groupBy: "wbs",
   groupTotals: true,
@@ -196,20 +196,20 @@ export const STOCK_LAYOUTS: P6Layout[] = [
   DEFAULT_LAYOUT,
   {
     ...DEFAULT_LAYOUT,
-    name: "Baseline Comparison",
+    name: "Comparação com a linha de base",
     columns: [{ id: "code" }, { id: "name" }, { id: "start" }, { id: "finish" }, { id: "blStart" }, { id: "blFinish" }, { id: "startVar" }, { id: "finishVar" }],
     bars: { ...DEFAULT_LAYOUT.bars, baseline: true },
   },
   {
     ...DEFAULT_LAYOUT,
-    name: "Update Progress",
+    name: "Atualizar avanço",
     columns: [{ id: "code" }, { id: "name" }, { id: "status" }, { id: "actualStart" }, { id: "actualFinish" }, { id: "pct" }, { id: "rd" }, { id: "start" }, { id: "finish" }],
     lower: "details",
     lowerTab: "status",
   },
   {
     ...DEFAULT_LAYOUT,
-    name: "Critical Path",
+    name: "Caminho crítico",
     columns: [{ id: "code" }, { id: "name" }, { id: "rd" }, { id: "start" }, { id: "finish" }, { id: "tf" }, { id: "ff" }, { id: "preds" }],
     filters: ["critical"],
     groupBy: "none",
@@ -218,13 +218,13 @@ export const STOCK_LAYOUTS: P6Layout[] = [
   },
   {
     ...DEFAULT_LAYOUT,
-    name: "Logic Review",
+    name: "Revisão das dependências",
     columns: [{ id: "code" }, { id: "name" }, { id: "type" }, { id: "od" }, { id: "preds" }, { id: "succs" }, { id: "constraint" }, { id: "tf" }],
     bars: { ...DEFAULT_LAYOUT.bars, relationships: true },
   },
   {
     ...DEFAULT_LAYOUT,
-    name: "Cost Loading",
+    name: "Distribuição de custos",
     columns: [{ id: "code" }, { id: "name" }, { id: "resources" }, { id: "budgetUnits" }, { id: "budgetCost" }, { id: "actualCost" }, { id: "remainingCost" }, { id: "atCompletionCost" }],
     showGantt: false,
     lower: "resourceUsage",
@@ -244,7 +244,7 @@ export function displayDefault(view: string | undefined): P6Layout {
     case "gantt":
       return { ...DEFAULT_LAYOUT, showTable: false, lower: "none", bars: { ...DEFAULT_LAYOUT.bars, relationships: true } };
     case "progress":
-      return { ...upd, showGantt: false, lower: "none", name: "Update Progress" };
+      return { ...upd, showGantt: false, lower: "none", name: "Atualizar avanço" };
     default:
       return { ...DEFAULT_LAYOUT, lower: "none" };
   }

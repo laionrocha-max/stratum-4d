@@ -66,7 +66,7 @@ import {
 import { ActivityEditor } from "./ActivityEditor";
 import { clearAutosave, loadAutosave, startAutosave } from "./autosave";
 import { CostPanel, QuantityPanel, ResourcePanel } from "./Analysis";
-import { download, downloadDataUrl, isNativeApp, pickFile } from "./files";
+import { download, downloadDataUrl, isNativeApp, pickFile, pickFiles } from "./files";
 import { Gantt } from "./Gantt";
 import { Help } from "./Help";
 import { SidePanel } from "./SidePanel";
@@ -78,10 +78,10 @@ import { TrainingButton, TrainingLayer } from "./training/Training";
 
 const LEFT_TABS: { id: LeftTab; label: string }[] = [
   { id: "gantt", label: "Gantt" },
-  { id: "activity", label: "Activity" },
-  { id: "cost", label: "Cost & EVM" },
-  { id: "resources", label: "Resources" },
-  { id: "quantities", label: "Quantities" },
+  { id: "activity", label: "Atividade" },
+  { id: "cost", label: "Custos e valor agregado" },
+  { id: "resources", label: "Recursos" },
+  { id: "quantities", label: "Quantitativos" },
 ];
 
 /** Built-in sample projects (see core/samples). The model name tells a saved project which one to rebuild. */
@@ -173,6 +173,15 @@ function Workspace() {
   }, []);
   const getViewer = useCallback(() => viewerRef.current, []);
   useEffect(() => viewerRef.current?.setTheme(theme), [theme]);
+  useEffect(() => {
+    viewerRef.current?.setPresentationLook(sim.presentationLook === true);
+  }, [sim.presentationLook, viewerGen]);
+  useEffect(() => {
+    viewerRef.current?.setGridVisible(sim.showGrid !== false);
+  }, [sim.showGrid, viewerGen]);
+  useEffect(() => {
+    viewerRef.current?.setSolarLighting(sim.naturalSky === true, sim.solar);
+  }, [sim.naturalSky, sim.solar, viewerGen]);
 
   // Rebuild viewer objects when elements are split or unsplit.
   const segKey = useMemo(() => segments.map((s) => s.id).join(","), [segments]);
@@ -331,7 +340,7 @@ function Workspace() {
     }
     const id = v.pick(e.clientX, e.clientY);
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-    const next = new Set(additive ? selectedElements : []);
+    const next = new Set(id && additive ? s.selectedElements : []);
     if (id) {
       if (additive && next.has(id)) next.delete(id);
       else next.add(id);
@@ -340,7 +349,7 @@ function Workspace() {
   };
 
   // Distinguish a click from an orbit drag.
-  const down = useRef<{ x: number; y: number } | null>(null);
+  const down = useRef<{ x: number; y: number; pointer: number } | null>(null);
 
   const importSchedule = async (update = false) => {
     const workspace = useStore.getState().workspaceRevision;
@@ -358,7 +367,7 @@ function Workspace() {
     const projects = listXerProjects(tables);
     let projectId = projects[0]?.id;
     if (projects.length > 1) {
-      const pick = window.prompt(`This XER has ${projects.length} projects. Enter the number to use:\n` + projects.map((p, i) => `${i + 1}. ${p.code} – ${p.name}`).join("\n"), "1");
+      const pick = window.prompt(`Este XER contém ${projects.length} projetos. Informe o número do projeto que deseja abrir:\n` + projects.map((p, i) => `${i + 1}. ${p.code} – ${p.name}`).join("\n"), "1");
       const idx = Number(pick) - 1;
       if (!projects[idx]) return null;
       projectId = projects[idx].id;
@@ -370,28 +379,28 @@ function Workspace() {
   const assignBaselineFromFile = async () => {
     const original = useStore.getState();
     const cur = original.schedule;
-    if (!cur) return store.setStatus("Open the current schedule first, then assign its baseline.");
+    if (!cur) return store.setStatus("Abra o cronograma atual antes de atribuir a linha de base.");
     const f = await pickFile(".xer,.xml");
     if (!f || original.workspaceRevision !== useStore.getState().workspaceRevision) return;
     try {
-      store.setStatus(`Reading baseline ${f.name}…`, true);
+      store.setStatus(`Lendo a linha de base ${f.name}…`, true);
       const bytes = await f.arrayBuffer();
       const latest = useStore.getState();
       if (latest.workspaceRevision !== original.workspaceRevision) return;
       if (latest.schedule !== cur) return store.setStatus("O cronograma mudou enquanto a baseline era lida. Selecione a baseline novamente.");
       const bl = readScheduleFile(f.name, new Uint8Array(bytes));
-      if (!bl) return store.setStatus("Baseline not assigned.");
+      if (!bl) return store.setStatus("Linha de base não atribuída.");
       const r = assignBaseline(cur, bl, `${bl.projectCode} – ${bl.projectName}`);
-      if (!r.matched) return store.setStatus(`No Activity IDs in ${f.name} match the open project; baseline not assigned.`);
+      if (!r.matched) return store.setStatus(`Nenhum código em ${f.name} corresponde ao cronograma aberto. A linha de base não foi atribuída.`);
       store.setSchedule(r.schedule, { keepTime: true, dirty: false });
       store.setStatus(
-        `Baseline assigned from ${bl.projectCode} (data date ${fmtDate(bl.dataDate)}): ${r.matched} activities matched` +
-          (r.missing.length ? `, ${r.missing.length} added since the baseline have no baseline dates` : "") +
-          (r.dropped.length ? `, ${r.dropped.length} baseline activities no longer exist` : "") +
-          ". Commit to keep it.",
+        `Linha de base atribuída de ${bl.projectCode} (data de corte ${fmtDate(bl.dataDate)}). ${r.matched} atividade(s) com correspondência` +
+          (r.missing.length ? `, ${r.missing.length} sem datas de referência` : "") +
+          (r.dropped.length ? `, ${r.dropped.length} atividade(s) da linha de base ausente(s) no cronograma` : "") +
+          ". Salve a obra para guardar a atribuição.",
       );
     } catch (err) {
-      if (original.workspaceRevision === useStore.getState().workspaceRevision) store.setStatus(`Baseline import failed: ${(err as Error).message}`);
+      if (original.workspaceRevision === useStore.getState().workspaceRevision) store.setStatus(`Falha ao importar a linha de base. ${(err as Error).message}`);
     }
   };
 
@@ -516,7 +525,7 @@ function Workspace() {
       useStore.setState({ scheduleSource: source, projectKey: st.projectKey ?? crypto.randomUUID() });
     }
     const label = schedule.sourceFormat === "mspdi" ? "MS Project" : schedule.sourceFormat === "p6-eppm" ? "P6 EPPM" : "P6";
-    store.setStatus(`Imported ${schedule.projectCode} (${label}): ${schedule.activities.length} activities, ${schedule.relationships.length} relationships. Data date ${fmtDate(schedule.dataDate)}.`);
+    store.setStatus(`Cronograma ${schedule.projectCode} (${label}) importado. ${schedule.activities.length} atividade(s) e ${schedule.relationships.length} relação(ões). Data de corte ${fmtDate(schedule.dataDate)}.`);
   };
 
   // ---- database
@@ -587,10 +596,10 @@ function Workspace() {
     } catch (e) {
       if (request !== projectAction.current) throw e;
       if (e instanceof ConflictError) {
-        st.setStatus(`Not saved: ${e.message}`);
-        throw new Error(`${e.message} Use "Save as new" to keep your version, or reopen the project.`);
+        st.setStatus(`Projeto não salvo: ${e.message}`);
+        throw new Error(`${e.message} Use "Salvar como novo" to keep your version, or reopen the project.`);
       }
-      st.setStatus(`Save failed: ${(e as Error).message}`);
+      st.setStatus(`Falha ao salvar: ${(e as Error).message}`);
       throw e;
     }
   };
@@ -598,7 +607,7 @@ function Workspace() {
   const openFromDb = async (id: string) => {
     const request = ++projectAction.current;
     const r = await useConfig.getState().backend.getProject(id);
-    if (!r) throw new Error("Project not found");
+    if (!r) throw new Error("Obra não encontrada.");
     if (request === projectAction.current) await restoreProject(normalizeProject(r.project), request, id, r.version);
   };
 
@@ -621,7 +630,7 @@ function Workspace() {
       }
       store.setStatus(`Sent progress for ${r.updated} activities to P6.${r.skipped.length ? ` Not sent (new in Stratum, use XER): ${r.skipped.slice(0, 8).join(", ")}${r.skipped.length > 8 ? "…" : ""}.` : ""} Reschedule in P6 (F9).`);
     } catch (e) {
-      store.setStatus(`P6 update failed: ${(e as Error).message}`);
+      store.setStatus(`Falha ao atualizar o P6: ${(e as Error).message}`);
     }
   };
 
@@ -629,6 +638,15 @@ function Workspace() {
     const workspace = useStore.getState().workspaceRevision;
     const f = await pickFile(".ifc,.glb,.gltf,.obj,.stl,.fbx");
     if (f && workspace === useStore.getState().workspaceRevision) await importModel(f.name, f, target, revision);
+  };
+
+  const addIfcs = async () => {
+    const workspace = useStore.getState().workspaceRevision;
+    const files = await pickFiles(".ifc");
+    for (const file of files) {
+      if (workspace !== useStore.getState().workspaceRevision) break;
+      await importModel(file.name, file);
+    }
   };
 
   const loadObjects = (objects: Map<string, THREE.Object3D>, fit = true) => {
@@ -787,6 +805,15 @@ function Workspace() {
       const parts = new Map(partsRef.current).set(model.id, part);
       const files = target ? current.files.map((f) => f.id === target.id ? model : f) : [...current.files, model];
       commitModels({ files, coordination: current.coordination ?? part.coordination }, parts, lost, preview?.choice, entry);
+      if (part.location && !revision && active.sim.solar?.latitude == null && active.sim.solar?.longitude == null) {
+        store.setSim({ solar: {
+          date: active.sim.solar?.date ?? new Date(active.schedule?.dataDate ?? Date.now()).toISOString().slice(0, 10),
+          time: active.sim.solar?.time ?? "15:00",
+          utcOffset: active.sim.solar?.utcOffset ?? -new Date().getTimezoneOffset() / 60,
+          ...part.location,
+          north: part.location.north ?? active.sim.solar?.north ?? 0,
+        } });
+      }
       if (entry && before.view?.settings.sectionBounds) useStore.getState().setView3d({ sectionBounds: before.view.settings.sectionBounds });
       part = undefined;
       store.setStatus(`Modelo ${name} carregado. ${parts.size} de ${files.length} modelo(s) na obra.${stored ? "" : " O armazenamento local falhou. Guarde o arquivo original para localizá-lo ao reabrir."}`);
@@ -816,12 +843,11 @@ function Workspace() {
   };
 
   const loadDemo = (kind: DemoKind = "gis") => {
-    const d = SAMPLES[kind];
     const p = sampleProject(kind);
-    const boxes = d.model();
+    const boxes = SAMPLES[kind].model();
     applyProject(p, new Map(), { elements: boxes.map((b) => b.element), objects: Viewer.demoObjects(boxes) });
     const acts = new Set(p.links.map((l) => l.activityId)).size;
-    store.setStatus(`${d.done} ${boxes.length} elements linked to ${acts} activities, with costs and resources. Press Play, or F9 to reschedule.`);
+    store.setStatus(`${useStore.getState().elements.length} elementos vinculados a ${acts} atividades, com custos e recursos. Clique em Reproduzir ou pressione F9 para recalcular.`);
   };
 
   const applyProject = (p: StratumProject, parts = new Map<string, ModelPart>(), scene = combineModelParts(parts.values()), id: string | null = null, version: number | null = null) => {
@@ -946,10 +972,10 @@ function Workspace() {
       );
     } else if (kind === "mspdi") {
       download(`${s.projectCode}.xml`, writeMspdi(s), "application/xml");
-      store.setStatus("Saved as Microsoft Project XML. In MS Project use File › Open, choose XML Format, and open it as a new project.");
+      store.setStatus("Arquivo salvo como XML. No Microsoft Project, escolha Arquivo › Abrir, selecione o formato XML e abra como novo projeto.");
     } else {
       download(`${s.projectCode}.csv`, exportCsv(s), "text/csv");
-      store.setStatus("CSV exported.");
+      store.setStatus("CSV exportado.");
     }
   };
 
@@ -1002,7 +1028,7 @@ function Workspace() {
       download(`${schedule.projectCode}-4d.webm`, new Blob(chunks, { type: "video/webm" }), "video/webm");
       setRecording(null);
       useStore.getState().setPlaying(false);
-      store.setStatus("Video saved.");
+      store.setStatus("Vídeo salvo.");
     };
     const unsub = useStore.subscribe((s, prev) => {
       if (prev.playing && !s.playing) {
@@ -1014,7 +1040,7 @@ function Workspace() {
     setRecording(rec);
     store.setTime(range.start);
     store.setPlaying(true);
-    store.setStatus("Recording 4D video… press Stop to finish early.");
+    store.setStatus("Gravando vídeo 4D… pressione Parar para encerrar a gravação.");
   };
 
   // Web demo: a new session gets its own copy of every sample project, opens the
@@ -1028,7 +1054,7 @@ function Workspace() {
       try {
         let list = await be.listProjects();
         if (demoSession.fresh || !list.length) {
-          store.setStatus("Preparing your demo session with the sample projects…", true);
+          store.setStatus("Preparando a demonstração com os projetos de exemplo…", true);
           for (const k of SAMPLE_ORDER) await be.saveProject(`demo-${k}`, sampleProject(k));
           list = await be.listProjects();
         }
@@ -1039,9 +1065,9 @@ function Workspace() {
         else if (!useStore.getState().schedule && list.some((p) => p.id === "demo-gis")) await openFromDb("demo-gis");
         useP6.getState().show(linked ? "activities" : "projects");
         const where = (await demoStoreKind()) === "cloudflare" ? "on the demo server" : "in this browser";
-        store.setStatus(`Demo session ready: ${list.length} sample projects, saved ${where}. Change, add or delete anything; sign out or open a new tab to start again with fresh samples.`);
+        store.setStatus(`Sessão de demonstração pronta. Projetos de exemplo salvos ${where}: ${list.length}. Para reiniciar a demonstração, saia da sessão ou abra uma nova aba.`);
       } catch (e) {
-        store.setStatus(`Could not prepare the demo session: ${(e as Error).message}`);
+        store.setStatus(`Não foi possível preparar a demonstração: ${(e as Error).message}`);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1054,21 +1080,28 @@ function Workspace() {
       <div
         className={`viewport ${pathDraft ? "drawing" : ""}`}
         ref={setViewportHost}
-        onPointerDown={(e) => (down.current = { x: e.clientX, y: e.clientY })}
+        onPointerDown={(e) => {
+          down.current = e.isPrimary && e.button === 0 ? { x: e.clientX, y: e.clientY, pointer: e.pointerId } : null;
+        }}
+        onPointerMove={(e) => {
+          const start = down.current;
+          if (start?.pointer === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 4) down.current = null;
+        }}
+        onPointerCancel={() => { down.current = null; }}
         onPointerUp={(e) => {
           const d = down.current;
-          if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) onViewportClick(e);
           down.current = null;
+          if (e.button === 0 && d?.pointer === e.pointerId && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) onViewportClick(e);
         }}
       />
       {elements.length === 0 && (
         <div className="viewport-hint">
-          <p>No model loaded. Try a sample project:</p>
+          <p>Nenhum modelo carregado. Experimente um projeto de exemplo.</p>
           <button className="primary" onClick={() => loadDemo("gis")}>
-            220 kV GIS substation (UAE)
+            Subestação GIS de 220 kV (EAU)
           </button>
           <button className="link" onClick={() => loadDemo("rc")}>
-            or a small RC building
+            ou um edifício de concreto armado
           </button>
         </div>
       )}
@@ -1078,7 +1111,7 @@ function Workspace() {
   const canPush = !!schedule?.p6Source && schedule.p6Source.kind === "eppm";
   const dbLabel = backend.label;
   // Short form for the top bar; the full label is in the tooltip.
-  const dbShort = DEMO_SESSIONS ? "Demo session" : backend.kind === "server" ? "Server" : backend.kind === "desktop" ? "Local database" : "This browser";
+  const dbShort = DEMO_SESSIONS ? "Sessão de demonstração" : backend.kind === "server" ? "Servidor" : backend.kind === "desktop" ? "Banco de dados local" : "Neste navegador";
 
   // Buttons shared by every layout, so all three modes keep the same features.
   const I = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
@@ -1100,6 +1133,7 @@ function Workspace() {
         </summary>
         <div className="menu-body">
           <button disabled={busy} onClick={() => void importIfc()}>Adicionar modelo…</button>
+          <button disabled={busy} onClick={() => void addIfcs()}>Adicionar vários IFCs…</button>
           {store.models?.files.map((model) => (
             <div key={model.id} className="model-menu-entry">
               <b title={model.name}>{model.name}</b>
@@ -1113,7 +1147,7 @@ function Workspace() {
       </details>
     ),
     run: (
-      <button className={`tb ${scheduleDirty ? "primary" : ""}`} onClick={runSchedule} disabled={!schedule} title={`${t.schedule} using CPM (F9)`}>
+      <button className={`tb ${scheduleDirty ? "primary" : ""}`} onClick={runSchedule} disabled={!schedule} title={`${t.schedule} pelo caminho crítico (F9)`}>
         <Calculator {...I} />
         <span>{t.schedule}</span>
         <kbd>F9</kbd>
@@ -1121,16 +1155,16 @@ function Workspace() {
     ),
     exportMenu: (
       <details className="menu">
-        <summary className="tb collapse" title="Export">
+        <summary className="tb collapse" title="Exportar">
           <Download {...I} />
-          <span>Export</span>
+          <span>Exportar</span>
           <ChevronDown size={13} aria-hidden className="chev" />
         </summary>
         <div className="menu-body" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute("open")}>
           <button onClick={() => exportSchedule("xer")} disabled={!schedule}>P6 XER</button>
           <button onClick={() => exportSchedule("csv")} disabled={!schedule}>CSV (Excel)</button>
           <button onClick={() => exportSchedule("mspdi")} disabled={!schedule}>MS Project XML</button>
-          <button onClick={snapshot}>Snapshot PNG</button>
+          <button onClick={snapshot}>Captura PNG</button>
         </div>
       </details>
     ),
@@ -1147,48 +1181,48 @@ function Workspace() {
       </button>
     ),
     p6: (
-      <button className="tb" onClick={() => setProjectsTab("p6")} title="Import a project from a P6 connection">
+      <button className="tb" onClick={() => setProjectsTab("p6")} title="Importar um projeto de uma conexão com o P6">
         <Database {...I} />
-        <span>Import from P6</span>
+        <span>Importar do P6</span>
       </button>
     ),
     push: canPush ? (
-      <button className="tb" onClick={pushToP6} title="Send progress back to P6 EPPM">
+      <button className="tb" onClick={pushToP6} title="Enviar o avanço para o P6 EPPM">
         <CloudUpload {...I} />
-        <span>Update P6</span>
+        <span>Atualizar P6</span>
       </button>
     ) : null,
     dashboards: (
-      <button className="tb" onClick={() => store.setView("dashboards")} title="Dashboards and reports">
+      <button className="tb" onClick={() => store.setView("dashboards")} title="Painéis e relatórios">
         <LayoutDashboard {...I} />
-        <span>Dashboards</span>
+        <span>Painéis</span>
       </button>
     ),
     fit: (
-      <button className="tb collapse" onClick={() => viewerRef.current?.fit(selectedElements.size ? selectedElements : undefined)} title="Zoom the 3D view to fit">
+      <button className="tb collapse" onClick={() => viewerRef.current?.fit(selectedElements.size ? selectedElements : undefined, 600)} title={selectedElements.size ? "Enquadrar seleção" : "Enquadrar tudo"}>
         <Maximize {...I} />
-        <span>Fit view</span>
+        <span>Enquadrar</span>
       </button>
     ),
     record: (
-      <button onClick={toggleRecording} disabled={!schedule} className={`tb collapse ${recording ? "danger" : ""}`} title="Record the 4D playback as video">
+      <button onClick={toggleRecording} disabled={!schedule} className={`tb collapse ${recording ? "danger" : ""}`} title="Gravar a simulação 4D em vídeo">
         {recording ? <Square {...I} /> : <Video {...I} />}
-        <span>{recording ? "Stop" : "Record"}</span>
+        <span>{recording ? "Parar" : "Gravar"}</span>
       </button>
     ),
     demo: (
-      <button className="tb" onClick={() => loadDemo("gis")} title="Load the 220 kV GIS substation sample project">
+      <button className="tb" onClick={() => loadDemo("gis")} title="Carregar o projeto de exemplo da subestação GIS de 220 kV">
         <Sparkles {...I} />
-        <span>Demo</span>
+        <span>Demonstração</span>
       </button>
     ),
     settings: (
-      <button className="tb icon-only" onClick={() => setSettingsTab("interface")} title="Settings: interface, fonts, database, P6, email">
+      <button className="tb icon-only" onClick={() => setSettingsTab("interface")} title="Configurações de interface, fontes, banco de dados, P6 e e-mail">
         <Settings {...I} />
       </button>
     ),
     help: (
-      <button className="tb icon-only" title="Getting started and shortcuts (?)" onClick={() => setHelpOpen(true)}>
+      <button className="tb icon-only" title="Primeiros passos e atalhos (?)" onClick={() => setHelpOpen(true)}>
         <CircleHelp {...I} />
       </button>
     ),
@@ -1223,7 +1257,7 @@ function Workspace() {
         }}>Fechar obra</button>
         {SAMPLE_ORDER.map((k) => (
           <button key={k} onClick={() => loadDemo(k)}>
-            Sample: {SAMPLES[k].label}
+            Exemplo: {SAMPLES[k].label}
           </button>
         ))}
       </div>
@@ -1240,11 +1274,11 @@ function Workspace() {
   const toolbarRight = (
     <>
       <span className="spacer" />
-      <span className="muted conn" title={`Projects are stored in: ${dbLabel}`}>
+      <span className="muted conn" title={`Local de armazenamento dos projetos: ${dbLabel}`}>
         {dbShort}
         {currentProjectId ? ` · v${currentVersion}` : ""}
       </span>
-      {savedAt && <span className="muted autosaved">Autosaved {savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+      {savedAt && <span className="muted autosaved">Salvo automaticamente às {savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
       <ModeSwitch />
       {!isNativeApp() && <DisplaysButton className="tb icon-label" />}
       <TrainingButton className="tb" />
@@ -1258,8 +1292,8 @@ function Workspace() {
     <>
       {restore && (
         <div className="banner">
-          Restore your last session? <b>{restore.schedule?.projectCode}</b>, {restore.links.length} links
-          {restore.savedAt ? `, saved ${new Date(restore.savedAt).toLocaleString()}` : ""}.
+          Restaurar a última sessão? <b>{restore.title ?? restore.schedule?.projectCode}</b>, {restore.links.length} vínculo(s)
+          {restore.savedAt ? `, salvo em ${new Date(restore.savedAt).toLocaleString("pt-BR")}` : ""}.
           <button
             className="primary"
             onClick={() => {
@@ -1267,7 +1301,7 @@ function Workspace() {
               setRestore(null);
             }}
           >
-            Restore
+            Restaurar
           </button>
           <button
             onClick={() => {
@@ -1275,13 +1309,13 @@ function Workspace() {
               setRestore(null);
             }}
           >
-            Discard
+            Descartar
           </button>
         </div>
       )}
       {scheduleDirty && (
         <div className="banner info">
-          The schedule has been edited. Press <b>Schedule (F9)</b> to recalculate dates and float.
+          O cronograma foi alterado. Pressione <b>Calcular cronograma (F9)</b> para recalcular as datas e folgas.
         </div>
       )}
     </>
@@ -1345,7 +1379,7 @@ function Workspace() {
       {mode === "4d" && bannersNode}
       {pathDraft && (
         <div className="banner info">
-          Drawing a path: click points in the 3D view ({pathDraft.length} so far). Finish or cancel in the <b>Tools</b> tab, or press Esc.
+          Para desenhar um trajeto, clique em pontos da vista 3D ({pathDraft.length} até agora). Finalize ou cancele na aba <b>Ferramentas</b> ou pressione Esc.
         </div>
       )}
       {helpOpen && (
@@ -1396,8 +1430,8 @@ function Workspace() {
         <div className={`status ${busy ? "busy" : ""}`}>
           {status}
           <span className="muted">
-            {elements.length ? ` · ${elements.length} elements` : ""}
-            {links.length ? ` · ${links.length} links` : ""}
+            {elements.length ? ` · ${elements.length} elemento(s)` : ""}
+            {links.length ? ` · ${links.length} vínculo(s)` : ""}
           </span>
         </div>
       </footer>

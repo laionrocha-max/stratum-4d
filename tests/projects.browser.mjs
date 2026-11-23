@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { unzipSync } from "fflate";
 import { chromium } from "playwright";
 import { createServer, preview } from "vite";
 
@@ -110,22 +111,23 @@ try {
   await newProject(page, "Bloco A");
   await add(page, base);
   await choose(page, await fileAction(page, "Importar cronograma (XER / XML)…"), "samples/demo-msproject.xml");
-  await visibleStatus(page, /Imported Tower/);
-  const properties = page.locator("section").filter({ has: page.getByRole("heading", { name: "Select by property" }) }).last();
+  await visibleStatus(page, /Cronograma Tower .* importado/);
+  assert.equal(await page.locator("html").getAttribute("lang"), "pt-BR");
+  const properties = page.locator("section").filter({ has: page.getByRole("heading", { name: "Selecionar por propriedade" }) }).last();
   await properties.locator("select").first().selectOption("IfcType");
   const types = await properties.locator("select").nth(1).locator("option").allTextContents();
   const wallType = types.find((type) => type.toUpperCase() === "IFCWALL");
   assert.ok(wallType, `Expected IFC wall type in ${types.join(", ")}`);
   await properties.locator("select").nth(1).selectOption(wallType);
-  await properties.getByRole("button", { name: "Select", exact: true }).click();
+  await properties.getByRole("button", { name: "Selecionar", exact: true }).click();
   await page.locator(".gantt-row:not(.wbs)").first().click();
-  await page.getByRole("button", { name: "Link", exact: true }).click();
-  await visibleStatus(page, /Linked 4 element/);
-  await page.getByTitle(/Saved viewpoints: date/).click();
+  await page.getByRole("button", { name: "Vincular", exact: true }).click();
+  await visibleStatus(page, /4 elemento\(s\) vinculado/);
+  await page.getByTitle(/Pontos de vista salvos/).click();
   page.once("dialog", (message) => message.accept("Vista de conferência"));
-  await page.getByRole("button", { name: "Save viewpoint" }).click();
-  await visibleStatus(page, /Saved viewpoint/);
-  await page.getByTitle(/Saved viewpoints: date/).click();
+  await page.getByRole("button", { name: "Salvar ponto de vista" }).click();
+  await visibleStatus(page, /Ponto de vista .* salvo/);
+  await page.getByTitle(/Pontos de vista salvos/).click();
   await add(page, federation);
   await save(page, "Bloco A");
   const original = await savedManifest(page);
@@ -180,7 +182,7 @@ try {
 
   await newProject(page, "Bloco B");
   await choose(page, await fileAction(page, "Importar cronograma (XER / XML)…"), "samples/demo.xer");
-  await visibleStatus(page, /Imported .*activities/);
+  await visibleStatus(page, /Cronograma .* importado/);
   await add(page, model("topografia.ifc", room.replace("'w1'", "'Referência topográfica'")));
   await save(page, "Bloco B");
   const second = await savedManifest(page);
@@ -251,6 +253,35 @@ try {
   await copy.waitFor({ state: "detached" });
   assert.ok(await secondRow.isVisible());
   console.log("Biblioteca: duplicar, arquivar e excluir a cópia preservou a obra original.");
+
+  await dialog.getByRole("button", { name: "Fechar", exact: true }).click();
+  await page.getByRole("button", { name: "Exibição", exact: true }).click();
+  await page.getByLabel("Modo apresentação").check();
+  await page.getByLabel("Céu natural").check();
+  await page.getByLabel("Modo apresentação").uncheck();
+  await page.getByTitle(/Editor de animação com quadros-chave/).click();
+  const editor = page.locator('[aria-label="Editor de animação"]');
+  await editor.getByRole("button", { name: "Novo", exact: true }).click();
+  await editor.getByLabel("Duração").fill("2");
+  const exportAnimation = async (format) => {
+    await editor.getByRole("button", { name: "Exportar…" }).click();
+    const output = page.getByRole("dialog", { name: "Exportar animação" });
+    await output.getByLabel("Saída").selectOption(format);
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 90000 }),
+      output.getByRole("button", { name: "Exportar", exact: true }).click(),
+    ]);
+    return readFile(await download.path());
+  };
+  const pngs = unzipSync(await exportAnimation("images"));
+  const frameNames = Object.keys(pngs).filter((name) => name.endsWith(".png")).sort();
+  assert.equal(frameNames.length, 31);
+  const firstFrame = Buffer.from(pngs[frameNames[0]]);
+  assert.equal(firstFrame.readUInt32BE(16), 1280);
+  assert.equal(firstFrame.readUInt32BE(20), 720);
+  assert.ok(!firstFrame.equals(Buffer.from(pngs[frameNames.at(-1)])));
+  assert.equal((await exportAnimation("video")).subarray(0, 4).toString("hex"), "1a45dfa3");
+  console.log("Português, aparência leve e apresentação, sequência de 31 PNGs HD e exportação WebM.");
 
   const clean = await context();
   const other = await openPage(clean);

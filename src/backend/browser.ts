@@ -65,7 +65,7 @@ const unsupported = async (): Promise<never> => {
   throw new Error(NOT_IN_BROWSER);
 };
 
-export function browserBackend(kv: Kv = idbKv("stratum-local"), label = "This browser", listSummaries?: () => Promise<ProjectSummary[]>): Backend {
+export function browserBackend(kv: Kv = idbKv("stratum-local"), label = "este navegador", listSummaries?: () => Promise<ProjectSummary[]>): Backend {
   const { get, all, put, del } = kv;
   const withProjectLock = <T>(id: string, work: () => Promise<T>): Promise<T> =>
     globalThis.navigator?.locks ? navigator.locks.request(`stratum-project-${id}`, work) : work();

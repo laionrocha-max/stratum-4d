@@ -92,28 +92,28 @@ export function StatisticsDialog({ onClose }: { onClose: () => void }) {
         <thead>
           <tr>
             <th />
-            <th>Start</th>
-            <th>Finish</th>
+            <th>Início</th>
+            <th>Término</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <th>Current</th>
+            <th>Atual</th>
             <td>{mspDateText(t.current.start)}</td>
             <td>{mspDateText(t.current.finish)}</td>
           </tr>
           <tr>
-            <th>Baseline</th>
+            <th>Linha de base</th>
             <td>{mspDateText(t.baseline.start)}</td>
             <td>{mspDateText(t.baseline.finish)}</td>
           </tr>
           <tr>
-            <th>Actual</th>
+            <th>Realizado</th>
             <td>{mspDateText(t.actual.start)}</td>
             <td>{mspDateText(t.actual.finish)}</td>
           </tr>
           <tr>
-            <th>Variance</th>
+            <th>Variação</th>
             <td>{d(t.variance.startDays)}</td>
             <td>{d(t.variance.finishDays)}</td>
           </tr>
@@ -123,32 +123,32 @@ export function StatisticsDialog({ onClose }: { onClose: () => void }) {
         <thead>
           <tr>
             <th />
-            <th>Duration</th>
-            <th>Work</th>
-            <th>Cost</th>
+            <th>Duração</th>
+            <th>Trabalho</th>
+            <th>Custo</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <th>Current</th>
+            <th>Atual</th>
             <td>{d(t.durationDays.current)}</td>
             <td>{t.work.current} hrs</td>
             <td>{money(t.cost.current)}</td>
           </tr>
           <tr>
-            <th>Baseline</th>
+            <th>Linha de base</th>
             <td>{d(t.durationDays.baseline)}</td>
             <td>{t.work.baseline} hrs</td>
             <td>{money(t.cost.baseline)}</td>
           </tr>
           <tr>
-            <th>Actual</th>
+            <th>Realizado</th>
             <td>{d(t.durationDays.actual)}</td>
             <td>{t.work.actual} hrs</td>
             <td>{money(t.cost.actual)}</td>
           </tr>
           <tr>
-            <th>Remaining</th>
+            <th>Restante</th>
             <td>{d(t.durationDays.remaining)}</td>
             <td>{t.work.remaining} hrs</td>
             <td>{money(t.cost.remaining)}</td>
@@ -190,12 +190,12 @@ export function SetBaselineDialog({ onClose, clear }: { onClose: () => void; cle
     onClose();
   };
   return (
-    <MspDlg title={clear ? "Clear Baseline" : "Set Baseline"} width={460} onClose={onClose} onOk={ok}>
+    <MspDlg title={clear ? "Clear Baseline" : "Definir linha de base"} width={460} onClose={onClose} onOk={ok}>
       <div className="msp-radios">
         <label>
           <input type="radio" checked={kind === "baseline"} onChange={() => setKind("baseline")} /> {clear ? "Clear baseline plan" : "Set baseline"}
         </label>
-        <select value={n} onChange={(e) => setN(Number(e.target.value))} disabled={kind !== "baseline"} aria-label="Baseline">
+        <select value={n} onChange={(e) => setN(Number(e.target.value))} disabled={kind !== "baseline"} aria-label="Linha de base">
           {Array.from({ length: 11 }, (_, i) => (
             <option key={i} value={i}>
               {baselineLabel(s, i, false)}
@@ -246,7 +246,7 @@ export function UpdateProjectDialog({ onClose }: { onClose: () => void }) {
     onClose();
   };
   return (
-    <MspDlg title="Update Project" width={480} onClose={onClose} onOk={ok}>
+    <MspDlg title="Atualizar projeto" width={480} onClose={onClose} onOk={ok}>
       <div className="msp-radios">
         <label>
           <input type="radio" checked readOnly /> Update work as complete through:
@@ -278,7 +278,7 @@ export function MoveProjectDialog({ onClose }: { onClose: () => void }) {
   const [deadlines, setDeadlines] = useState(true);
   return (
     <MspDlg
-      title="Move Project"
+      title="Mover projeto"
       width={420}
       onClose={onClose}
       onOk={() => {
@@ -323,7 +323,7 @@ export function OptionsDialog({ onClose }: { onClose: () => void }) {
     onClose();
   };
   return (
-    <MspDlg title="Project Options" width={640} onClose={onClose} onOk={ok} tabs={[["schedule", "Schedule"], ["display", "Display"], ["advanced", "Advanced"]]} tab={tab} onTab={setTab}>
+    <MspDlg title="Opções do projeto" width={640} onClose={onClose} onOk={ok} tabs={[["schedule", "Schedule"], ["display", "Display"], ["advanced", "Advanced"]]} tab={tab} onTab={setTab}>
       {tab === "schedule" && (
         <div className="msp-grid2">
           <Fieldset legend={`Scheduling options for this project: ${s?.projectCode ?? ""}`}>
@@ -343,7 +343,7 @@ export function OptionsDialog({ onClose }: { onClose: () => void }) {
             <div className="msp-radios">
               <span>Calculate project after each edit:</span>
               <label>
-                <input type="radio" checked={calc} onChange={() => setCalc(true)} /> On
+                <input type="radio" checked={calc} onChange={() => setCalc(true)} /> Em
               </label>
               <label>
                 <input type="radio" checked={!calc} onChange={() => setCalc(false)} /> Off (press F9 to calculate)
@@ -402,7 +402,7 @@ export function LevelingDialog({ onClose, run }: { onClose: () => void; run?: bo
       }}
       extra={
         <button className="msp-btn" onClick={levelAll}>
-          Level All
+          Nivelar todos
         </button>
       }
     >
@@ -463,7 +463,7 @@ export function SortDialog({ onClose }: { onClose: () => void }) {
   const [desc, setDesc] = useState(sort.desc);
   return (
     <MspDlg
-      title="Sort"
+      title="Classificar"
       width={380}
       onClose={onClose}
       onOk={() => {
@@ -485,10 +485,10 @@ export function SortDialog({ onClose }: { onClose: () => void }) {
           ))}
         </select>
         <label>
-          <input type="radio" checked={!desc} onChange={() => setDesc(false)} /> Ascending
+          <input type="radio" checked={!desc} onChange={() => setDesc(false)} /> Crescente
         </label>
         <label>
-          <input type="radio" checked={desc} onChange={() => setDesc(true)} /> Descending
+          <input type="radio" checked={desc} onChange={() => setDesc(true)} /> Decrescente
         </label>
       </Fieldset>
       <label className="rb-check">
@@ -571,7 +571,7 @@ export function AssignResourcesDialog({ onClose }: { onClose: () => void }) {
   const list = (s.resources ?? []).filter((r) => !q || r.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <MspDlg
-      title="Assign Resources"
+      title="Atribuir recursos"
       width={560}
       onClose={onClose}
       noCancel
@@ -580,10 +580,10 @@ export function AssignResourcesDialog({ onClose }: { onClose: () => void }) {
       extra={
         <>
           <button className="msp-btn" onClick={assign} disabled={!pick || !a}>
-            Assign
+            Atribuir
           </button>
           <button className="msp-btn" onClick={remove} disabled={!pick || !a || !mine.has(pick)}>
-            Remove
+            Remover
           </button>
         </>
       }
@@ -592,17 +592,17 @@ export function AssignResourcesDialog({ onClose }: { onClose: () => void }) {
       <div className="msp-inline">
         <input placeholder="Filter resources" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filter resources" />
         <span>Units:</span>
-        <input value={units} onChange={(e) => setUnits(e.target.value)} style={{ width: 70 }} aria-label="Units" />
+        <input value={units} onChange={(e) => setUnits(e.target.value)} style={{ width: 70 }} aria-label="Unidades" />
       </div>
       <div className="msp-ti-grid tall">
         <table className="msp-tbl selectable">
           <thead>
             <tr>
               <th style={{ width: 24 }} />
-              <th>Resource Name</th>
+              <th>Nome do recurso</th>
               <th style={{ width: 70 }}>R/D</th>
-              <th style={{ width: 70 }}>Units</th>
-              <th style={{ width: 100 }}>Cost</th>
+              <th style={{ width: 70 }}>Unidades</th>
+              <th style={{ width: 100 }}>Custo</th>
             </tr>
           </thead>
           <tbody>
@@ -624,7 +624,7 @@ export function AssignResourcesDialog({ onClose }: { onClose: () => void }) {
       <div className="msp-inline">
         <input placeholder="Type a new resource name" value={newName} onChange={(e) => setNewName(e.target.value)} aria-label="New resource" onKeyDown={(e) => e.key === "Enter" && (e.stopPropagation(), add())} />
         <button className="msp-btn" onClick={add} disabled={!newName.trim() || !a}>
-          Add Resources
+          Adicionar recursos
         </button>
       </div>
     </MspDlg>

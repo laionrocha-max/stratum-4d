@@ -50,7 +50,7 @@ export function Shell({ title, children, foot, wide, width, onClose }: { title: 
       onClose={onClose}
       side={
         <>
-          <SideColumn>{foot ?? <button onClick={onClose}>Close</button>}</SideColumn>
+          <SideColumn>{foot ?? <button onClick={onClose}>Fechar</button>}</SideColumn>
           <SideGap />
           <SideHelp topic={title} />
         </>
@@ -92,12 +92,12 @@ function ColumnsDialog() {
   const apply = () => setLayout({ columns: sel.map((id) => layout.columns.find((c) => c.id === id) ?? { id }) });
   return (
     <Shell
-      title="Columns"
+      title="Colunas"
       wide
       onClose={close}
       foot={
         <>
-          <button onClick={() => setSel(DEFAULT_LAYOUT.columns.map((c) => c.id))}>Default</button>
+          <button onClick={() => setSel(DEFAULT_LAYOUT.columns.map((c) => c.id))}>Padrão</button>
           <span className="spacer" />
           <button onClick={apply}>Apply</button>
           <button
@@ -109,7 +109,7 @@ function ColumnsDialog() {
           >
             OK
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >
@@ -132,16 +132,16 @@ function ColumnsDialog() {
           </div>
         </div>
         <div className="p6-arrows">
-          <button disabled={!pickA} onClick={() => pickA && (setSel([...sel, pickA]), setPickA(null))} title="Add">
+          <button disabled={!pickA} onClick={() => pickA && (setSel([...sel, pickA]), setPickA(null))} title="Adicionar">
             ›
           </button>
-          <button disabled={!pickS || sel.length <= 1} onClick={() => pickS && (setSel(sel.filter((x) => x !== pickS)), setPickS(null))} title="Remove">
+          <button disabled={!pickS || sel.length <= 1} onClick={() => pickS && (setSel(sel.filter((x) => x !== pickS)), setPickS(null))} title="Remover">
             ‹
           </button>
-          <button disabled={!pickS} onClick={() => move(-1)} title="Move up">
+          <button disabled={!pickS} onClick={() => move(-1)} title="Mover para cima">
             ▲
           </button>
-          <button disabled={!pickS} onClick={() => move(1)} title="Move down">
+          <button disabled={!pickS} onClick={() => move(1)} title="Mover para baixo">
             ▼
           </button>
         </div>
@@ -181,7 +181,7 @@ function RuleRows({ rules, onChange }: { rules: FilterRule[]; onChange: (r: Filt
         <tr>
           <td>Parameter</td>
           <td>Is</td>
-          <td>Value</td>
+          <td>Valor</td>
           <td />
         </tr>
       </thead>
@@ -285,10 +285,10 @@ function FiltersDialog() {
                 setEdit(null);
               }}
             />
-            <SideBtn kind="cancel" label="Cancel" onClick={() => setEdit(null)} />
+            <SideBtn kind="cancel" label="Cancelar" onClick={() => setEdit(null)} />
             <SideGap />
-            <SideBtn kind="add" label="Add" onClick={() => setEdit({ ...edit, rules: [...rules, { field: "name", op: "contains", value: "" }] })} />
-            <SideBtn kind="delete" label="Delete" disabled={rowSel === null} onClick={() => (setEdit({ ...edit, rules: rules.filter((_, k) => k !== rowSel) }), setRowSel(null))} />
+            <SideBtn kind="add" label="Adicionar" onClick={() => setEdit({ ...edit, rules: [...rules, { field: "name", op: "contains", value: "" }] })} />
+            <SideBtn kind="delete" label="Excluir" disabled={rowSel === null} onClick={() => (setEdit({ ...edit, rules: rules.filter((_, k) => k !== rowSel) }), setRowSel(null))} />
             <SideGap />
             <SideHelp topic="filters" />
           </>
@@ -321,7 +321,7 @@ function FiltersDialog() {
   ];
   return (
     <P6Dlg
-      title="Filters"
+      title="Filtros"
       width={760}
       onClose={close}
       side={
@@ -335,15 +335,15 @@ function FiltersDialog() {
               close();
             }}
           />
-          <SideBtn kind="cancel" label="Cancel" onClick={close} />
+          <SideBtn kind="cancel" label="Cancelar" onClick={close} />
           <SideBtn kind="apply" label="Apply" onClick={apply} />
           <SideGap />
           <SideBtn kind="add" label="New..." onClick={() => setEdit({ id: uid("flt"), name: "", match: "all", rules: [{ field: "name", op: "contains", value: "" }] })} />
-          <SideBtn kind="delete" label="Delete" disabled={!isUser(cur)} onClick={() => cur && (L.deleteFilter(cur), setOn(on.filter((x) => x !== cur)), setCur(null))} />
-          <SideBtn kind="copy" label="Copy" disabled={!curDef} onClick={() => (filterClipboard = curDef ? structuredClone(curDef) : null)} />
+          <SideBtn kind="delete" label="Excluir" disabled={!isUser(cur)} onClick={() => cur && (L.deleteFilter(cur), setOn(on.filter((x) => x !== cur)), setCur(null))} />
+          <SideBtn kind="copy" label="Copiar" disabled={!curDef} onClick={() => (filterClipboard = curDef ? structuredClone(curDef) : null)} />
           <SideBtn
             kind="paste"
-            label="Paste"
+            label="Colar"
             onClick={() => {
               if (!filterClipboard) return;
               const f = { ...structuredClone(filterClipboard), id: uid("flt"), name: `${filterClipboard.name} (copy)` };
@@ -359,7 +359,7 @@ function FiltersDialog() {
     >
       <div className="row" style={{ justifyContent: "space-between", alignItems: "start" }}>
         <label className="p6-check">
-          <input type="checkbox" checked={!on.length} onChange={() => setOn([])} /> All Activities
+          <input type="checkbox" checked={!on.length} onChange={() => setOn([])} /> Todas as atividades
         </label>
         <div>
           <div className="small">Show activities that match</div>
@@ -375,8 +375,8 @@ function FiltersDialog() {
         <table>
           <thead>
             <tr>
-              <td>Filter</td>
-              <td style={{ width: 60, textAlign: "center" }}>Select</td>
+              <td>Filtro</td>
+              <td style={{ width: 60, textAlign: "center" }}>Selecionar</td>
             </tr>
           </thead>
           <tbody>
@@ -484,7 +484,7 @@ function GroupSortDialog() {
   const apply = () => L.set({ groupBy, groupTotals: totals, sort, groupOptions: go });
   return (
     <P6Dlg
-      title="Group and Sort"
+      title="Agrupar e classificar"
       width={900}
       onClose={close}
       side={
@@ -498,11 +498,11 @@ function GroupSortDialog() {
               close();
             }}
           />
-          <SideBtn kind="cancel" label="Cancel" onClick={close} />
+          <SideBtn kind="cancel" label="Cancelar" onClick={close} />
           <SideBtn kind="apply" label="Apply" onClick={apply} />
-          <SideBtn kind="delete" label="Delete" disabled={!go.thenBy.length} onClick={() => put({ thenBy: go.thenBy.slice(0, -1) })} />
+          <SideBtn kind="delete" label="Excluir" disabled={!go.thenBy.length} onClick={() => put({ thenBy: go.thenBy.slice(0, -1) })} />
           <SideGap />
-          <SideBtn kind="default" label="Default" onClick={() => (setGroupBy("wbs"), setSort([{ field: "start" }]), setTotals(true), setGo(DEFAULT_GROUP_OPTIONS))} />
+          <SideBtn kind="default" label="Padrão" onClick={() => (setGroupBy("wbs"), setSort([{ field: "start" }]), setTotals(true), setGo(DEFAULT_GROUP_OPTIONS))} />
           <SideGap />
           <SideHelp topic="group-sort" />
         </>
@@ -539,7 +539,7 @@ function GroupSortDialog() {
                   <select value={v} onChange={(e) => setLevel(i, e.target.value)}>
                     {i === 0 ? (
                       <>
-                        <option value="wbs">WBS</option>
+                        <option value="wbs">EAP</option>
                         <option value="none">&lt;None&gt;</option>
                       </>
                     ) : (
@@ -552,7 +552,7 @@ function GroupSortDialog() {
                 <td>
                   {i === 0 && groupBy === "wbs" && (
                     <select value={go.wbsToLevel} onChange={(e) => put({ wbsToLevel: Number(e.target.value) })} aria-label="WBS to level">
-                      <option value={0}>All</option>
+                      <option value={0}>Todos</option>
                       {Array.from({ length: wbsDepth }, (_, k) => (
                         <option key={k} value={k + 1}>
                           {k + 1}
@@ -573,11 +573,11 @@ function GroupSortDialog() {
         <table className="p6-grid">
           <thead>
             <tr>
-              <td>Level</td>
+              <td>Nivelar</td>
               <td>Sample</td>
-              <td>Size</td>
+              <td>Tamanho</td>
               <td>Background</td>
-              <td>Text</td>
+              <td>Texto</td>
             </tr>
           </thead>
           <tbody>
@@ -636,11 +636,11 @@ function GroupSortDialog() {
         </div>
       </fieldset>
       <fieldset className="p6-fieldset">
-        <legend>Sort</legend>
+        <legend>Classificar</legend>
         <table className="p6-grid">
           <thead>
             <tr>
-              <td>Field</td>
+              <td>Campo</td>
               <td>Order</td>
               <td />
             </tr>
@@ -659,8 +659,8 @@ function GroupSortDialog() {
                 </td>
                 <td>
                   <select value={x.desc ? "d" : "a"} onChange={(e) => setSort(sort.map((y, k) => (k === i ? { ...y, desc: e.target.value === "d" } : y)))}>
-                    <option value="a">Ascending</option>
-                    <option value="d">Descending</option>
+                    <option value="a">Crescente</option>
+                    <option value="d">Decrescente</option>
                   </select>
                 </td>
                 <td>
@@ -692,7 +692,7 @@ function BarsDialog() {
     </label>
   );
   return (
-    <Shell title="Bar Chart Options" onClose={close}>
+    <Shell title="Opções das barras do Gantt" onClose={close}>
       <h4>Bars</h4>
       {tick("actual", "Actual Work", "blue, from actual start to the data date")}
       {tick("remaining", "Remaining Work", "green, from the data date to finish")}
@@ -709,10 +709,10 @@ function BarsDialog() {
       <table className="p6-grid">
         <thead>
           <tr>
-            <td>Show</td>
-            <td>Name</td>
-            <td>Timescale</td>
-            <td>Filter</td>
+            <td>Mostrar</td>
+            <td>Nome</td>
+            <td>Escala de tempo</td>
+            <td>Filtro</td>
             <td>Row</td>
             <td>Colour</td>
             <td />
@@ -732,8 +732,8 @@ function BarsDialog() {
                 <td>
                   <select value={b.timescale} onChange={(e) => put({ timescale: e.target.value as typeof b.timescale })}>
                     <option value="current">Current (start – finish)</option>
-                    <option value="remaining">Remaining</option>
-                    <option value="actual">Actual</option>
+                    <option value="remaining">Restante</option>
+                    <option value="actual">Realizado</option>
                     <option value="baseline">Project baseline</option>
                     <option value="bl2">Baseline 2</option>
                     <option value="bl3">Baseline 3</option>
@@ -753,7 +753,7 @@ function BarsDialog() {
                 </td>
                 <td>
                   <select value={b.row} onChange={(e) => put({ row: e.target.value as typeof b.row })}>
-                    <option value="top">Top</option>
+                    <option value="top">Superior</option>
                     <option value="middle">Middle</option>
                     <option value="bottom">Bottom</option>
                   </select>
@@ -800,7 +800,7 @@ function BarsDialog() {
           </select>
         </label>
       </div>
-      <h4>Rows</h4>
+      <h4>Linhas</h4>
       <label>
         Row height{" "}
         <select value={rowHeight} onChange={(e) => L.set({ rowHeight: Number(e.target.value) })}>
@@ -827,7 +827,7 @@ function TimescaleDialog() {
     ["year", "Year / Half"],
   ];
   return (
-    <Shell title="Timescale" onClose={close}>
+    <Shell title="Escala de tempo" onClose={close}>
       <p className="muted">Date interval shown on the two timescale rows.</p>
       {opts.map(([v, l]) => (
         <label key={v} className="p6-check">
@@ -855,11 +855,11 @@ function LayoutsDialog() {
             close();
           }}
         >
-          Open
+          Abrir
         </button>
         {mine && (
           <button className="link" onClick={() => L.remove(l.name)}>
-            Delete
+            Excluir
           </button>
         )}
       </td>
@@ -877,7 +877,7 @@ function LayoutsDialog() {
       <div className="row">
         <input value={name} onChange={(e) => setName(e.target.value)} />
         <button disabled={!name.trim()} onClick={() => L.saveAs(name.trim())}>
-          Save
+          Salvar
         </button>
       </div>
       <div className="row">
@@ -943,7 +943,7 @@ function GlobalChangeDialog() {
         <tr>
           <td>{key === "then" ? "Then" : "Else"}</td>
           <td />
-          <td>Value</td>
+          <td>Valor</td>
           <td />
         </tr>
       </thead>
@@ -1000,9 +1000,9 @@ function GlobalChangeDialog() {
                 close();
               }}
             >
-              Commit Changes
+              Salvar alterações
             </button>
-            <button onClick={() => setPreview(null)}>Cancel</button>
+            <button onClick={() => setPreview(null)}>Cancelar</button>
           </>
         }
       >
@@ -1010,10 +1010,10 @@ function GlobalChangeDialog() {
           <table className="p6-grid">
             <thead>
               <tr>
-                <td>Activity ID</td>
-                <td>Field</td>
+                <td>ID da atividade</td>
+                <td>Campo</td>
                 <td>Old</td>
-                <td>New</td>
+                <td>Novo</td>
               </tr>
             </thead>
             <tbody>
@@ -1035,7 +1035,7 @@ function GlobalChangeDialog() {
     );
   return (
     <Shell
-      title="Global Change"
+      title="Alteração em massa"
       wide
       onClose={close}
       foot={
@@ -1052,7 +1052,7 @@ function GlobalChangeDialog() {
           <button className="primary" disabled={!def.then.length && !def.else?.length} onClick={() => setPreview(globalChange(schedule, def, ids))}>
             Change…
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >
@@ -1087,7 +1087,7 @@ function UpdateProgressDialog({ onSchedule }: { onSchedule: () => void }) {
   if (!schedule) return null;
   return (
     <Shell
-      title="Update Progress"
+      title="Atualizar avanço"
       onClose={close}
       foot={
         <>
@@ -1105,7 +1105,7 @@ function UpdateProgressDialog({ onSchedule }: { onSchedule: () => void }) {
           >
             Apply
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >
@@ -1118,7 +1118,7 @@ function UpdateProgressDialog({ onSchedule }: { onSchedule: () => void }) {
           New data date <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
         <label className="span2">
-          Activities{" "}
+          Atividades{" "}
           <select value={scope} onChange={(e) => setScope(e.target.value as "all" | "selected")}>
             <option value="all">All activities</option>
             <option value="selected">Selected activities only</option>
@@ -1148,7 +1148,7 @@ function BaselinesDialog({ onAssignFile }: { onAssignFile: () => void }) {
         <>
           <button onClick={onAssignFile}>Assign from file…</button>
           <span className="spacer" />
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -1176,9 +1176,9 @@ function BaselinesDialog({ onAssignFile }: { onAssignFile: () => void }) {
         <thead>
           <tr>
             <td>Baseline Name</td>
-            <td>Data Date</td>
+            <td>Data de corte</td>
             <td>Stored</td>
-            <td>Activities</td>
+            <td>Atividades</td>
           </tr>
         </thead>
         <tbody>
@@ -1228,10 +1228,10 @@ function BaselinesDialog({ onAssignFile }: { onAssignFile: () => void }) {
           Assign as Project Baseline
         </button>
         <button disabled={!sel} onClick={() => sel && window.confirm(`Overwrite ${sel.name} with the current plan?`) && commit(refreshBaseline(schedule, sel.id), "Update baseline")}>
-          Update
+          Atualizar
         </button>
         <button disabled={!sel} onClick={() => sel && window.confirm(`Delete ${sel.name}?`) && commit(deleteBaseline(schedule, sel.id), "Delete baseline")}>
-          Delete
+          Excluir
         </button>
       </div>
     </Shell>
@@ -1250,7 +1250,7 @@ function CheckScheduleDialog() {
   const m = r.metrics.find((x) => x.id === open);
   const passed = r.metrics.filter((x) => x.pass).length;
   return (
-    <Shell title="Check Schedule" wide onClose={close}>
+    <Shell title="Verificar cronograma" wide onClose={close}>
       <p>
         {r.checked.toLocaleString()} open activities checked against the 14-point assessment. <b>{passed}</b> of {r.metrics.length} metrics pass.
       </p>
@@ -1283,7 +1283,7 @@ function CheckScheduleDialog() {
           </h4>
           {m.activityIds.length ? (
             <>
-              <button onClick={() => (setSel(new Set(m.activityIds), m.activityIds[0]), close())}>Select these {m.activityIds.length} activities</button>
+              <button onClick={() => (setSel(new Set(m.activityIds), m.activityIds[0]), close())}>Select these {m.activityIds.length} atividades</button>
               <div className="p6-scroll short">
                 {[...new Set(m.activityIds)].slice(0, 300).map((id) => (
                   <div key={id}>
@@ -1317,7 +1317,7 @@ function RenumberDialog() {
   const sample = Array.from({ length: Math.min(3, ids.length) }, (_, i) => `${prefix}${width ? String(start + i * inc).padStart(width, "0") : start + i * inc}`);
   return (
     <Shell
-      title="Renumber Activity IDs"
+      title="Renumerar IDs de atividades"
       onClose={close}
       foot={
         <>
@@ -1334,7 +1334,7 @@ function RenumberDialog() {
           >
             OK
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >
@@ -1390,7 +1390,7 @@ function AssignRelDialog({ kind }: { kind: "pred" | "succ" }) {
       foot={
         <>
           <label>
-            Type{" "}
+            Tipo{" "}
             <select value={type} onChange={(e) => setType(e.target.value as RelationshipType)}>
               {["FS", "SS", "FF", "SF"].map((t) => (
                 <option key={t}>{t}</option>
@@ -1398,7 +1398,7 @@ function AssignRelDialog({ kind }: { kind: "pred" | "succ" }) {
             </select>
           </label>
           <label>
-            Lag (days) <input type="number" step={0.5} value={lag} onChange={(e) => setLag(e.target.value)} style={{ width: 70 }} />
+            Defasagem (dias) <input type="number" step={0.5} value={lag} onChange={(e) => setLag(e.target.value)} style={{ width: 70 }} />
           </label>
           <span className="spacer" />
           <button
@@ -1417,7 +1417,7 @@ function AssignRelDialog({ kind }: { kind: "pred" | "succ" }) {
           >
             Assign ({picked.size})
           </button>
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -1474,9 +1474,9 @@ function AssignResDialog() {
               close();
             }}
           >
-            Assign
+            Atribuir
           </button>
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -1485,10 +1485,10 @@ function AssignResDialog() {
           <table className="p6-grid">
             <thead>
               <tr>
-                <td>Resource ID</td>
-                <td>Resource Name</td>
-                <td>Type</td>
-                <td>Price / Unit</td>
+                <td>ID do recurso</td>
+                <td>Nome do recurso</td>
+                <td>Tipo</td>
+                <td>Preço por unidade</td>
               </tr>
             </thead>
             <tbody>
@@ -1554,9 +1554,9 @@ function AssignCodeDialog() {
               close();
             }}
           >
-            Assign
+            Atribuir
           </button>
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -1635,7 +1635,7 @@ function PageSetupDialog() {
   };
   return (
     <Shell
-      title="Page Setup"
+      title="Configurar página"
       onClose={close}
       foot={
         <>
@@ -1646,7 +1646,7 @@ function PageSetupDialog() {
               printLayout();
             }}
           >
-            Print…
+            Imprimir…
           </button>
           <span className="spacer" />
           <button
@@ -1658,7 +1658,7 @@ function PageSetupDialog() {
           >
             OK
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >
@@ -1679,13 +1679,13 @@ function PageSetupDialog() {
           </select>
         </label>
         <label className="span2">
-          Header <input value={p.header} onChange={(e) => setP({ ...p, header: e.target.value })} />
+          Cabeçalho <input value={p.header} onChange={(e) => setP({ ...p, header: e.target.value })} />
         </label>
         <label className="span2">
-          Footer <input value={p.footer} onChange={(e) => setP({ ...p, footer: e.target.value })} />
+          Rodapé <input value={p.footer} onChange={(e) => setP({ ...p, footer: e.target.value })} />
         </label>
       </div>
-      <p className="muted small">Use {"{project}"} and {"{datadate}"} in the header and footer. Printing uses the current layout; choose “Save as PDF” in the print dialog for a PDF.</p>
+      <p className="muted small">Usar {"{project}"} and {"{datadate}"} in the header and footer. Printing uses the current layout; choose “Save as PDF” in the print dialog for a PDF.</p>
     </Shell>
   );
 }
@@ -1721,7 +1721,7 @@ function SpellingDialog() {
           >
             Apply {changed.length || ""}
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >

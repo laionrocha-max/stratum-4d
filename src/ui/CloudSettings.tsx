@@ -159,7 +159,7 @@ export function CloudSettings() {
         <div className="stack">
           <div className="row small" style={{ gap: 4 }}>
             <button className="link" onClick={() => open(null, [])}>
-              Start
+              Início
             </button>
             {path.map((f, i) => (
               <span key={f.id}>

@@ -45,12 +45,12 @@ export function TsldView() {
   return (
     <div className="p6-tsld">
       <div className="p6-win-bar">
-        <span className="muted">Timescaled Logic Diagram</span>
+        <span className="muted">Diagrama lógico com escala de tempo</span>
         <label className="p6-check">
-          <input type="checkbox" checked={byWbs} onChange={(e) => setByWbs(e.target.checked)} /> Group by WBS
+          <input type="checkbox" checked={byWbs} onChange={(e) => setByWbs(e.target.checked)} /> Agrupar pela EAP
         </label>
         <label className="p6-check">
-          <input type="checkbox" checked={showLinks} onChange={(e) => setShowLinks(e.target.checked)} /> Relationships
+          <input type="checkbox" checked={showLinks} onChange={(e) => setShowLinks(e.target.checked)} /> Dependências
         </label>
         <label className="p6-check">
           <input type="checkbox" checked={critOnly} onChange={(e) => setCritOnly(e.target.checked)} /> Critical only

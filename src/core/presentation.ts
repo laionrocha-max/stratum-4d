@@ -10,6 +10,7 @@
 // - view: the view settings, held until the next view key.
 // Times on the channels are seconds of video.
 
+import { Quaternion } from "three";
 import type { ColorMode, DateSource } from "./types";
 
 export type Vec3 = [number, number, number];
@@ -24,6 +25,8 @@ export interface CameraState {
   projection?: "perspective";
   aspect?: number;
   viewport?: [number, number];
+  /** Rotation relative to looking directly at the orbit pivot. */
+  orbitOffset?: [number, number, number, number];
 }
 
 /** A section plane across one axis; the position is a fraction (0..1) of the model's extent. */
@@ -139,13 +142,18 @@ export function cameraAt(keys: CameraKey[], t: number): CameraState | null {
   const from = k[i];
   const to = k[i + 1];
   if (!to || u === 0 || from.interp === "step") return structuredClone(from.camera);
+  const orbitOffset = from.camera.orbitOffset || to.camera.orbitOffset
+    ? new Quaternion().fromArray(from.camera.orbitOffset ?? [0, 0, 0, 1])
+      .slerp(new Quaternion().fromArray(to.camera.orbitOffset ?? [0, 0, 0, 1]), u).toArray()
+    : undefined;
   if (from.interp === "linear") {
-    return { ...from.camera, pos: lerp3(from.camera.pos, to.camera.pos, u), target: lerp3(from.camera.target, to.camera.target, u), fov: lerp(from.camera.fov, to.camera.fov, u) };
+    return { ...from.camera, ...(orbitOffset ? { orbitOffset } : {}), pos: lerp3(from.camera.pos, to.camera.pos, u), target: lerp3(from.camera.target, to.camera.target, u), fov: lerp(from.camera.fov, to.camera.fov, u) };
   }
   const prev = k[i - 1] ?? from;
   const next = k[i + 2] ?? to;
   return {
     ...from.camera,
+    ...(orbitOffset ? { orbitOffset } : {}),
     pos: catmull(prev.camera.pos, from.camera.pos, to.camera.pos, next.camera.pos, u),
     target: catmull(prev.camera.target, from.camera.target, to.camera.target, next.camera.target, u),
     fov: lerp(from.camera.fov, to.camera.fov, u),

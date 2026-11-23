@@ -1,3 +1,4 @@
+import { shortMonthIndex } from "./dates";
 // MS Project behaviour on top of the Stratum schedule model:
 //  - duration text ("5d", "2w", "16h", "3 days?") and predecessor text ("3FS+2d,5SS-1w,7FF+50%");
 //  - outline editing (Indent, Outdent, Insert Summary Task). Stratum keeps
@@ -333,11 +334,11 @@ export const projectHpd = (s: Schedule) => ((s.calendars ?? []).find((c) => c.id
 
 // ---------------------------------------------------------------- cell editing
 
-const MONTHS3 = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
 
 /** Dates as typed in MS Project: "Mon 02/03/26", "02/03/2026" (day first), "2026-03-02", "2 Mar 26". UTC midnight; null when unreadable. */
 export function parseMspDateText(text: string): number | null {
-  const t = text.trim().replace(/^[a-z]{3,9}\.?\s+/i, "");
+  const t = text.trim().replace(/^\p{L}{3,9}\.?\s+/iu, "");
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
   if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3]);
   m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(t);
@@ -348,7 +349,7 @@ export function parseMspDateText(text: string): number | null {
   }
   m = /^(\d{1,2})\s+([a-z]{3})[a-z]*\s+(\d{2}|\d{4})$/i.exec(t);
   if (m) {
-    const mo = MONTHS3.indexOf(m[2].toLowerCase());
+    const mo = shortMonthIndex(m[2]);
     if (mo < 0) return null;
     return Date.UTC(m[3].length === 2 ? 2000 + +m[3] : +m[3], mo, +m[1]);
   }

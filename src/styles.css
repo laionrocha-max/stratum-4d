@@ -287,8 +287,14 @@ html[data-mode="p6"] .mode-switch button.on, html[data-mode="msp"] .ribbon-tabs 
 
 /* ---------- 4D layout ---------- */
 .workspace { display: grid; grid-template-columns: minmax(420px, 42%) 1fr 320px; min-height: 0; }
-.right .tabs { padding: 0 4px; gap: 0; }
-.right .tabs button { flex: 1 1 auto; padding: 0 6px; font-size: 12px; }
+.side > .tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));
+  flex: none;
+  gap: 0;
+  padding: 0 4px;
+}
+.side > .tabs > button { min-width: 0; padding: 0 6px; font-size: 12px; white-space: normal; }
 .left, .right { background: var(--panel); min-height: 0; overflow: hidden; }
 .left { border-right: 1px solid var(--line); display: flex; flex-direction: column; }
 .right { border-left: 1px solid var(--line); }
@@ -349,6 +355,12 @@ html[data-mode="4d"] .bar { border-radius: 3px; }
 /* ---------- Side panel, editors, analysis ---------- */
 .side { display: flex; flex-direction: column; height: 100%; }
 .tab-body { flex: 1; overflow: auto; padding: 8px 12px; }
+.solar-settings { margin-top: 8px; }
+.solar-settings summary { cursor: pointer; }
+.solar-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.solar-fields label { display: grid; gap: 3px; min-width: 0; }
+.solar-fields input { width: 100%; min-width: 0; }
+.ifc-file-list { padding-left: 16px; overflow-wrap: anywhere; }
 .stack { display: flex; flex-direction: column; gap: 8px; }
 .stack section { border-bottom: 1px solid var(--line); padding: 10px 0; display: flex; flex-direction: column; gap: 6px; }
 .stack h4, .analysis-bar h4 { margin: 0; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }

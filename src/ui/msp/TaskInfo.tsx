@@ -183,7 +183,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
         />
       </td>
       <td>
-        <select value={r.predecessorId} onChange={(e) => setPreds(preds.map((p, k) => (k === i ? { ...p, predecessorId: e.target.value } : p)))} aria-label="Task Name">
+        <select value={r.predecessorId} onChange={(e) => setPreds(preds.map((p, k) => (k === i ? { ...p, predecessorId: e.target.value } : p)))} aria-label="Nome da tarefa">
           <option value="">—</option>
           {tasks
             .filter((t) => t.id !== a0.id)
@@ -195,7 +195,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
         </select>
       </td>
       <td>
-        <select value={r.type} onChange={(e) => setPreds(preds.map((p, k) => (k === i ? { ...p, type: e.target.value as RelationshipType } : p)))} aria-label="Type">
+        <select value={r.type} onChange={(e) => setPreds(preds.map((p, k) => (k === i ? { ...p, type: e.target.value as RelationshipType } : p)))} aria-label="Tipo">
           {LINK_NAMES.map(([v, l]) => (
             <option key={v} value={v}>
               {l}
@@ -207,7 +207,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
         <input value={r.lag} onChange={(e) => setPreds(preds.map((p, k) => (k === i ? { ...p, lag: e.target.value } : p)))} aria-label="Lag" />
       </td>
       <td>
-        <button className="msp-x" onClick={() => setPreds(preds.filter((_, k) => k !== i))} title="Remove" aria-label="Remove">
+        <button className="msp-x" onClick={() => setPreds(preds.filter((_, k) => k !== i))} title="Remover" aria-label="Remover">
           ×
         </button>
       </td>
@@ -267,10 +267,10 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
             </label>
           </div>
           <label className="rb-check">
-            <input type="checkbox" checked={inactive} onChange={(e) => setInactive(e.target.checked)} /> Inactive
+            <input type="checkbox" checked={inactive} onChange={(e) => setInactive(e.target.checked)} /> Inativo
           </label>
           <fieldset className="msp-fs">
-            <legend>Dates</legend>
+            <legend>Datas</legend>
             <Row label="Start:">
               <input type="date" value={start} onChange={(e) => setStart(e.target.value)} disabled={a0.status !== "not-started" && mode === "auto"} />
             </Row>
@@ -294,8 +294,8 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
             <thead>
               <tr>
                 <th style={{ width: 54 }}>ID</th>
-                <th>Task Name</th>
-                <th style={{ width: 150 }}>Type</th>
+                <th>Nome da tarefa</th>
+                <th style={{ width: 150 }}>Tipo</th>
                 <th style={{ width: 80 }}>Lag</th>
                 <th style={{ width: 24 }} />
               </tr>
@@ -312,9 +312,9 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
           <table className="msp-tbl">
             <thead>
               <tr>
-                <th>Resource Name</th>
-                <th style={{ width: 80 }}>Units</th>
-                <th style={{ width: 110 }}>Cost</th>
+                <th>Nome do recurso</th>
+                <th style={{ width: 80 }}>Unidades</th>
+                <th style={{ width: 110 }}>Custo</th>
                 <th style={{ width: 24 }} />
               </tr>
             </thead>
@@ -325,7 +325,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
                 return (
                   <tr key={r.key}>
                     <td>
-                      <select value={r.resourceId} onChange={(e) => setRes(res.map((x, k) => (k === i ? { ...x, resourceId: e.target.value } : x)))} aria-label="Resource Name">
+                      <select value={r.resourceId} onChange={(e) => setRes(res.map((x, k) => (k === i ? { ...x, resourceId: e.target.value } : x)))} aria-label="Nome do recurso">
                         <option value="">—</option>
                         {(s.resources ?? []).map((x) => (
                           <option key={x.id} value={x.id}>
@@ -335,11 +335,11 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
                       </select>
                     </td>
                     <td>
-                      <input value={r.units} onChange={(e) => setRes(res.map((x, k) => (k === i ? { ...x, units: e.target.value } : x)))} aria-label="Units" disabled={rr?.type === "material"} />
+                      <input value={r.units} onChange={(e) => setRes(res.map((x, k) => (k === i ? { ...x, units: e.target.value } : x)))} aria-label="Unidades" disabled={rr?.type === "material"} />
                     </td>
                     <td className="num">{cost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td>
-                      <button className="msp-x" onClick={() => setRes(res.filter((_, k) => k !== i))} title="Remove" aria-label="Remove">
+                      <button className="msp-x" onClick={() => setRes(res.filter((_, k) => k !== i))} title="Remover" aria-label="Remover">
                         ×
                       </button>
                     </td>
@@ -385,7 +385,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
           </label>
           <Row label="Calendar:">
             <select value={cal} onChange={(e) => setCal(e.target.value)}>
-              <option value="">None</option>
+              <option value="">Nenhum</option>
               {(s.calendars ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -398,7 +398,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
           </Row>
           <Row label="Earned value method:">
             <select value={evm} onChange={(e) => setEvm(e.target.value)}>
-              <option value="pct">% Complete</option>
+              <option value="pct">% concluído</option>
               <option value="physical">Physical % Complete</option>
             </select>
           </Row>
@@ -407,7 +407,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
           </label>
         </div>
       )}
-      {tab === "notes" && <textarea className="msp-notes" value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Notes" />}
+      {tab === "notes" && <textarea className="msp-notes" value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Anotações" />}
       {tab === "custom" && (
         <div className="msp-ti-grid">
           {!(s.udfDefs ?? []).length ? (
@@ -417,7 +417,7 @@ function TaskInfoBody({ s, a0, onClose }: { s: Schedule; a0: Activity; onClose: 
               <thead>
                 <tr>
                   <th>Custom Field Name</th>
-                  <th>Value</th>
+                  <th>Valor</th>
                 </tr>
               </thead>
               <tbody>

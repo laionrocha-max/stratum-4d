@@ -3,10 +3,20 @@ import { linkHealth } from "../core/health";
 import { activityFields, applyRules, elementPropertyValue, mergeLinks, propertyKeys, suggestRules, unlink, type RuleSuggestion } from "../core/linking";
 import { LINK_PROFILE_KEY } from "./Present";
 import { PLAN_COLORS } from "../core/simulation";
+import { solarPosition, type SolarSettings } from "../core/solar";
 import { splitAt, splitElement, splitGrid } from "../core/motion";
 import { cloneProfile, STATUS_COLORS } from "../core/profiles";
 import type { AppearanceProfile, GrowthDirection, LinkMatch, LinkRule, PhaseAppearance } from "../core/types";
 import { fmtDate, useStore, type SideTab } from "./store";
+
+const SIDE_TABS = [
+  { id: "selection", label: "Seleção" },
+  { id: "rules", label: "Regras" },
+  { id: "tools", label: "Ferramentas" },
+  { id: "profiles", label: "Perfis" },
+  { id: "display", label: "Exibição" },
+  { id: "check", label: "Verificação" },
+] satisfies { id: SideTab; label: string }[];
 
 export function SidePanel() {
   const tab = useStore((s) => s.sideTab);
@@ -14,9 +24,9 @@ export function SidePanel() {
   return (
     <div className="side">
       <div className="tabs">
-        {(["selection", "rules", "tools", "profiles", "display", "check"] as SideTab[]).map((t) => (
-          <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-            {t[0].toUpperCase() + t.slice(1)}
+        {SIDE_TABS.map(({ id, label }) => (
+          <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
+            {label}
           </button>
         ))}
       </div>
@@ -75,45 +85,45 @@ function SelectionTab() {
   const linkSelected = () => {
     if (!activity || sel.length === 0) return;
     setLinks(mergeLinks(links, sel.map((elementId) => ({ elementId, activityId: activity.id, profileId }))));
-    setStatus(`Linked ${sel.length} element(s) to ${activity.code} (${profiles.find((p) => p.id === profileId)?.name}).`);
+    setStatus(`${sel.length} elemento(s) vinculado(s) à atividade ${activity.code} (${profiles.find((p) => p.id === profileId)?.name}).`);
   };
   const selectByProperty = () => {
     const ids = elements.filter((e) => (elementPropertyValue(e, propKey) ?? "") === propValue).map((e) => e.id);
     selectElements(new Set(ids));
-    setStatus(`Selected ${ids.length} element(s) where ${propKey} = ${propValue}.`);
+    setStatus(`${ids.length} elemento(s) selecionado(s) com ${propKey} = ${propValue}.`);
   };
 
   return (
     <div className="stack">
       <section>
-        <h4>Select by property</h4>
+        <h4>Selecionar por propriedade</h4>
         <select value={propKey} onChange={(e) => setPropKey(e.target.value)}>
           {keys.map((k) => (
             <option key={k}>{k}</option>
           ))}
         </select>
         <select value={propValue} onChange={(e) => setPropValue(e.target.value)}>
-          <option value="">— value —</option>
+          <option value="">— valor —</option>
           {values.map((v) => (
             <option key={v}>{v}</option>
           ))}
         </select>
         <div className="row">
-          <button onClick={selectByProperty} disabled={!propValue}>Select</button>
-          <button onClick={() => selectElements(new Set())} disabled={sel.length === 0}>Clear selection</button>
+          <button onClick={selectByProperty} disabled={!propValue}>Selecionar</button>
+          <button onClick={() => selectElements(new Set())} disabled={sel.length === 0}>Limpar seleção</button>
         </div>
-        <p className="muted">Click in the 3D view to select. Shift/Ctrl-click adds to the selection. Alt-click an activity to select its linked elements; double-click jumps the timeline to its start.</p>
+        <p className="muted">Clique na vista 3D para selecionar. Use Shift ou Ctrl ao clicar para ampliar a seleção. Use Alt ao clicar em uma atividade para selecionar os elementos vinculados. Clique duas vezes para ir ao início da atividade na linha do tempo.</p>
       </section>
 
       <section>
-        <h4>Link selection to activity</h4>
+        <h4>Vincular seleção à atividade</h4>
         <p>
-          <b>{sel.length}</b> element(s) selected
+          <b>{sel.length}</b> elemento(s) selecionado(s)
           <br />
-          Activity: {activity ? <b>{activity.code} – {activity.name}</b> : <span className="muted">pick one in the Gantt</span>}
+          Atividade: {activity ? <b>{activity.code} – {activity.name}</b> : <span className="muted">selecione no Gantt</span>}
         </p>
         <label>
-          Profile
+          Perfil
           <select value={profileId} onChange={(e) => setProfileId(e.target.value)}>
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
@@ -123,29 +133,29 @@ function SelectionTab() {
           </select>
         </label>
         <div className="row">
-          <button className="primary" disabled={!activity || sel.length === 0} onClick={linkSelected}>Link</button>
+          <button className="primary" disabled={!activity || sel.length === 0} onClick={linkSelected}>Vincular</button>
           <button
             disabled={!activity}
-            title="Select the elements already linked to this activity"
+            title="Selecionar os elementos já vinculados a esta atividade"
             onClick={() => selectElements(new Set(links.filter((l) => l.activityId === activity!.id).map((l) => l.elementId)))}
           >
-            Select linked
+            Selecionar vinculados
           </button>
           <button
             disabled={sel.length === 0 || selLinks.length === 0}
             onClick={() => {
               setLinks(unlink(links, selectedElements, activity?.id));
-              setStatus(activity ? `Unlinked selection from ${activity.code}.` : "Removed all links from selection.");
+              setStatus(activity ? `Seleção desvinculada da atividade ${activity.code}.` : "Todos os vínculos da seleção foram removidos.");
             }}
           >
-            Unlink{activity ? " from activity" : " all"}
+            {activity ? "Desvincular da atividade" : "Remover todos os vínculos da seleção"}
           </button>
         </div>
       </section>
 
       {selLinks.length > 0 && (
         <section>
-          <h4>Links on selection ({selLinks.length})</h4>
+          <h4>Vínculos da seleção ({selLinks.length})</h4>
           <ul className="list">
             {selLinks.slice(0, 50).map((l) => {
               const a = actById.get(l.activityId);
@@ -161,10 +171,10 @@ function SelectionTab() {
 
       {one && (
         <section>
-          <h4>Properties</h4>
+          <h4>Propriedades</h4>
           <table className="props">
             <tbody>
-              <tr><td>Name</td><td>{one.name}</td></tr>
+              <tr><td>Nome</td><td>{one.name}</td></tr>
               <tr><td>IfcType</td><td>{one.ifcType}</td></tr>
               <tr><td>GlobalId</td><td>{one.id}</td></tr>
               {Object.entries(one.properties).map(([k, v]) => (
@@ -195,7 +205,7 @@ function RulesTab() {
     const found = applyRules(subset, elements, schedule);
     setLinks(mergeLinks(links, found));
     const linkedEls = new Set(found.map((l) => l.elementId)).size;
-    setStatus(`Rules created ${found.length} link(s) on ${linkedEls} element(s).`);
+    setStatus(`As regras criaram ${found.length} vínculo(s) em ${linkedEls} elemento(s).`);
   };
 
   const [suggestions, setSuggestions] = useState<RuleSuggestion[] | null>(null);
@@ -204,19 +214,19 @@ function RulesTab() {
   return (
     <div className="stack">
       <section>
-        <h4>Auto-detect</h4>
-        <p className="muted">Scan the model for a property that already holds Activity IDs, names, WBS or activity codes.</p>
+        <h4>Detectar automaticamente</h4>
+        <p className="muted">Procura uma propriedade do modelo que já contenha IDs, nomes, códigos de atividade ou itens da EAP.</p>
         <button
           disabled={!schedule || elements.length === 0}
           onClick={() => {
             const found = suggestRules(elements, schedule!);
             setSuggestions(found);
-            setStatus(found.length ? `Found ${found.length} candidate rule(s).` : "No property in the model matches schedule values exactly.");
+            setStatus(found.length ? `${found.length} regra(s) sugerida(s).` : "Nenhuma propriedade do modelo corresponde exatamente aos valores do cronograma.");
           }}
         >
-          Find matching properties
+          Localizar propriedades correspondentes
         </button>
-        {suggestions && suggestions.length === 0 && <p className="muted">No exact matches. Try a "contains" rule, or link by selection.</p>}
+        {suggestions && suggestions.length === 0 && <p className="muted">Nenhuma correspondência exata. Experimente uma regra «contém» ou vincule pela seleção.</p>}
         {suggestions && suggestions.length > 0 && (
           <ul className="list suggestions">
             {suggestions.map((sg) => (
@@ -224,7 +234,7 @@ function RulesTab() {
                 <code>{sg.elementProperty}</code> = <code>{fieldLabel(sg.activityField)}</code>
                 <br />
                 <span className="muted">
-                  {sg.elementMatches} elements → {sg.activityMatches} activities
+                  {sg.elementMatches} elementos → {sg.activityMatches} atividades
                 </span>{" "}
                 <button
                   className="link"
@@ -232,7 +242,7 @@ function RulesTab() {
                     setDraft({ ...draft, elementProperty: sg.elementProperty, activityField: sg.activityField, match: "equals", caseSensitive: false })
                   }
                 >
-                  use
+                  usar
                 </button>
               </li>
             ))}
@@ -240,10 +250,10 @@ function RulesTab() {
         )}
       </section>
       <section>
-        <h4>New rule</h4>
-        <p className="muted">Link elements whose property matches an activity field.</p>
+        <h4>Nova regra</h4>
+        <p className="muted">Vincule elementos cuja propriedade corresponde a um campo da atividade.</p>
         <label>
-          Element property
+          Propriedade do elemento
           <select value={draft.elementProperty} onChange={(e) => setDraft({ ...draft, elementProperty: e.target.value })}>
             {keys.map((k) => (
               <option key={k}>{k}</option>
@@ -251,15 +261,15 @@ function RulesTab() {
           </select>
         </label>
         <label>
-          Match
+          Correspondência
           <select value={draft.match} onChange={(e) => setDraft({ ...draft, match: e.target.value as LinkMatch })}>
-            <option value="equals">equals</option>
-            <option value="contains">contains</option>
-            <option value="startsWith">starts with</option>
+            <option value="equals">igual a</option>
+            <option value="contains">contém</option>
+            <option value="startsWith">começa com</option>
           </select>
         </label>
         <label>
-          Activity field
+          Campo da atividade
           <select value={draft.activityField} onChange={(e) => setDraft({ ...draft, activityField: e.target.value })}>
             {fields.map((f) => (
               <option key={f.value} value={f.value}>
@@ -269,7 +279,7 @@ function RulesTab() {
           </select>
         </label>
         <label>
-          Profile
+          Perfil
           <select value={draft.profileId} onChange={(e) => setDraft({ ...draft, profileId: e.target.value })}>
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
@@ -280,32 +290,32 @@ function RulesTab() {
         </label>
         <label className="check">
           <input type="checkbox" checked={draft.caseSensitive} onChange={(e) => setDraft({ ...draft, caseSensitive: e.target.checked })} />
-          Case sensitive
+          Diferenciar maiúsculas de minúsculas
         </label>
         <div className="row">
-          <button onClick={() => setRules([...rules, { ...draft, id: crypto.randomUUID() }])}>Add rule</button>
+          <button onClick={() => setRules([...rules, { ...draft, id: crypto.randomUUID() }])}>Adicionar regra</button>
           <button className="primary" disabled={!schedule || elements.length === 0} onClick={() => run([{ ...draft, id: "adhoc" }])}>
-            Run once
+            Executar uma vez
           </button>
         </div>
       </section>
       <section>
-        <h4>Saved rules ({rules.length})</h4>
-        {rules.length === 0 && <p className="muted">None yet.</p>}
+        <h4>Regras salvas ({rules.length})</h4>
+        {rules.length === 0 && <p className="muted">Nenhum item ainda.</p>}
         <ul className="list">
           {rules.map((r) => (
             <li key={r.id}>
               <code>{r.elementProperty}</code> {r.match} <code>{fields.find((f) => f.value === r.activityField)?.label ?? r.activityField}</code> →{" "}
               {profiles.find((p) => p.id === r.profileId)?.name}
-              <button className="link" onClick={() => setRules(rules.filter((x) => x !== r))}>remove</button>
+              <button className="link" onClick={() => setRules(rules.filter((x) => x !== r))}>remover</button>
             </li>
           ))}
         </ul>
         <div className="row">
-          <button className="primary" disabled={!rules.length || !schedule} onClick={() => run(rules)}>Run all rules</button>
-          <button disabled={!links.length} onClick={() => { setLinks([]); setStatus("All links cleared."); }}>Clear all links</button>
+          <button className="primary" disabled={!rules.length || !schedule} onClick={() => run(rules)}>Executar todas as regras</button>
+          <button disabled={!links.length} onClick={() => { setLinks([]); setStatus("Todos os vínculos foram removidos."); }}>Limpar todos os vínculos</button>
         </div>
-        <p className="muted">{links.length} link(s) in project.</p>
+        <p className="muted">{links.length} vínculo(s) no projeto.</p>
       </section>
     </div>
   );
@@ -317,15 +327,15 @@ function PhaseEditor({ label, value, onChange }: { label: string; value: PhaseAp
       <b>{label}</b>
       <label className="check">
         <input type="checkbox" checked={value.visible} onChange={(e) => onChange({ ...value, visible: e.target.checked })} />
-        Visible
+        Visível
       </label>
       <label className="check">
         <input type="checkbox" checked={value.color === null} onChange={(e) => onChange({ ...value, color: e.target.checked ? null : "#888888" })} />
-        Model colour
+        Cor do modelo
       </label>
       {value.color !== null && <input type="color" value={value.color} onChange={(e) => onChange({ ...value, color: e.target.value })} />}
       <label>
-        Transparency {Math.round(value.transparency * 100)}%
+        Transparência {Math.round(value.transparency * 100)}%
         <input type="range" min={0} max={1} step={0.05} value={value.transparency} onChange={(e) => onChange({ ...value, transparency: Number(e.target.value) })} />
       </label>
     </div>
@@ -342,7 +352,7 @@ function ProfilesTab() {
   return (
     <div className="stack">
       <section>
-        <h4>Appearance profiles</h4>
+        <h4>Perfis de aparência</h4>
         <div className="row wrap">
           {profiles.map((p) => (
             <button key={p.id} className={p.id === current?.id ? "active" : ""} onClick={() => setCurrentId(p.id)}>
@@ -359,44 +369,44 @@ function ProfilesTab() {
               setCurrentId(id);
             }}
           >
-            Duplicate
+            Duplicar
           </button>
           <button
             disabled={!current || profiles.length <= 1 || inUse(current.id)}
-            title={current && inUse(current.id) ? "Profile is used by links" : ""}
+            title={current && inUse(current.id) ? "Este perfil está em uso nos vínculos" : ""}
             onClick={() => {
               const rest = profiles.filter((p) => p.id !== current!.id);
               setProfiles(rest);
               setCurrentId(rest[0]?.id);
             }}
           >
-            Delete
+            Excluir
           </button>
         </div>
       </section>
       {current && (
         <section>
           <label>
-            Name
+            Nome
             <input value={current.name} onChange={(e) => update({ ...current, name: e.target.value })} />
           </label>
-          <PhaseEditor label="Before task" value={current.before} onChange={(v) => update({ ...current, before: v })} />
-          <PhaseEditor label="During task" value={current.active} onChange={(v) => update({ ...current, active: v })} />
-          <PhaseEditor label="After task" value={current.after} onChange={(v) => update({ ...current, after: v })} />
+          <PhaseEditor label="Antes da tarefa" value={current.before} onChange={(v) => update({ ...current, before: v })} />
+          <PhaseEditor label="Durante a tarefa" value={current.active} onChange={(v) => update({ ...current, active: v })} />
+          <PhaseEditor label="Após a tarefa" value={current.after} onChange={(v) => update({ ...current, after: v })} />
           <label className="check">
             <input type="checkbox" checked={current.progressiveFade} onChange={(e) => update({ ...current, progressiveFade: e.target.checked })} />
-            Fade in with task progress
+            Exibir gradualmente com o avanço da tarefa
           </label>
           <label>
-            Growth during task
+            Crescimento durante a tarefa
             <select value={current.growth ?? "none"} onChange={(e) => update({ ...current, growth: e.target.value as GrowthDirection })}>
-              <option value="none">None (whole element)</option>
-              <option value="bottom-up">Bottom up</option>
-              <option value="top-down">Top down</option>
-              <option value="west-east">West → east</option>
-              <option value="east-west">East → west</option>
-              <option value="south-north">South → north</option>
-              <option value="north-south">North → south</option>
+              <option value="none">Nenhum (elemento inteiro)</option>
+              <option value="bottom-up">De baixo para cima</option>
+              <option value="top-down">De cima para baixo</option>
+              <option value="west-east">Oeste → leste</option>
+              <option value="east-west">Leste → oeste</option>
+              <option value="south-north">Sul → norte</option>
+              <option value="north-south">Norte → sul</option>
             </select>
           </label>
         </section>
@@ -405,59 +415,127 @@ function ProfilesTab() {
   );
 }
 
+function SolarControls() {
+  const { sim, setSim, schedule } = useStore();
+  const solar = sim.solar ?? {
+    date: new Date(schedule?.dataDate ?? Date.now()).toISOString().slice(0, 10),
+    time: "15:00", utcOffset: -new Date().getTimezoneOffset() / 60, north: 0,
+  };
+  const position = solarPosition(solar);
+  const update = (patch: Partial<SolarSettings>) => setSim({ solar: { ...solar, ...patch } });
+  const fields = [
+    { key: "latitude", label: "Latitude (°)", min: -90, max: 90, step: 0.0001 },
+    { key: "longitude", label: "Longitude (°)", min: -180, max: 180, step: 0.0001 },
+    { key: "utcOffset", label: "Fuso UTC (h)", min: -12, max: 14, step: 0.25 },
+    { key: "north", label: "Ajuste do norte (°)", min: -360, max: 360, step: 1 },
+  ] as const;
+  return (
+    <details className="solar-settings">
+      <summary>Sol e localização</summary>
+      <div className="solar-fields">
+        {fields.map(({ key, label, min, max, step }) => (
+          <label key={key}>{label}
+            <input
+              type="number" min={min} max={max} step={step}
+              value={(solar as SolarSettings)[key] ?? ""}
+              onChange={(e) => update({ [key]: e.target.value === "" ? undefined : e.target.valueAsNumber })}
+            />
+          </label>
+        ))}
+        <label>Data da iluminação<input type="date" value={solar.date} onChange={(e) => update({ date: e.target.value })} /></label>
+        <label>Hora local<input type="time" value={solar.time} onChange={(e) => update({ time: e.target.value })} /></label>
+      </div>
+      <p className="muted">Use latitude sul e longitude oeste com sinal negativo. Ajuste o norte para coincidir com a orientação do IFC.</p>
+      {position ? (
+        <p className="muted">
+          Sol a {position.elevation.toFixed(1)}° de elevação e {position.azimuth.toFixed(1)}° a partir do norte.
+          {position.sunrise && position.sunset && ` Nascer por volta de ${position.sunrise}. Pôr por volta de ${position.sunset}.`}
+        </p>
+      ) : <p className="muted">Preencha a localização para calcular a direção do sol. Enquanto isso, o visor usa uma luz ilustrativa.</p>}
+    </details>
+  );
+}
+
 function DisplayTab() {
-  const { sim, setSim, profiles } = useStore();
+  const { sim, setSim, profiles, models, baseElements } = useStore();
+  const loadedModels = new Set(baseElements.map((element) => element.id.includes(":") ? element.id.split(":")[0] : ""));
   return (
     <div className="stack">
+      {!!models?.files.length && (
+        <section>
+          <h4>Modelos da obra</h4>
+          <ul className="ifc-file-list">
+            {models.files.map(({ id, name }) => (
+              <li key={id}>{name} <span className="muted">({loadedModels.has(id) ? "em cena" : "aguardando arquivo"})</span></li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section>
-        <h4>Dates to simulate</h4>
+        <h4>Aparência do modelo</h4>
+        <label className="check" title="Suaviza as cores do modelo e ativa a iluminação com sombras. Também se aplica aos vídeos exportados.">
+          <input type="checkbox" checked={sim.presentationLook === true} onChange={(e) => setSim({ presentationLook: e.target.checked })} />
+          Modo apresentação
+        </label>
+        <label className="check" title="Mostra um fundo de céu no modo apresentação.">
+          <input type="checkbox" checked={sim.naturalSky === true} onChange={(e) => setSim({ naturalSky: e.target.checked })} />
+          Céu natural
+        </label>
+        <SolarControls />
+      </section>
+      <section>
+        <h4>Datas da simulação</h4>
         <label className="check">
           <input type="radio" checked={sim.dateSource === "current"} onChange={() => setSim({ dateSource: "current" })} />
-          Current schedule (actuals + forecast)
+          Cronograma atual (realizado e previsto)
         </label>
         <label className="check">
           <input type="radio" checked={sim.dateSource === "baseline"} onChange={() => setSim({ dateSource: "baseline" })} />
-          Baseline (P6 target dates)
+          Linha de base (datas de referência do P6)
         </label>
       </section>
       <section>
-        <h4>Colour by</h4>
+        <h4>Colorir por</h4>
         <label className="check">
           <input type="radio" checked={sim.colorMode === "profile"} onChange={() => setSim({ colorMode: "profile" })} />
-          Appearance profile
+          Perfil de aparência
         </label>
         <label className="check">
           <input type="radio" checked={sim.colorMode === "status"} onChange={() => setSim({ colorMode: "status" })} />
-          Activity status vs baseline
+          Situação da atividade em relação à linha de base
         </label>
-        <label className="check" title="Green: ahead of the baseline. Blue: on plan. Red: behind the baseline, also for work the baseline has already built.">
+        <label className="check" title="Verde indica adiantamento, azul indica avanço conforme o plano e vermelho indica atraso, inclusive quando o trabalho já deveria estar concluído.">
           <input type="radio" checked={sim.colorMode === "plan-vs-actual"} onChange={() => setSim({ colorMode: "plan-vs-actual" })} />
-          Planned vs actual (ahead / behind)
+          Planejado e realizado (adiantamento ou atraso)
         </label>
       </section>
       <section>
-        <h4>Unlinked elements</h4>
+        <h4>Elementos sem vínculo</h4>
         {(["show", "ghost", "hide"] as const).map((u) => (
           <label className="check" key={u}>
             <input type="radio" checked={sim.unlinked === u} onChange={() => setSim({ unlinked: u })} />
-            {u[0].toUpperCase() + u.slice(1)}
+            {{ show: "Mostrar", ghost: "Translúcidos", hide: "Ocultar" }[u]}
           </label>
         ))}
       </section>
       <section>
-        <h4>Overlays</h4>
+        <h4>Sobreposições</h4>
+        <label className="check">
+          <input type="checkbox" checked={sim.showGrid !== false} onChange={(e) => setSim({ showGrid: e.target.checked })} />
+          Mostrar grade de referência
+        </label>
         <label className="check">
           <input type="checkbox" checked={sim.showPaths !== false} onChange={(e) => setSim({ showPaths: e.target.checked })} />
-          Show equipment paths
+          Mostrar trajetos de equipamentos
         </label>
       </section>
       <section>
-        <h4>Legend</h4>
+        <h4>Legenda</h4>
         {sim.colorMode === "profile" ? (
           <ul className="legend">
             {profiles.map((p) => (
               <li key={p.id}>
-                <span className="swatch" style={{ background: p.active.color ?? "#999" }} /> {p.name} (during task)
+                <span className="swatch" style={{ background: p.active.color ?? "#999" }} /> {p.name} (durante a tarefa)
               </li>
             ))}
           </ul>
@@ -490,7 +568,7 @@ function DisplayTab() {
 function CheckTab() {
   const { schedule, elements, links, setLinks, selectElements, selectActivity, setSideTab, setStatus, lastUpdate, scheduleReport, setLeftTab } = useStore();
   const health = useMemo(() => (schedule ? linkHealth(schedule, elements, links) : null), [schedule, elements, links]);
-  if (!schedule) return <p className="muted">Load a schedule to check links.</p>;
+  if (!schedule) return <p className="muted">Importe um cronograma para verificar os vínculos.</p>;
   const pct = (n: number) => `${Math.round(n * 100)}%`;
   const shift = (d: number | null) => (d === null ? "" : d === 0 ? "0d" : `${d > 0 ? "+" : ""}${d}d`);
 
@@ -499,20 +577,20 @@ function CheckTab() {
     <div className="stack">
       {scheduleReport && (
         <section>
-          <h4>Last scheduling run</h4>
+          <h4>Último cálculo do cronograma</h4>
           {scheduleReport.error ? (
             <p className="bad">{scheduleReport.error}</p>
           ) : (
             <p>
-              Project finish <b>{fmtDate(scheduleReport.projectFinish)}</b>
+              Término do projeto <b>{fmtDate(scheduleReport.projectFinish)}</b>
               {scheduleReport.previousFinish !== null && scheduleReport.previousFinish !== scheduleReport.projectFinish && (
                 <span className={scheduleReport.projectFinish > scheduleReport.previousFinish ? "bad" : "good"}>
                   {" "}
-                  (was {fmtDate(scheduleReport.previousFinish)})
+                  (anteriormente {fmtDate(scheduleReport.previousFinish)})
                 </span>
               )}
               <br />
-              {scheduleReport.criticalCount} critical activities · {scheduleReport.warnings.length} warning(s)
+              {scheduleReport.criticalCount} atividades críticas · {scheduleReport.warnings.length} aviso(s)
             </p>
           )}
           {scheduleReport.warnings.length > 0 && (
@@ -539,26 +617,26 @@ function CheckTab() {
       )}
       {lastUpdate && (
         <section>
-          <h4>Last schedule update</h4>
+          <h4>Última atualização do cronograma</h4>
           <p>
-            Data date {fmtDate(lastUpdate.dataDateFrom)} → <b>{fmtDate(lastUpdate.dataDateTo)}</b>
+            Data de corte {fmtDate(lastUpdate.dataDateFrom)} → <b>{fmtDate(lastUpdate.dataDateTo)}</b>
             <br />
-            Project finish{" "}
+            Término do projeto{" "}
             <b className={(lastUpdate.finishShiftDays ?? 0) > 0 ? "bad" : (lastUpdate.finishShiftDays ?? 0) < 0 ? "good" : ""}>
               {lastUpdate.finishShiftDays ? shift(lastUpdate.finishShiftDays) : "unchanged"}
             </b>
             <br />
-            {lastUpdate.changed.length} changed · {lastUpdate.added.length} added · {lastUpdate.removed.length} removed
+            {lastUpdate.changed.length} alteradas · {lastUpdate.added.length} adicionadas · {lastUpdate.removed.length} removidas
             <br />
-            Links kept: {lastUpdate.keptLinks}
-            {lastUpdate.droppedLinks > 0 && <span className="bad"> · dropped: {lastUpdate.droppedLinks} (activities removed)</span>}
+            Vínculos preservados: {lastUpdate.keptLinks}
+            {lastUpdate.droppedLinks > 0 && <span className="bad"> · removidos: {lastUpdate.droppedLinks} (atividades removidas)</span>}
           </p>
           {lastUpdate.changed.length > 0 && (
             <table className="props">
               <tbody>
                 <tr>
-                  <td><b>Activity</b></td>
-                  <td><b>Finish / status</b></td>
+                  <td><b>Atividade</b></td>
+                  <td><b>Término / situação</b></td>
                 </tr>
                 {lastUpdate.changed.slice(0, 30).map((c) => (
                   <tr key={c.code}>
@@ -574,7 +652,7 @@ function CheckTab() {
           )}
           {lastUpdate.added.length > 0 && (
             <p>
-              <b>New activities (need links):</b> {lastUpdate.added.map((a) => a.code).join(", ")}
+              <b>Novas atividades que precisam de vínculos:</b> {lastUpdate.added.map((a) => a.code).join(", ")}
             </p>
           )}
         </section>
@@ -582,17 +660,17 @@ function CheckTab() {
       {health && (
         <>
           <section>
-            <h4>Coverage</h4>
+            <h4>Cobertura</h4>
             <p>
-              Work activities linked: <b>{pct(health.coverage.activities)}</b>
+              Atividades de execução vinculadas: <b>{pct(health.coverage.activities)}</b>
               <br />
-              Model elements linked: <b>{elements.length ? pct(health.coverage.elements) : "no model"}</b>
+              Elementos do modelo vinculados: <b>{elements.length ? pct(health.coverage.elements) : "no model"}</b>
             </p>
           </section>
           <section>
-            <h4>Activities with nothing to show ({health.unlinkedActivities.length})</h4>
+            <h4>Atividades sem elementos vinculados ({health.unlinkedActivities.length})</h4>
             {health.unlinkedActivities.length === 0 ? (
-              <p className="good">Every work activity has linked elements.</p>
+              <p className="good">Todas as atividades de execução têm elementos vinculados.</p>
             ) : (
               <ul className="list">
                 {health.unlinkedActivities.slice(0, 50).map((a) => (
@@ -604,17 +682,17 @@ function CheckTab() {
             )}
           </section>
           <section>
-            <h4>Elements never shown in the sequence ({health.unlinkedElements.length})</h4>
+            <h4>Elementos que não aparecem na simulação ({health.unlinkedElements.length})</h4>
             {health.unlinkedElements.length > 0 && (
-              <button onClick={() => { selectElements(new Set(health.unlinkedElements.map((e) => e.id))); setStatus(`Selected ${health.unlinkedElements.length} unlinked element(s).`); }}>
-                Select them in 3D
+              <button onClick={() => { selectElements(new Set(health.unlinkedElements.map((e) => e.id))); setStatus(`${health.unlinkedElements.length} elemento(s) sem vínculo selecionado(s).`); }}>
+                Selecioná-los no 3D
               </button>
             )}
           </section>
           {health.duplicateInstalls.length > 0 && (
             <section>
-              <h4>Installed by more than one activity ({health.duplicateInstalls.length})</h4>
-              <p className="muted">Often a double count. Check whether one should be a different profile.</p>
+              <h4>Instalados por mais de uma atividade ({health.duplicateInstalls.length})</h4>
+              <p className="muted">Pode haver dupla contagem. Confira se um dos vínculos deveria usar outro perfil.</p>
               <ul className="list">
                 {health.duplicateInstalls.slice(0, 30).map((d) => (
                   <li key={d.element.id}>
@@ -626,18 +704,18 @@ function CheckTab() {
           )}
           {(health.orphanActivityLinks.length > 0 || health.orphanElementLinks.length > 0) && (
             <section>
-              <h4>Broken links</h4>
+              <h4>Vínculos quebrados</h4>
               <p>
-                {health.orphanActivityLinks.length} to missing activities · {health.orphanElementLinks.length} to elements not in the loaded model
+                {health.orphanActivityLinks.length} para atividades ausentes · {health.orphanElementLinks.length} para elementos ausentes no modelo carregado
               </p>
               <button
                 onClick={() => {
                   const bad = new Set([...health.orphanActivityLinks, ...health.orphanElementLinks]);
                   setLinks(links.filter((l) => !bad.has(l)));
-                  setStatus(`Removed ${bad.size} broken link(s).`);
+                  setStatus(`${bad.size} vínculo(s) quebrado(s) removido(s).`);
                 }}
               >
-                Remove broken links
+                Remover vínculos quebrados
               </button>
             </section>
           )}
@@ -672,59 +750,59 @@ function ToolsTab() {
   return (
     <div className="stack">
       <section>
-        <h4>Groups ({groups.length})</h4>
-        <p className="muted">Save a selection as a named group (a crane, a pour, a zone). Groups show up as a "Group" property for rules and selection.</p>
+        <h4>Grupos ({groups.length})</h4>
+        <p className="muted">Salve a seleção como um grupo com nome, como uma grua, concretagem ou zona. Use a propriedade «Group» nas regras e na seleção.</p>
         <div className="row">
-          <input placeholder="Group name" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
+          <input placeholder="Nome do grupo" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
           <button
             disabled={!sel.length || !groupName.trim()}
             onClick={() => {
               st.setGroups([...groups, { id: crypto.randomUUID(), name: groupName.trim(), color: "#7c3aed", elementIds: sel }]);
-              st.setStatus(`Group "${groupName.trim()}" saved with ${sel.length} element(s).`);
+              st.setStatus(`Grupo «${groupName.trim()}» salvo com ${sel.length} elemento(s).`);
               setGroupName("");
             }}
           >
-            Save selection
+            Salvar seleção
           </button>
         </div>
         <ul className="list">
           {groups.map((g) => (
             <li key={g.id}>
               <b>{g.name}</b> ({g.elementIds.length}){" "}
-              <button className="link" onClick={() => st.selectElements(new Set(g.elementIds))}>select</button>
+              <button className="link" onClick={() => st.selectElements(new Set(g.elementIds))}>selecionar</button>
               <button className="link" disabled={!sel.length} onClick={() => st.setGroups(groups.map((x) => (x.id === g.id ? { ...x, elementIds: [...new Set([...x.elementIds, ...sel])] } : x)))}>
-                add selection
+                adicionar seleção
               </button>
-              <button className="link" onClick={() => st.setGroups(groups.filter((x) => x.id !== g.id))}>delete</button>
+              <button className="link" onClick={() => st.setGroups(groups.filter((x) => x.id !== g.id))}>excluir</button>
             </li>
           ))}
         </ul>
       </section>
 
       <section>
-        <h4>Split into pours / bays</h4>
-        <p className="muted">Cut the selected element(s) into parts. Each part can then be linked to its own activity.</p>
+        <h4>Dividir em trechos de concretagem ou vãos</h4>
+        <p className="muted">Divida os elementos selecionados em partes. Você pode vincular cada parte a uma atividade diferente.</p>
         <label>
-          Split type
+          Tipo de divisão
           <select value={splitMode} onChange={(e) => setSplitMode(e.target.value as typeof splitMode)}>
-            <option value="equal">Equal parts along one axis</option>
-            <option value="at">At positions along one axis (uneven)</option>
-            <option value="grid">Grid: columns × rows × layers</option>
+            <option value="equal">Partes iguais ao longo de um eixo</option>
+            <option value="at">Posições personalizadas ao longo de um eixo</option>
+            <option value="grid">Grade: colunas × linhas × camadas</option>
           </select>
         </label>
         {splitMode !== "grid" ? (
           <div className="row">
             <select value={axis} onChange={(e) => setAxis(e.target.value as "x" | "y" | "z")}>
-              <option value="x">Along X (west–east)</option>
-              <option value="z">Along Z (south–north)</option>
-              <option value="y">Along Y (height)</option>
+              <option value="x">No eixo X (oeste–leste)</option>
+              <option value="z">No eixo Z (sul–norte)</option>
+              <option value="y">No eixo Y (altura)</option>
             </select>
             {splitMode === "equal" ? (
-              <input type="number" min={2} max={50} value={parts} onChange={(e) => setParts(Number(e.target.value) || 2)} style={{ width: 56 }} title="Number of parts" />
+              <input type="number" min={2} max={50} value={parts} onChange={(e) => setParts(Number(e.target.value) || 2)} style={{ width: 56 }} title="Número de partes" />
             ) : (
-              <input value={cutsText} onChange={(e) => setCutsText(e.target.value)} style={{ width: 96 }} title="Cut positions in % of the element, for example 30, 60" />
+              <input value={cutsText} onChange={(e) => setCutsText(e.target.value)} style={{ width: 96 }} title="Posições de corte em porcentagem do elemento, por exemplo 30 e 60" />
             )}
-            <input value={label} onChange={(e) => setLabel(e.target.value)} style={{ width: 70 }} title="Part name" />
+            <input value={label} onChange={(e) => setLabel(e.target.value)} style={{ width: 70 }} title="Nome da parte" />
           </div>
         ) : (
           <div className="row">
@@ -734,10 +812,10 @@ function ToolsTab() {
                 <input type="number" min={1} max={20} value={grid[i]} onChange={(e) => setGrid(grid.map((g, j) => (j === i ? Math.max(1, Math.min(20, Number(e.target.value) || 1)) : g)) as [number, number, number])} />
               </label>
             ))}
-            <input value={label} onChange={(e) => setLabel(e.target.value)} style={{ width: 70 }} title="Part name" />
+            <input value={label} onChange={(e) => setLabel(e.target.value)} style={{ width: 70 }} title="Nome da parte" />
           </div>
         )}
-        {splitMode === "at" && <p className="muted">Type the cut positions in percent of the element, for example 30, 60 for three parts of 30%, 30% and 40%.</p>}
+        {splitMode === "at" && <p className="muted">Informe as posições em porcentagem do elemento. Por exemplo, informe 30 e 60 para criar partes de 30%, 30% e 40%.</p>}
         <div className="row">
           <button
             disabled={!sel.length || (splitMode === "at" && !cutList.length) || (splitMode === "grid" && grid[0] * grid[1] * grid[2] < 2)}
@@ -766,10 +844,10 @@ function ToolsTab() {
               st.setSegments([...rest, ...added]);
               st.setLinks(linksNext);
               st.selectElements(new Set(added.map((s) => s.id)));
-              st.setStatus(`Split ${targets.length} element(s) into ${added.length / Math.max(1, targets.length)} parts each. Link each part to its activity.`);
+              st.setStatus(`${targets.length} elemento(s) dividido(s) em ${added.length / Math.max(1, targets.length)} partes cada. Vincule cada parte à sua atividade.`);
             }}
           >
-            Split selection
+            Dividir seleção
           </button>
           <button
             disabled={!sel.length || !segments.some((s) => parentsOf(sel).includes(s.parentId))}
@@ -792,34 +870,34 @@ function ToolsTab() {
               st.selectElements(new Set(targets));
             }}
           >
-            Unsplit
+            Desfazer divisão
           </button>
         </div>
-        <p className="muted">{segments.length} part(s) in the model.</p>
+        <p className="muted">{segments.length} parte(s) no modelo.</p>
       </section>
 
       <section>
-        <h4>Equipment paths ({paths.length})</h4>
-        <p className="muted">Move the selected elements (a crane, a delivery truck) along a path while an activity runs.</p>
+        <h4>Trajetos de equipamentos ({paths.length})</h4>
+        <p className="muted">Mova os elementos selecionados, como uma grua ou um caminhão, ao longo de um trajeto durante a atividade.</p>
         {!pathDraft ? (
           <>
             <p>
-              {sel.length} element(s) · activity: {act ? <b>{act.code}</b> : <span className="muted">pick one in the Gantt</span>}
+              {sel.length} elemento(s) · atividade: {act ? <b>{act.code}</b> : <span className="muted">selecione no Gantt</span>}
             </p>
             <div className="row">
-              <input placeholder="Path name" value={pathName} onChange={(e) => setPathName(e.target.value)} />
+              <input placeholder="Nome do trajeto" value={pathName} onChange={(e) => setPathName(e.target.value)} />
             </div>
             <label className="check">
-              <input type="checkbox" checked={orient} onChange={(e) => setOrient(e.target.checked)} /> Turn to face direction of travel
+              <input type="checkbox" checked={orient} onChange={(e) => setOrient(e.target.checked)} /> Girar na direção do movimento
             </label>
             <button className="primary" disabled={!sel.length || !act} onClick={() => st.setPathDraft([])}>
-              Draw path in 3D
+              Desenhar trajeto em 3D
             </button>
           </>
         ) : (
           <>
             <p>
-              Click points in the 3D view: <b>{pathDraft.length}</b> placed.
+              Clique nos pontos da vista 3D: <b>{pathDraft.length}</b> posicionado(s).
             </p>
             <div className="row">
               <button
@@ -832,15 +910,15 @@ function ToolsTab() {
                   ]);
                   st.setPathDraft(null);
                   setPathName("");
-                  st.setStatus("Path saved. Play the timeline to see it move.");
+                  st.setStatus("Trajeto salvo. Reproduza a simulação para ver o movimento.");
                 }}
               >
-                Finish
+                Término
               </button>
               <button disabled={!pathDraft.length} onClick={() => st.setPathDraft(pathDraft.slice(0, -1))}>
-                Undo point
+                Desfazer último ponto
               </button>
-              <button onClick={() => st.setPathDraft(null)}>Cancel</button>
+              <button onClick={() => st.setPathDraft(null)}>Cancelar</button>
             </div>
           </>
         )}
@@ -849,9 +927,9 @@ function ToolsTab() {
             const a = schedule?.activities.find((x) => x.id === p.activityId);
             return (
               <li key={p.id}>
-                <b>{p.name}</b> · {a?.code ?? "?"} · {p.elementIds.length} element(s), {p.points.length} points{" "}
-                <button className="link" onClick={() => st.selectElements(new Set(p.elementIds))}>select</button>
-                <button className="link" onClick={() => st.setPaths(paths.filter((x) => x.id !== p.id))}>delete</button>
+                <b>{p.name}</b> · {a?.code ?? "?"} · {p.elementIds.length} elemento(s), {p.points.length} pontos{" "}
+                <button className="link" onClick={() => st.selectElements(new Set(p.elementIds))}>selecionar</button>
+                <button className="link" onClick={() => st.setPaths(paths.filter((x) => x.id !== p.id))}>excluir</button>
               </li>
             );
           })}

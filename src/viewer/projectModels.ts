@@ -9,6 +9,7 @@ export interface ModelPart {
   objects: Map<string, THREE.Object3D>;
   coordination?: number[];
   geographicReference?: string;
+  location?: { latitude: number; longitude: number; north?: number };
 }
 
 export async function loadModelPart(model: ProjectModel, buffer: ArrayBuffer, coordination?: number[]): Promise<ModelPart> {
@@ -22,11 +23,12 @@ export async function loadModelPart(model: ProjectModel, buffer: ArrayBuffer, co
     elements: geometry.elements.map((e) => ({
       ...e,
       id: key(e.id),
-      properties: { ...e.properties, "Arquivo do modelo": model.name, GlobalId: e.id },
+      properties: { ...e.properties, "Arquivo do modelo": model.name, ...(/\.ifc$/i.test(model.name) ? { "Arquivo IFC": model.name } : {}), GlobalId: e.id },
     })),
     objects: new Map(Array.from(geometry.objects, ([id, object]) => [key(id), object])),
     coordination: "coordination" in geometry ? geometry.coordination : undefined,
     geographicReference: "geographicReference" in geometry ? geometry.geographicReference : undefined,
+    location: "location" in geometry ? geometry.location : undefined,
   };
 }
 

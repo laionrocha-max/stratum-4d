@@ -192,7 +192,7 @@ export const useStore = create<AppState>((set) => {
     playing: false,
     speed: 7,
     sim: DEFAULT_SIM_OPTIONS,
-    status: "Load a P6 XER or MS Project schedule and a 3D model (IFC, glTF, OBJ, FBX), or open the demo.",
+    status: "Importe um cronograma do Primavera P6 (XER) ou do Microsoft Project e um modelo 3D (IFC, glTF, OBJ ou FBX), ou abra a demonstração.",
     busy: false,
     collapsedWbs: new Set(),
     ganttFilter: { text: "", kind: "all" },

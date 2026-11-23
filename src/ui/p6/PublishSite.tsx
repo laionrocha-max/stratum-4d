@@ -32,7 +32,7 @@ export function PublishSiteDialog() {
       side={
         <>
           <SideBtn kind="run" label="Publish" primary onClick={publish} />
-          <SideBtn kind="cancel" label="Cancel" onClick={closeDlg} />
+          <SideBtn kind="cancel" label="Cancelar" onClick={closeDlg} />
           <SideGap />
           <SideHelp topic="publish-website" />
         </>
@@ -58,7 +58,7 @@ export function PublishSiteDialog() {
         </fieldset>
         <div className="grid2">
           <label>
-            Theme
+            Tema
             <select value={theme} onChange={(e) => setTheme(e.target.value as "classic" | "light")}>
               <option value="classic">P6 classic</option>
               <option value="light">Light</option>

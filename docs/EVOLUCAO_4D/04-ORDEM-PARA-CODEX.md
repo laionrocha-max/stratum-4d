@@ -12,8 +12,8 @@ Receber autorização explícita da etapa N; reler requisitos; revisar implement
 - [x] Etapa 0 — [auditoria e baseline](RELATORIO-ETAPA-0.md)
 - [x] Etapa 1 — [projetos e persistência](RELATORIO-ETAPA-1.md)
 - [x] Etapa 1B — [revisões de IFC e cronograma](RELATORIO-ETAPA-1B.md)
-- [ ] Etapa 2: câmera e órbita (PRÓXIMA)
-- [ ] Etapa 3: seleção, visibilidade e Ghost
+- [x] Etapa 2 — [câmera, órbita e interface em português](RELATORIO-ETAPA-2.md)
+- [ ] Etapa 3: seleção, visibilidade e Ghost (PRÓXIMA)
 - [ ] Etapa 4: vínculos BIM-cronograma
 - [ ] Etapa 5: céu, iluminação, vegetação, água e materiais
 - [ ] Etapa 6: exportação e vídeo

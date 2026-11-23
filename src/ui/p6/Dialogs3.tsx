@@ -34,7 +34,7 @@ export function PreferencesDialog() {
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
           <SideHelp topic="user-preferences" />
         </>
@@ -49,16 +49,16 @@ export function PreferencesDialog() {
                 Startup Window
                 <select value={p.startupWindow ?? ""} onChange={(e) => p.set({ startupWindow: e.target.value })}>
                   <option value="">Activities (default)</option>
-                  <option value="projects">Projects</option>
-                  <option value="wbs">WBS</option>
-                  <option value="resources">Resources</option>
+                  <option value="projects">Projetos</option>
+                  <option value="wbs">EAP</option>
+                  <option value="resources">Recursos</option>
                   <option value="assignments">Resource Assignments</option>
-                  <option value="issues">Issues</option>
+                  <option value="issues">Pendências</option>
                 </select>
               </label>
               <p className="muted small">The window shown when Stratum opens in the P6 layout.</p>
               <label>
-                Look
+                Aparência
                 <select value={p.p6Look ?? "classic"} onChange={(e) => p.set({ p6Look: e.target.value as "classic" | "modern" })}>
                   <option value="classic">P6 Professional (classic Windows look, P6 band colours)</option>
                   <option value="modern">Stratum (modern, softer colours)</option>
@@ -172,7 +172,7 @@ export function ScheduleLogDialog() {
         <>
           <button onClick={() => download(`schedule-log-${schedule.projectCode}.txt`, scheduleLogText(schedule, log), "text/plain")}>Save as text file</button>
           <span className="spacer" />
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -325,14 +325,14 @@ export function ExcelImportDialog() {
               close();
             }}
           >
-            Import
+            Importar
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >
       <p>
-        Updates activities from a spreadsheet, matched by <b>Activity ID</b>, as P6's Excel import does. The first row holds column titles as they appear in Columns (Activity Name, Original Duration, Actual Start…). Export the current layout, edit it in Excel and import it back.
+        Updates activities from a spreadsheet, matched by <b>ID da atividade</b>, as P6's Excel import does. The first row holds column titles as they appear in Columns (Activity Name, Original Duration, Actual Start…). Export the current layout, edit it in Excel and import it back.
       </p>
       <label className="p6-drop">
         Spreadsheet (.xlsx, .csv)

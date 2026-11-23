@@ -68,10 +68,10 @@ const num = (v: string) => {
   return Number.isFinite(n) ? n : null;
 };
 const RES_COLS: ResCol[] = [
-  { key: "name", label: "Resource Name", width: 200, text: (r) => r.name, edit: (_, v) => (v.trim() ? { name: v.trim() } : null) },
+  { key: "name", label: "Nome do recurso", width: 200, text: (r) => r.name, edit: (_, v) => (v.trim() ? { name: v.trim() } : null) },
   {
     key: "type",
-    label: "Type",
+    label: "Tipo",
     width: 74,
     text: (r) => (r.type === "material" ? "Material" : "Work"),
     edit: (_, v) => ({ type: (/^m/i.test(v) ? "material" : "labor") as ResourceType, unit: /^m/i.test(v) ? "unit" : "h" }),
@@ -220,7 +220,7 @@ export function ResourceInfoDialog({ onClose }: { onClose: () => void }) {
           </Row>
           <Row label="Type:">
             <select value={r.type === "material" ? "material" : "work"} onChange={(e) => setR({ ...r, type: e.target.value === "material" ? "material" : "labor", unit: e.target.value === "material" ? r.unit === "h" ? "unit" : r.unit : "h" })}>
-              <option value="work">Work</option>
+              <option value="work">Trabalho</option>
               <option value="material">Material</option>
             </select>
           </Row>
@@ -255,7 +255,7 @@ export function ResourceInfoDialog({ onClose }: { onClose: () => void }) {
           </Row>
           <Row label="Cost accrual:">
             <select value={r.accrueAt ?? "prorated"} onChange={(e) => setR({ ...r, accrueAt: e.target.value as Resource["accrueAt"] })}>
-              <option value="start">Start</option>
+              <option value="start">Início</option>
               <option value="prorated">Prorated</option>
               <option value="end">End</option>
             </select>
@@ -339,8 +339,8 @@ function UsageGrid({ rows, title, unitOf }: { rows: UsageRow[]; title: string; u
         <div className="usage-head" style={{ width: LEFT + cols.length * colW + 80 }}>
           <span className="usage-left" style={{ width: LEFT }}>
             <b style={{ width: 210 }}>{title}</b>
-            <b style={{ width: 80 }}>Work</b>
-            <b style={{ width: 70 }}>Details</b>
+            <b style={{ width: 80 }}>Trabalho</b>
+            <b style={{ width: 70 }}>Detalhes</b>
           </span>
           {cols.slice(c0, c1).map(([a, , l], k) => (
             <span key={a} className="usage-col" style={{ left: LEFT + (c0 + k) * colW, width: colW }}>
@@ -357,7 +357,7 @@ function UsageGrid({ rows, title, unitOf }: { rows: UsageRow[]; title: string; u
                   {r.label}
                 </span>
                 <span style={{ width: 80, textAlign: "right" }}>{`${Math.round(r.total * 100) / 100} ${unitOf(r)}`}</span>
-                <span style={{ width: 70 }}>Work</span>
+                <span style={{ width: 70 }}>Trabalho</span>
               </span>
               {cols.slice(c0, c1).map(([a, b], j) => {
                 const v = sumIn(r, a, b);
@@ -413,7 +413,7 @@ export function TaskUsage() {
     }
     return out;
   }, [s, collapsed]);
-  return <UsageGrid rows={rows} title="Task Name" unitOf={() => "hrs"} />;
+  return <UsageGrid rows={rows} title="Nome da tarefa" unitOf={() => "hrs"} />;
 }
 
 export function ResourceUsageView() {
@@ -438,7 +438,7 @@ export function ResourceUsageView() {
     return out;
   }, [s]);
   if (!(s.resources ?? []).length) return <div className="empty">No resources yet. Add them in the Resource Sheet.</div>;
-  return <UsageGrid rows={rows} title="Resource Name" unitOf={(r) => r.sub ?? "hrs"} />;
+  return <UsageGrid rows={rows} title="Nome do recurso" unitOf={(r) => r.sub ?? "hrs"} />;
 }
 
 // ---------------------------------------------------------------- Network Diagram
@@ -703,7 +703,7 @@ export function TeamPlanner() {
       <div style={{ width: LEFT + x(to), position: "relative" }}>
         <div className="tp-head" style={{ width: LEFT + x(to) }}>
           <span className="tp-left" style={{ width: LEFT }}>
-            Resource Name
+            Nome do recurso
           </span>
           {months.map(([a, b, l]) => (
             <span key={a} className="tp-month" style={{ left: LEFT + x(a), width: x(b) - x(a) }}>

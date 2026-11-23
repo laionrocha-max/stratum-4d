@@ -14,6 +14,7 @@ export interface LoadedGeometry {
 export interface LoadedIfc extends LoadedGeometry {
   coordination: number[];
   geographicReference: string;
+  location?: { latitude: number; longitude: number; north?: number };
 }
 
 let api: WebIFC.IfcAPI | null = null;
@@ -31,6 +32,34 @@ function str(v: unknown): string {
   if (v === null || v === undefined) return "";
   if (typeof v === "object" && "value" in (v as Record<string, unknown>)) return String((v as { value: unknown }).value ?? "");
   return String(v);
+}
+
+function compoundAngle(field: { value?: unknown } | undefined): number | null {
+  const parts = field?.value;
+  if (!Array.isArray(parts) || parts.length < 3 || parts.length > 4 || !parts.every(Number.isFinite)) return null;
+  const [degrees, minutes, seconds, millionths = 0] = parts.map(Math.abs);
+  if (minutes >= 60 || seconds >= 60 || millionths >= 1e6) return null;
+  return Math.sign(parts.find((part) => part !== 0) ?? 1) * (degrees + minutes / 60 + (seconds + millionths / 1e6) / 3600);
+}
+
+function siteLocation(ifc: WebIFC.IfcAPI, modelID: number): LoadedIfc["location"] {
+  const sites = ifc.GetLineIDsWithType(modelID, WebIFC.IFCSITE);
+  for (let i = 0; i < sites.size(); i++) {
+    const site = ifc.GetLine(modelID, sites.get(i));
+    const latitude = compoundAngle(site?.RefLatitude);
+    const longitude = compoundAngle(site?.RefLongitude);
+    if (latitude === null || longitude === null || Math.abs(latitude) > 90 || Math.abs(longitude) > 180 || (latitude === 0 && longitude === 0)) continue;
+    const contexts = ifc.GetLineIDsWithType(modelID, WebIFC.IFCGEOMETRICREPRESENTATIONCONTEXT);
+    for (let j = 0; j < contexts.size(); j++) {
+      const context = ifc.GetLine(modelID, contexts.get(j));
+      if (!context?.TrueNorth?.value) continue;
+      const direction = ifc.GetLine(modelID, context.TrueNorth.value)?.DirectionRatios;
+      if (Array.isArray(direction) && Number.isFinite(direction[0]) && Number.isFinite(direction[1])) {
+        return { latitude, longitude, north: Math.atan2(direction[0], direction[1]) * 180 / Math.PI };
+      }
+    }
+    return { latitude, longitude };
+  }
 }
 
 export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => void, coordination?: number[]): Promise<LoadedIfc> {
@@ -153,7 +182,7 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
       const crs = typeof target === "number" ? ifc.GetLine(modelID, target) : undefined;
       reference.push([str(crs?.Name), ...["Eastings", "Northings", "OrthogonalHeight", "XAxisAbscissa", "XAxisOrdinate", "Scale"].map((k) => str(m?.[k]))].join("|"));
     }
-    return { elements, objects, coordination: coordination ?? ifc.GetCoordinationMatrix(modelID), geographicReference: reference.sort().join(";") };
+    return { elements, objects, coordination: coordination ?? ifc.GetCoordinationMatrix(modelID), geographicReference: reference.sort().join(";"), location: siteLocation(ifc, modelID) };
   } catch (error) {
     for (const object of objects.values()) for (const mesh of object.children as THREE.Mesh[]) mesh.geometry.dispose();
     for (const material of materials.values()) material.dispose();

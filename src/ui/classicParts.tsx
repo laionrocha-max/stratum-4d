@@ -38,13 +38,13 @@ export interface ClassicActions {
 }
 
 export const FILTERS: [GanttFilterKind, string][] = [
-  ["all", "All Activities"],
-  ["critical", "Critical"],
-  ["not-started", "Not Started"],
-  ["in-progress", "In Progress"],
-  ["complete", "Completed"],
-  ["late", "Late against Baseline"],
-  ["milestones", "Milestones"],
+  ["all", "Todas as atividades"],
+  ["critical", "Críticas"],
+  ["not-started", "Não iniciadas"],
+  ["in-progress", "Em andamento"],
+  ["complete", "Concluídas"],
+  ["late", "Atrasadas em relação à linha de base"],
+  ["milestones", "Marcos"],
 ];
 
 // ---------------------------------------------------------------- menu bar
@@ -141,7 +141,7 @@ export function DataDateInput({ label }: { label: string }) {
   const dd = schedule?.dataDate ?? null;
   const value = dd !== null ? new Date(dd).toISOString().slice(0, 10) : "";
   return (
-    <span className="dd-edit" title={`${label}: progress is recorded up to this date. Click to change it, then reschedule (F9).`}>
+    <span className="dd-edit" title={`${label}: o avanço é registrado até esta data. Clique para alterá-la e pressione F9 para recalcular.`}>
       {label}:
       <button
         type="button"
@@ -182,19 +182,19 @@ export function DataDateInput({ label }: { label: string }) {
 export function EmptySample({ a }: { a: ClassicActions }) {
   return (
     <div className="empty-sample">
-      <p>No project open. Open one from the database, import an XER / XML file, or try a sample project:</p>
+      <p>Nenhum projeto aberto. Abra um projeto salvo, importe um arquivo XER ou XML, ou experimente um exemplo.</p>
       <button className="primary" onClick={() => a.sample("gis")}>
-        220 kV GIS substation (UAE)
+        Subestação GIS de 220 kV (EAU)
       </button>
       <button className="link" onClick={() => a.sample("rc")}>
-        or a small RC building
+        ou um edifício de concreto armado
       </button>
       <p className="empty-train">
-        New to planning or to Stratum?{" "}
+        Quer conhecer o Stratum?{" "}
         <button className="link" onClick={() => useTraining.getState().openCatalog(true)}>
-          Start training mode
+          Iniciar treinamento
         </button>{" "}
-        for guided, hands-on lessons.
+        para fazer exercícios guiados.
       </p>
     </div>
   );

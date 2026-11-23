@@ -7,10 +7,12 @@
 // not the whole model every frame.
 
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { clipNavigationBounds, outsideClip, PivotOrbitControls } from "./navigation";
+import { Sky } from "three/examples/jsm/objects/Sky.js";
 import type { DemoBox } from "../core/demo";
 import { regionEmpty, regionKey, regionWithGrowth, segmentRegion, type Motion, type Region } from "../core/motion";
 import type { ElementState } from "../core/simulation";
+import { solarPosition, type SolarSettings } from "../core/solar";
 import type { CameraState, CutBox, CutPlane, Vec3 } from "../core/presentation";
 import type { ElementSegment, MotionPath } from "../core/types";
 
@@ -47,7 +49,7 @@ export class Viewer {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
-  readonly controls: OrbitControls;
+  readonly controls: PivotOrbitControls;
   private root = new THREE.Group();
   private overlay = new THREE.Group();
   private entries = new Map<string, Entry>();
@@ -66,6 +68,15 @@ export class Viewer {
   /** Element id → storey (or group) index, bottom first. */
   private explodeGroups = new Map<string, number>();
   private modelBox = new THREE.Box3();
+  private readonly skyLight = new THREE.HemisphereLight("#ffffff", "#8d8778", 1.6);
+  private readonly sunLight = new THREE.DirectionalLight("#ffffff", 1.4);
+  private readonly presentationMaterials = new Map<THREE.Material, THREE.MeshStandardMaterial>();
+  private sky: Sky | null = null;
+  private naturalSky = false;
+  private sunDirection = new THREE.Vector3(-0.8, 1.15, 0.55).normalize();
+  private sunElevation = 50;
+  private presentationLook = false;
+  private darkTheme = false;
   private cut: CutState | null = null;
   /** Section planes and the section box from the Sections panel (kept with the teardown cut). */
   private sections: { planes: CutPlane[]; box: CutBox | null } = { planes: [], box: null };
@@ -73,7 +84,10 @@ export class Viewer {
   private focus: Set<string> | null = null;
   /** Whether focused elements take the accent colour (otherwise they keep their 4D colours). */
   private focusRecolor = true;
-  private flight: { from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t0: number; ms: number; fov?: [number, number] } | null = null;
+  private flight: {
+    from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3];
+    t0: number; ms: number; fov: [number, number]; offsets: [THREE.Quaternion, THREE.Quaternion];
+  } | null = null;
 
   constructor(private container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -83,14 +97,19 @@ export class Viewer {
     this.scene.background = new THREE.Color("#eef1f5");
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
     this.camera.position.set(30, 25, 35);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls = new PivotOrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.addEventListener("change", () => (this.needsRender = true));
+    this.controls.addEventListener("start", () => {
+      this.flight = null;
+      this.syncOrbitPivot();
+    });
 
-    this.scene.add(new THREE.HemisphereLight("#ffffff", "#8d8778", 1.6));
-    const sun = new THREE.DirectionalLight("#ffffff", 1.4);
-    sun.position.set(40, 80, 30);
-    this.scene.add(sun);
+    this.sunLight.position.set(40, 80, 30);
+    this.sunLight.shadow.mapSize.set(2048, 2048);
+    this.sunLight.shadow.bias = -0.00015;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.scene.add(this.skyLight, this.sunLight, this.sunLight.target);
     const grid = new THREE.GridHelper(400, 80, "#c3c9d2", "#d9dee5");
     grid.position.y = -2.5;
     this.scene.add(grid);
@@ -110,15 +129,15 @@ export class Viewer {
         const k = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
         this.camera.position.lerpVectors(f.from[0], f.to[0], k);
         this.controls.target.lerpVectors(f.from[1], f.to[1], k);
-        if (f.fov) {
-          this.camera.fov = f.fov[0] + (f.fov[1] - f.fov[0]) * k;
-          this.camera.updateProjectionMatrix();
-        }
+        this.controls.viewOffset.slerpQuaternions(f.offsets[0], f.offsets[1], k);
+        this.camera.fov = f.fov[0] + (f.fov[1] - f.fov[0]) * k;
+        this.camera.updateProjectionMatrix();
         this.needsRender = true;
         if (u >= 1) this.flight = null;
       }
       this.controls.update();
       if (this.needsRender) {
+        this.sky?.position.copy(this.camera.position);
         this.renderer.render(this.scene, this.camera);
         this.needsRender = false;
       }
@@ -133,17 +152,119 @@ export class Viewer {
   /** Match the viewport to the light or dark interface. */
   setTheme(theme: "light" | "dark") {
     const dark = theme === "dark";
-    this.scene.background = new THREE.Color(dark ? "#1b1f25" : "#eef1f5");
+    this.darkTheme = dark;
+    this.updateBackground();
     if (this.grid) {
       this.scene.remove(this.grid);
       this.grid.geometry.dispose();
       (this.grid.material as THREE.Material).dispose();
       const g = new THREE.GridHelper(400, 80, dark ? "#3a424d" : "#c3c9d2", dark ? "#2a3038" : "#d9dee5");
       g.position.copy(this.grid.position);
+      g.visible = this.grid.visible;
       this.scene.add(g);
       this.grid = g;
     }
     this.requestRender();
+  }
+
+  private updateBackground() {
+    const natural = this.presentationLook && this.naturalSky;
+    const daylight = natural && this.sunElevation > -6;
+    if (daylight && !this.sky) {
+      this.sky = new Sky();
+      this.sky.scale.setScalar(10000);
+      this.sky.frustumCulled = false;
+      this.scene.add(this.sky);
+    }
+    if (this.sky) {
+      this.sky.visible = daylight;
+      this.sky.material.uniforms.sunPosition.value.copy(this.sunDirection);
+    }
+    const presentationBackground = natural && !daylight ? "#121c32" : "#c5d3dd";
+    this.scene.background = new THREE.Color(this.presentationLook ? presentationBackground : this.darkTheme ? "#1b1f25" : "#eef1f5");
+  }
+
+  setSolarLighting(naturalSky: boolean, settings?: SolarSettings) {
+    this.naturalSky = naturalSky;
+    const solar = settings ? solarPosition(settings) : null;
+    if (solar) {
+      const azimuth = THREE.MathUtils.degToRad(solar.azimuth + (Number.isFinite(settings!.north) ? settings!.north : 0));
+      const elevation = THREE.MathUtils.degToRad(solar.elevation);
+      this.sunDirection.set(Math.sin(azimuth) * Math.cos(elevation), Math.sin(elevation), -Math.cos(azimuth) * Math.cos(elevation));
+      this.sunElevation = solar.elevation;
+    } else {
+      this.sunDirection.set(-0.8, 1.15, 0.55).normalize();
+      this.sunElevation = 50;
+    }
+    if (this.presentationLook) {
+      this.updatePresentationLights();
+      this.updateBackground();
+      this.requestRender();
+    }
+  }
+
+  private updatePresentationLights() {
+    const daylight = Math.max(0, Math.sin(THREE.MathUtils.degToRad(this.sunElevation)));
+    this.sunLight.castShadow = this.sunElevation > 0;
+    this.sunLight.intensity = this.sunElevation > 0 ? 2.85 * Math.sqrt(daylight) : 0;
+    this.sunLight.color.set("#ffb46e").lerp(new THREE.Color("#fff0db"), Math.min(1, daylight * 2.8));
+    this.skyLight.intensity = this.sunElevation > 0 ? 0.95 + 0.5 * daylight : 0.38;
+    this.frameShadows();
+  }
+
+  setPresentationLook(on: boolean) {
+    if (this.presentationLook === on) return;
+    this.presentationLook = on;
+    this.renderer.toneMapping = on ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    this.renderer.shadowMap.enabled = on;
+    this.sunLight.castShadow = on;
+    this.sunLight.color.set(on ? "#fff0db" : "#ffffff");
+    this.sunLight.intensity = on ? 2.6 : 1.4;
+    this.skyLight.color.set(on ? "#e5efff" : "#ffffff");
+    this.skyLight.groundColor.set(on ? "#9b8e78" : "#8d8778");
+    this.skyLight.intensity = on ? 1.45 : 1.6;
+    if (on) this.updatePresentationLights();
+    else {
+      this.sunLight.position.set(40, 80, 30);
+      this.sunLight.target.position.set(0, 0, 0);
+    }
+    this.updateBackground();
+    for (const id of this.entries.keys()) this.paint(id, true);
+    this.requestRender();
+  }
+
+  private frameShadows() {
+    if (this.modelBox.isEmpty()) return;
+    const center = this.modelBox.getCenter(new THREE.Vector3());
+    const radius = Math.max(this.modelBox.getSize(new THREE.Vector3()).length() * 0.55, 1);
+    this.sunLight.target.position.copy(center);
+    this.sunLight.position.copy(center).addScaledVector(this.sunDirection, radius * 2);
+    const camera = this.sunLight.shadow.camera;
+    camera.left = camera.bottom = -radius;
+    camera.right = camera.top = radius;
+    camera.near = radius * 0.1;
+    camera.far = radius * 4;
+    camera.updateProjectionMatrix();
+    this.sunLight.shadow.normalBias = radius / 2048;
+  }
+
+  private presentationMaterial(source: THREE.Material): THREE.Material {
+    if (!(source instanceof THREE.MeshLambertMaterial)) return source;
+    const cached = this.presentationMaterials.get(source);
+    if (cached) return cached;
+    const color = source.color.clone();
+    if (!source.map) {
+      const hsl = color.getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace);
+      color.setHSL(hsl.h, hsl.s * 0.58, hsl.l, THREE.SRGBColorSpace);
+    }
+    const material = new THREE.MeshStandardMaterial({
+      color, map: source.map, alphaMap: source.alphaMap, opacity: source.opacity,
+      transparent: source.transparent, alphaTest: source.alphaTest, side: source.side,
+      depthWrite: source.depthWrite, vertexColors: source.vertexColors,
+      roughness: 0.84, metalness: 0,
+    });
+    this.presentationMaterials.set(source, material);
+    return material;
   }
 
   attach(container: HTMLElement) {
@@ -160,6 +281,10 @@ export class Viewer {
     this.clear();
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    this.clear();
+    this.sunLight.shadow.dispose();
+    this.sky?.geometry.dispose();
+    this.sky?.material.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
@@ -176,15 +301,23 @@ export class Viewer {
   }
 
   clear() {
+    this.flight = null;
     for (const entry of this.entries.values()) {
-      for (const [mesh, material] of entry.originals) mesh.material = material;
+      for (const [mesh, material] of entry.originals) {
+        mesh.material = material;
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+      }
       for (const material of entry.overrides?.values() ?? []) material.dispose();
     }
+    for (const material of this.presentationMaterials.values()) material.dispose();
+    this.presentationMaterials.clear();
     this.root.clear();
     this.entries.clear();
     this.selected.clear();
     this.states.clear();
     this.motions.clear();
+    this.modelBox.makeEmpty();
     this.focus = null;
     this.needsRender = true;
   }
@@ -233,6 +366,7 @@ export class Viewer {
     }
     this.modelBox = new THREE.Box3();
     for (const e of this.entries.values()) this.modelBox.union(e.box);
+    if (this.presentationLook) this.frameShadows();
     for (const id of this.entries.keys()) this.paint(id, true);
     this.applyCut();
     if (fit) this.fit();
@@ -363,17 +497,22 @@ export class Viewer {
     const p = this.camera.position;
     const t = this.controls.target;
     const { up, near, far, fov, aspect } = this.camera;
+    const offset = this.controls.viewOffset;
     return {
       pos: p.toArray(), target: t.toArray(), fov, up: up.toArray(), aspect,
       viewport: [this.renderer.domElement.width, this.renderer.domElement.height],
       clipping: [near, far], projection: "perspective",
+      ...(Math.abs(offset.w) < 1 - 1e-12 ? { orbitOffset: offset.toArray() } : {}),
     };
   }
 
   /** Put the camera at a stored state, at once (ms = 0) or in a short flight. */
   setCamera(c: CameraState, ms = 0) {
+    this.controls.stopInertia();
     const pos = new THREE.Vector3(...c.pos);
     const target = new THREE.Vector3(...c.target);
+    const offset = new THREE.Quaternion();
+    if (c.orbitOffset?.length === 4 && c.orbitOffset.every(Number.isFinite)) offset.fromArray(c.orbitOffset).normalize();
     if (c.up && c.up.length === 3 && c.up.every(Number.isFinite) && c.up.some((value) => value !== 0)) this.camera.up.set(...c.up);
     const clipping = c.clipping;
     if (clipping?.length === 2 && clipping.every(Number.isFinite) && clipping[0] > 0 && clipping[1] > clipping[0]) {
@@ -381,11 +520,15 @@ export class Viewer {
       this.camera.updateProjectionMatrix();
     }
     if (ms > 0) {
-      this.flight = { from: [this.camera.position.clone(), this.controls.target.clone()], to: [pos, target], t0: performance.now(), ms, fov: [this.camera.fov, c.fov] };
+      this.flight = {
+        from: [this.camera.position.clone(), this.controls.target.clone()], to: [pos, target],
+        t0: performance.now(), ms, fov: [this.camera.fov, c.fov], offsets: [this.controls.viewOffset.clone(), offset],
+      };
     } else {
       this.flight = null;
       this.camera.position.copy(pos);
       this.controls.target.copy(target);
+      this.controls.viewOffset.copy(offset);
       this.camera.fov = c.fov;
       this.camera.updateProjectionMatrix();
       this.controls.update();
@@ -403,23 +546,20 @@ export class Viewer {
       right: new THREE.Vector3(1, 0.0001, 0),
       iso: new THREE.Vector3(1, 0.75, 1.15),
     }[dir].normalize();
-    const box = this.boxOf();
-    if (box.isEmpty()) return;
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
-    this.flight = { from: [this.camera.position.clone(), this.controls.target.clone()], to: [center.clone().addScaledVector(d, size * 1.25), center], t0: performance.now(), ms: 700 };
-    this.needsRender = true;
+    this.frameBox(this.navBounds(), d, 700);
   }
 
   /** Frame the whole model from the current direction. */
   zoomAll() {
-    const box = this.boxOf();
-    if (box.isEmpty()) return;
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
-    const d = this.camera.position.clone().sub(this.controls.target).normalize();
-    this.flight = { from: [this.camera.position.clone(), this.controls.target.clone()], to: [center.clone().addScaledVector(d, size * 1.3), center], t0: performance.now(), ms: 600 };
-    this.needsRender = true;
+    this.fit(undefined, 600);
+  }
+
+  private frameDistance(diagonal: number, multiplier: number) {
+    const verticalHalfFov = THREE.MathUtils.degToRad(this.camera.getEffectiveFOV()) / 2;
+    const horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * this.camera.aspect);
+    // Fit the model's bounding sphere in both directions, including narrow panes.
+    const distance = diagonal / (2 * Math.sin(Math.min(verticalHalfFov, horizontalHalfFov)));
+    return Math.max(diagonal * multiplier, distance * 1.08);
   }
 
   /**
@@ -434,6 +574,7 @@ export class Viewer {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.sky?.position.copy(this.camera.position);
     this.renderer.render(this.scene, this.camera);
     const out = document.createElement("canvas");
     out.width = width;
@@ -474,6 +615,36 @@ export class Viewer {
     return box;
   }
 
+  private navBounds(ids?: Iterable<string>) {
+    const box = new THREE.Box3();
+    const extent = new THREE.Box3();
+    for (const id of ids ?? this.entries.keys()) {
+      const entry = this.entries.get(id);
+      if (!entry?.object.visible) continue;
+      extent.setFromObject(entry.object);
+      const motion = entry.object.position.clone().sub(entry.basePos);
+      if (entry.segment) {
+        for (const axis of ["x", "y", "z"] as const) {
+          const span = entry.segment[axis];
+          if (!span) continue;
+          const min = entry.box.min[axis] + motion[axis];
+          const size = entry.box.max[axis] - entry.box.min[axis];
+          extent.min[axis] = Math.max(extent.min[axis], min + span[0] * size);
+          extent.max[axis] = Math.min(extent.max[axis], min + span[1] * size);
+        }
+      }
+      clipNavigationBounds(extent, this.renderer.clippingPlanes);
+      if (!extent.isEmpty()) box.union(extent);
+    }
+    return box;
+  }
+
+  private syncOrbitPivot() {
+    const selection = this.selected.size ? this.navBounds(this.selected) : null;
+    const box = selection && !selection.isEmpty() ? selection : this.modelBox;
+    if (!box.isEmpty()) this.controls.setPivot(box.getCenter(new THREE.Vector3()));
+  }
+
   /** Fly the camera to frame some elements (or the whole model), keeping the current viewing direction roughly. */
   flyTo(ids: Iterable<string> | null, ms = 1600, dir?: THREE.Vector3, distance = 1.5) {
     const box = this.boxOf(ids ?? undefined);
@@ -486,8 +657,7 @@ export class Viewer {
     if (d.y < 0.25) d.y = 0.35;
     d.normalize();
     const to = center.clone().addScaledVector(d, size * distance);
-    this.flight = { from: [this.camera.position.clone(), this.controls.target.clone()], to: [to, center], t0: performance.now(), ms };
-    this.needsRender = true;
+    this.setCamera({ pos: to.toArray(), target: center.toArray(), fov: this.camera.fov }, ms);
   }
 
   /** Turn the camera around its target (radians), for the auto tour. */
@@ -522,27 +692,21 @@ export class Viewer {
     return objects;
   }
 
-  fit(ids?: Iterable<string>) {
-    const box = new THREE.Box3();
-    if (ids) {
-      for (const id of ids) {
-        const e = this.entries.get(id);
-        if (e) box.union(e.box);
-      }
-    } else {
-      for (const e of this.entries.values()) box.union(e.box);
-    }
+  fit(ids?: Iterable<string>, ms = 0) {
+    const box = this.navBounds(ids);
+    const direction = ms > 0 ? this.camera.getWorldDirection(new THREE.Vector3()).negate() : new THREE.Vector3(1, 0.75, 1.15).normalize();
+    this.frameBox(!ids && box.isEmpty() ? this.modelBox : box, direction, ms);
+  }
+
+  private frameBox(box: THREE.Box3, direction: THREE.Vector3, ms: number) {
     if (box.isEmpty()) return;
     const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
-    const dir = new THREE.Vector3(1, 0.75, 1.15).normalize();
-    this.camera.position.copy(center).addScaledVector(dir, size * 1.45);
-    this.camera.near = Math.max(0.01, size / 1000);
-    this.camera.far = size * 20;
-    this.camera.updateProjectionMatrix();
-    this.controls.target.copy(center);
-    this.controls.update();
-    this.needsRender = true;
+    const size = Math.max(0.001, box.getSize(new THREE.Vector3()).length());
+    const distance = this.frameDistance(size, 1.45);
+    const position = center.clone().addScaledVector(direction, distance);
+    const whole = this.modelBox.getSize(new THREE.Vector3()).length();
+    const far = Math.max(size * 20, distance + whole * 2);
+    this.setCamera({ pos: position.toArray(), target: center.toArray(), fov: this.camera.fov, clipping: [Math.max(0.0001, size / 1000), far] }, ms);
   }
 
   /** Apply one frame of 4D state and motion. Only changed elements are repainted. */
@@ -561,9 +725,12 @@ export class Viewer {
   }
 
   setSelection(ids: Set<string>) {
+    if (ids.size === this.selected.size && [...ids].every((id) => this.selected.has(id))) return;
+    this.flight = null;
     const changed = new Set([...this.selected, ...ids]);
     this.selected = new Set(ids);
     for (const id of changed) this.paint(id);
+    this.syncOrbitPivot();
     this.needsRender = true;
   }
 
@@ -606,7 +773,11 @@ export class Viewer {
 
     const needOverride = isSel || s.color !== null || s.transparency > 0 || clip !== null;
     if (!needOverride) {
-      for (const [mesh, mat] of entry.originals) mesh.material = mat;
+      for (const [mesh, mat] of entry.originals) {
+        mesh.material = this.presentationLook ? this.presentationMaterial(mat) : mat;
+        mesh.castShadow = this.presentationLook && !mat.transparent;
+        mesh.receiveShadow = this.presentationLook;
+      }
       return true;
     }
     if (!entry.overrides) {
@@ -642,6 +813,8 @@ export class Viewer {
       m.clippingPlanes = planes;
       m.needsUpdate = true;
       mesh.material = m;
+      mesh.castShadow = false;
+      mesh.receiveShadow = this.presentationLook;
     }
     return true;
   }
@@ -675,6 +848,9 @@ export class Viewer {
       if (!id) continue;
       const st = this.states.get(id);
       if (st && st.transparency > 0.8 && !this.selected.has(id)) continue;
+      const mesh = h.object as THREE.Mesh;
+      const material = Array.isArray(mesh.material) ? mesh.material[h.face?.materialIndex ?? 0] : mesh.material;
+      if (outsideClip(h.point, this.renderer.clippingPlanes) || (material?.clippingPlanes && outsideClip(h.point, material.clippingPlanes))) continue;
       return { id, point: h.point };
     }
     return null;

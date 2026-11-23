@@ -1,7 +1,7 @@
 // Project manifests refer to immutable model files in a local asset store.
 
 import { normalizePresentation, type CameraState, type Presentation, type ViewSettings } from "./presentation";
-import { DEFAULT_PROFILES } from "./profiles";
+import { DEFAULT_PROFILES, localizeDefaultProfiles } from "./profiles";
 import type { SimulationOptions } from "./simulation";
 import type { AppearanceProfile, ElementGroup, ElementSegment, Link, LinkRule, MotionPath, Schedule } from "./types";
 
@@ -75,7 +75,7 @@ export function parseProject(text: string): StratumProject {
 
 export function normalizeProject(doc: Partial<StratumProject> & { ifcAssembly?: ModelManifest }): StratumProject {
   if (doc?.format !== PROJECT_FORMAT) throw new Error("Este arquivo não é um projeto do STRATUM.");
-  if ((doc.version ?? 0) > PROJECT_VERSION) throw new Error(`Project file version ${doc.version} is newer than this app supports`);
+  if ((doc.version ?? 0) > PROJECT_VERSION) throw new Error(`O projeto v${doc.version} precisa de uma versão mais recente do STRATUM.`);
   const models = doc.models ?? doc.ifcAssembly;
   if (models) {
     if (!Array.isArray(models.files) || models.files.some((m) =>
@@ -109,7 +109,7 @@ export function normalizeProject(doc: Partial<StratumProject> & { ifcAssembly?: 
     schedule: doc.schedule ?? null,
     links: Array.isArray(doc.links) ? doc.links : [],
     rules: Array.isArray(doc.rules) ? doc.rules : [],
-    profiles: Array.isArray(doc.profiles) && doc.profiles.length ? doc.profiles : structuredClone(DEFAULT_PROFILES),
+    profiles: Array.isArray(doc.profiles) && doc.profiles.length ? localizeDefaultProfiles(doc.profiles) : structuredClone(DEFAULT_PROFILES),
     segments: Array.isArray(doc.segments) ? doc.segments : [],
     groups: Array.isArray(doc.groups) ? doc.groups : [],
     paths: Array.isArray(doc.paths) ? doc.paths : [],

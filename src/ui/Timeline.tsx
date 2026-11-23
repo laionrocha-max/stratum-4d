@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { activeAt, scheduleRange } from "../core/simulation";
 import { DAY, fmtDate, useStore } from "./store";
 import { useTerms } from "./terms";
-import { monthShort, WEEKDAYS } from "../core/dates";
+const DATE_FORMAT = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
 const SPEEDS = [1, 3, 7, 14, 30, 60];
 
@@ -42,41 +42,41 @@ export function Timeline() {
 
   const active = useMemo(() => (schedule ? activeAt(schedule, time, sim.dateSource) : []), [schedule, time, sim.dateSource]);
 
-  if (!schedule || !range) return <div className="timeline empty">Load a schedule to use the timeline.</div>;
+  if (!schedule || !range) return <div className="timeline empty">Importe um cronograma para usar a linha do tempo.</div>;
 
   const step = (days: number) => setTime(Math.min(range.finish, Math.max(range.start, time + days * DAY)));
-  const d = new Date(time);
-  const dateLabel = `${WEEKDAYS[d.getUTCDay()]}, ${String(d.getUTCDate()).padStart(2, "0")} ${monthShort(d)} ${d.getUTCFullYear()}`;
+  const dateLabel = DATE_FORMAT.format(time);
+
 
   return (
     <div className="timeline">
       <div className="timeline-controls">
-        <button title="Go to start" onClick={() => setTime(range.start)}>⏮</button>
-        <button title="Back 1 week" onClick={() => step(-7)}>◀◀</button>
-        <button title="Back 1 day" onClick={() => step(-1)}>◀</button>
-        <button className="primary" title="Play / pause (space)" onClick={() => setPlaying(!playing)}>
-          {playing ? "❚❚ Pause" : "▶ Play"}
+        <button title="Ir para o início" onClick={() => setTime(range.start)}>⏮</button>
+        <button title="Voltar 1 semana" onClick={() => step(-7)}>◀◀</button>
+        <button title="Voltar 1 dia" onClick={() => step(-1)}>◀</button>
+        <button className="primary" title="Reproduzir ou pausar (barra de espaço)" onClick={() => setPlaying(!playing)}>
+          {playing ? "❚❚ Pausar" : "▶ Reproduzir"}
         </button>
-        <button title="Forward 1 day" onClick={() => step(1)}>▶</button>
-        <button title="Forward 1 week" onClick={() => step(7)}>▶▶</button>
-        <button title="Go to finish" onClick={() => setTime(range.finish)}>⏭</button>
+        <button title="Avançar 1 dia" onClick={() => step(1)}>▶</button>
+        <button title="Avançar 1 semana" onClick={() => step(7)}>▶▶</button>
+        <button title="Ir para o fim" onClick={() => setTime(range.finish)}>⏭</button>
         {schedule.dataDate !== null && (
-          <button title={`Jump to ${terms.dataDate.toLowerCase()}`} onClick={() => setTime(schedule.dataDate!)}>
+          <button title={`Ir para a ${terms.dataDate.toLowerCase()}`} onClick={() => setTime(schedule.dataDate!)}>
             {terms.dataDate}
           </button>
         )}
         <label>
-          Speed
+          Velocidade
           <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
             {SPEEDS.map((s) => (
               <option key={s} value={s}>
-                {s} day{s > 1 ? "s" : ""}/s
+                {s} dia{s > 1 ? "s" : ""}/s
               </option>
             ))}
           </select>
         </label>
         <strong className="timeline-date">{dateLabel}</strong>
-        <span className="muted">{active.length} active</span>
+        <span className="muted">{active.length} em andamento</span>
       </div>
       <input
         className="timeline-slider"

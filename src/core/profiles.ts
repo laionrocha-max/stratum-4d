@@ -11,7 +11,7 @@ const hidden: PhaseAppearance = { visible: false, color: null, transparency: 0 }
 export const DEFAULT_PROFILES: AppearanceProfile[] = [
   {
     id: "install",
-    name: "Install",
+    name: "Instalação",
     action: "install",
     before: hidden,
     active: colored("#2e9d4f", 0.25),
@@ -20,7 +20,7 @@ export const DEFAULT_PROFILES: AppearanceProfile[] = [
   },
   {
     id: "remove",
-    name: "Remove",
+    name: "Remoção",
     action: "remove",
     before: original(),
     active: colored("#d64545", 0.2),
@@ -29,7 +29,7 @@ export const DEFAULT_PROFILES: AppearanceProfile[] = [
   },
   {
     id: "temporary",
-    name: "Temporary",
+    name: "Temporário",
     action: "temporary",
     before: hidden,
     active: colored("#e0a526", 0.35),
@@ -38,7 +38,7 @@ export const DEFAULT_PROFILES: AppearanceProfile[] = [
   },
   {
     id: "maintain",
-    name: "Maintain",
+    name: "Manutenção",
     action: "maintain",
     before: original(),
     active: colored("#3b7dd8"),
@@ -47,7 +47,7 @@ export const DEFAULT_PROFILES: AppearanceProfile[] = [
   },
   {
     id: "neutral",
-    name: "Neutral",
+    name: "Neutro",
     action: "neutral",
     before: original(),
     active: colored("#8a8f98"),
@@ -57,6 +57,16 @@ export const DEFAULT_PROFILES: AppearanceProfile[] = [
 ];
 
 export const DEFAULT_PROFILE_ID = "install";
+
+/** Old projects stored these built-in labels in English. */
+export function localizeDefaultProfiles(profiles: AppearanceProfile[]): AppearanceProfile[] {
+  const previous: Record<string, string> = { install: "Install", remove: "Remove", temporary: "Temporary", maintain: "Maintain", neutral: "Neutral" };
+  return profiles.map((profile) => {
+    if (previous[profile.id] !== profile.name) return profile;
+    const builtIn = DEFAULT_PROFILES.find((item) => item.id === profile.id);
+    return builtIn ? { ...profile, name: builtIn.name } : profile;
+  });
+}
 
 /** Colours used in "status" colour mode, keyed by computed status at the playback date. */
 export const STATUS_COLORS = {

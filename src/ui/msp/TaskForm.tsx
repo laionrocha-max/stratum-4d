@@ -77,7 +77,7 @@ export function TaskForm() {
             Previous
           </button>
           <button className="msp-btn" onClick={() => step(1)}>
-            Next
+            Avançar
           </button>
           <button className="msp-btn primary" onClick={ok}>
             OK
@@ -107,9 +107,9 @@ export function TaskForm() {
           <thead>
             <tr>
               <th style={{ width: 40 }}>ID</th>
-              <th>Resource Name</th>
-              <th style={{ width: 64 }}>Units</th>
-              <th style={{ width: 80 }}>Work</th>
+              <th>Nome do recurso</th>
+              <th style={{ width: 64 }}>Unidades</th>
+              <th style={{ width: 80 }}>Trabalho</th>
             </tr>
           </thead>
           <tbody>
@@ -128,7 +128,7 @@ export function TaskForm() {
             <tr>
               <th style={{ width: 40 }}>ID</th>
               <th>Predecessor Name</th>
-              <th style={{ width: 44 }}>Type</th>
+              <th style={{ width: 44 }}>Tipo</th>
               <th style={{ width: 70 }}>Lag</th>
             </tr>
           </thead>

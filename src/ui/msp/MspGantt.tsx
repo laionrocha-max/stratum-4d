@@ -354,20 +354,20 @@ export function MspGantt({ chart = true, tracking = false }: { chart?: boolean; 
       { label: "Delete Task", onClick: deleteSelected, shortcut: "Del" },
       { label: a?.inactive ? "Activate Task" : "Inactivate Task", onClick: toggleInactive, disabled: !a },
       "sep",
-      { label: "Manually Schedule", onClick: () => setMode("manual"), disabled: !a, checked: a?.taskMode === "manual" },
-      { label: "Auto Schedule", onClick: () => setMode("auto"), disabled: !a, checked: !!a && a.taskMode !== "manual" },
+      { label: "Agendar manualmente", onClick: () => setMode("manual"), disabled: !a, checked: a?.taskMode === "manual" },
+      { label: "Agendar automaticamente", onClick: () => setMode("auto"), disabled: !a, checked: !!a && a.taskMode !== "manual" },
       "sep",
       { label: "Indent Task", onClick: indent, shortcut: "Alt+Shift+→" },
       { label: "Outdent Task", onClick: outdent, shortcut: "Alt+Shift+←" },
       { label: "Link Tasks", onClick: linkSelected, shortcut: "Ctrl+F2" },
       { label: "Unlink Tasks", onClick: unlinkSelected, shortcut: "Ctrl+Shift+F2" },
       "sep",
-      { label: "Assign Resources…", onClick: () => useMsp.getState().open("assignResources"), disabled: !a, shortcut: "Alt+F10" },
-      { label: "Split Task", onClick: () => useMsp.getState().set({ splitMode: true }), disabled: !a || a.type === "milestone" || a.type === "finish-milestone" },
+      { label: "Atribuir recursos…", onClick: () => useMsp.getState().open("assignResources"), disabled: !a, shortcut: "Alt+F10" },
+      { label: "Dividir tarefa", onClick: () => useMsp.getState().set({ splitMode: true }), disabled: !a || a.type === "milestone" || a.type === "finish-milestone" },
       { label: "Remove Splits", onClick: () => a && commitEdit(removeSplits(schedule, a.id), "Remove splits"), disabled: !a?.splits?.length },
       "sep",
-      { label: "Notes…", onClick: () => useMsp.getState().open("taskInfo", "notes"), disabled: !a },
-      { label: "Information…", onClick: () => useMsp.getState().open("taskInfo"), disabled: !a, shortcut: "Shift+F2" },
+      { label: "Anotações…", onClick: () => useMsp.getState().open("taskInfo", "notes"), disabled: !a },
+      { label: "Informações…", onClick: () => useMsp.getState().open("taskInfo"), disabled: !a, shortcut: "Shift+F2" },
     ];
     ctxMenu(e.clientX, e.clientY, items);
   };
@@ -375,12 +375,12 @@ export function MspGantt({ chart = true, tracking = false }: { chart?: boolean; 
     e.preventDefault();
     const hide = () => useMsp.getState().set({ hiddenCols: { ...m.hiddenCols, [table]: [...(m.hiddenCols[table] ?? []), f.key] }, extraCols: { ...m.extraCols, [table]: (m.extraCols[table] ?? []).filter((k) => k !== f.key) } });
     ctxMenu(e.clientX, e.clientY, [
-      { label: "Insert Column", onClick: () => setAddOpen(true) },
+      { label: "Inserir coluna", onClick: () => setAddOpen(true) },
       { label: "Hide Column", onClick: hide, disabled: f.key === "name" },
       { label: "Show All Columns", onClick: () => useMsp.getState().set({ hiddenCols: { ...m.hiddenCols, [table]: [] } }), disabled: !(m.hiddenCols[table] ?? []).length },
       "sep",
-      { label: "Sort Ascending", onClick: () => useMsp.getState().set({ sort: { by: (["start", "finish", "priority", "duration", "name", "cost"].includes(f.key) ? f.key : "id") as never, desc: false } }) },
-      { label: "Sort Descending", onClick: () => useMsp.getState().set({ sort: { by: (["start", "finish", "priority", "duration", "name", "cost"].includes(f.key) ? f.key : "id") as never, desc: true } }) },
+      { label: "Classificar em ordem crescente", onClick: () => useMsp.getState().set({ sort: { by: (["start", "finish", "priority", "duration", "name", "cost"].includes(f.key) ? f.key : "id") as never, desc: false } }) },
+      { label: "Classificar em ordem decrescente", onClick: () => useMsp.getState().set({ sort: { by: (["start", "finish", "priority", "duration", "name", "cost"].includes(f.key) ? f.key : "id") as never, desc: true } }) },
     ]);
   };
   const addColumn = (key: string) => {
@@ -611,7 +611,7 @@ export function MspGantt({ chart = true, tracking = false }: { chart?: boolean; 
               </span>
             ))}
             <span className="mspg-hcell add" style={{ width: 120 }} onClick={() => setAddOpen(!addOpen)}>
-              Add New Column ▾
+              Adicionar coluna ▾
             </span>
             {addOpen && (
               <div className="mspg-addcol" onMouseLeave={() => setAddOpen(false)}>

@@ -59,7 +59,7 @@ export function ProjectDetailsDialog() {
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
           <SideHelp topic="project-details" />
         </>
@@ -72,26 +72,26 @@ export function ProjectDetailsDialog() {
             <>
               <div className="row" style={{ gap: 10 }}>
                 <label style={{ flex: "0 0 180px" }}>
-                  Project ID <input value={s.projectCode} onChange={(e) => up({ projectCode: e.target.value })} />
+                  ID do projeto <input value={s.projectCode} onChange={(e) => up({ projectCode: e.target.value })} />
                 </label>
                 <label style={{ flex: 1 }}>
-                  Project Name <input value={s.projectName} onChange={(e) => up({ projectName: e.target.value })} />
+                  Nome do projeto <input value={s.projectName} onChange={(e) => up({ projectName: e.target.value })} />
                 </label>
               </div>
               <div className="row" style={{ gap: 10 }}>
                 <label style={{ flex: 1 }}>
-                  Status
+                  Situação
                   <select value={s.projectStatus ?? "active"} onChange={(e) => up({ projectStatus: e.target.value as Schedule["projectStatus"] })}>
-                    <option value="planned">Planned</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="what-if">What-If</option>
+                    <option value="planned">Planejado</option>
+                    <option value="active">Ativo</option>
+                    <option value="inactive">Inativo</option>
+                    <option value="what-if">Cenário hipotético</option>
                   </select>
                 </label>
                 <label style={{ flex: 1 }}>
-                  Responsible Manager
+                  Responsável
                   <select value={s.obsId ?? ""} onChange={(e) => up({ obsId: e.target.value || null })}>
-                    <option value="">Enterprise</option>
+                    <option value="">Empresa</option>
                     {(s.obs ?? []).map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.name}
@@ -125,7 +125,7 @@ export function ProjectDetailsDialog() {
                     <input type="date" value={isoDay(s.mustFinishBy)} onChange={(e) => up({ mustFinishBy: fromDay(e.target.value, 17) })} />
                   </label>
                   <label>
-                    Data Date
+                    Data de corte
                     <input type="date" value={isoDay(s.dataDate)} onChange={(e) => e.target.value && up({ dataDate: fromDay(e.target.value, ((s.dataDate ?? 0) % 86_400_000) / 3_600_000 || 8) })} />
                   </label>
                   <label>
@@ -138,11 +138,11 @@ export function ProjectDetailsDialog() {
                 <legend>Anticipated Dates</legend>
                 <div className="grid2">
                   <label>
-                    Anticipated Start
+                    Início previsto
                     <input type="date" value={isoDay(s.anticipatedStart)} onChange={(e) => up({ anticipatedStart: fromDay(e.target.value, 8) })} />
                   </label>
                   <label>
-                    Anticipated Finish
+                    Término previsto
                     <input type="date" value={isoDay(s.anticipatedFinish)} onChange={(e) => up({ anticipatedFinish: fromDay(e.target.value, 17) })} />
                   </label>
                 </div>
@@ -151,7 +151,7 @@ export function ProjectDetailsDialog() {
                 <legend>Actual and Baseline</legend>
                 <div className="grid2">
                   <label>
-                    Start
+                    Início
                     <input value={fmtDate(Number.isFinite(range.lo) ? range.lo : null)} disabled />
                   </label>
                   <label>
@@ -180,9 +180,9 @@ export function ProjectDetailsDialog() {
                   <label>
                     Percent Complete Type
                     <select value={d.pctType} onChange={(e) => setD({ pctType: e.target.value as ProjectDefaults["pctType"] })}>
-                      <option value="duration">Duration</option>
-                      <option value="physical">Physical</option>
-                      <option value="units">Units</option>
+                      <option value="duration">Duração</option>
+                      <option value="physical">Físico</option>
+                      <option value="units">Unidades</option>
                     </select>
                   </label>
                   <label>
@@ -197,7 +197,7 @@ export function ProjectDetailsDialog() {
                     </select>
                   </label>
                   <label>
-                    Calendar
+                    Calendário
                     <select value={d.calendarId ?? ""} onChange={(e) => setD({ calendarId: e.target.value || null })}>
                       <option value="">Project default ({cals.find((c) => c.id === s.defaultCalendarId)?.name ?? "—"})</option>
                       {cals.map((c) => (
@@ -313,17 +313,17 @@ export function ProjectDetailsDialog() {
             <table className="props">
               <tbody>
                 <tr>
-                  <td>Activities</td>
+                  <td>Atividades</td>
                   <td>
                     {acts.length.toLocaleString()} ({count("not-started")} not started, {count("in-progress")} in progress, {count("complete")} completed)
                   </td>
                 </tr>
                 <tr>
-                  <td>Relationships</td>
+                  <td>Dependências</td>
                   <td>{s.relationships.length.toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td>WBS elements</td>
+                  <td>Itens da EAP</td>
                   <td>{s.wbs.length.toLocaleString()}</td>
                 </tr>
                 <tr>
@@ -337,7 +337,7 @@ export function ProjectDetailsDialog() {
                   <td>{(s.baselines ?? []).length}</td>
                 </tr>
                 <tr>
-                  <td>Source</td>
+                  <td>Origem</td>
                   <td>{s.sourceFormat ?? "—"}</td>
                 </tr>
               </tbody>
@@ -379,10 +379,10 @@ function CodeDictionary({ title, types, onTypes, used, onRename, help }: { title
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
-          <SideBtn kind="add" label="Add" disabled={!t} onClick={() => (putValues([...vals, { value: `V${vals.length + 1}`, description: "" }]), setSel(vals.length))} />
-          <SideBtn kind="delete" label="Delete" disabled={sel === null} onClick={() => sel !== null && (putValues(vals.filter((_, k) => k !== sel)), setSel(null))} />
+          <SideBtn kind="add" label="Adicionar" disabled={!t} onClick={() => (putValues([...vals, { value: `V${vals.length + 1}`, description: "" }]), setSel(vals.length))} />
+          <SideBtn kind="delete" label="Excluir" disabled={sel === null} onClick={() => sel !== null && (putValues(vals.filter((_, k) => k !== sel)), setSel(null))} />
           <SideArrows
             up={sel !== null && sel > 0 ? () => (putValues(vals.map((v, k) => (k === sel - 1 ? vals[sel] : k === sel ? vals[sel - 1] : v))), setSel(sel - 1)) : undefined}
             down={sel !== null && sel < vals.length - 1 ? () => (putValues(vals.map((v, k) => (k === sel + 1 ? vals[sel] : k === sel ? vals[sel + 1] : v))), setSel(sel + 1)) : undefined}
@@ -406,7 +406,7 @@ function CodeDictionary({ title, types, onTypes, used, onRename, help }: { title
         </label>
         <button onClick={addType}>New code type…</button>
         <button disabled={!t} onClick={renameType}>
-          Rename…
+          Renomear…
         </button>
         <button disabled={!t} onClick={() => t && window.confirm(`Delete code type ${t.name} and its values?`) && (onTypes(types.filter((x) => x.name !== t.name)), setTypeName(types.find((x) => x.name !== t.name)?.name ?? ""))}>
           Delete type
@@ -522,10 +522,10 @@ export function ExpenseCategoriesDialog() {
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
-          <SideBtn kind="add" label="Add" onClick={() => (put([...cats, `Category ${cats.length + 1}`], "Add expense category"), setSel(cats.length))} />
-          <SideBtn kind="delete" label="Delete" disabled={sel === null} onClick={() => sel !== null && (put(cats.filter((_, k) => k !== sel), "Delete expense category"), setSel(null))} />
+          <SideBtn kind="add" label="Adicionar" onClick={() => (put([...cats, `Category ${cats.length + 1}`], "Add expense category"), setSel(cats.length))} />
+          <SideBtn kind="delete" label="Excluir" disabled={sel === null} onClick={() => sel !== null && (put(cats.filter((_, k) => k !== sel), "Delete expense category"), setSel(null))} />
           <SideGap />
           <SideHelp topic="expense-categories" />
         </>
@@ -580,11 +580,11 @@ export function FinancialPeriodsDialog() {
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
           <SideBtn
             kind="add"
-            label="Add"
+            label="Adicionar"
             onClick={() => {
               const last = list[list.length - 1];
               const start = last ? last.finish : Math.floor(dd / 86_400_000) * 86_400_000;
@@ -593,7 +593,7 @@ export function FinancialPeriodsDialog() {
               setSel(p.id);
             }}
           />
-          <SideBtn kind="delete" label="Delete" disabled={!sel} onClick={() => sel && (put(list.filter((p) => p.id !== sel), "Delete financial period"), setSel(null))} />
+          <SideBtn kind="delete" label="Excluir" disabled={!sel} onClick={() => sel && (put(list.filter((p) => p.id !== sel), "Delete financial period"), setSel(null))} />
           <SideGap />
           <SideHelp topic="financial-periods" />
         </>
@@ -609,10 +609,10 @@ export function FinancialPeriodsDialog() {
             End date <input type="date" value={batch.end} onChange={(e) => setBatch({ ...batch, end: e.target.value })} />
           </label>
           <label>
-            Period
+            Período
             <select value={batch.interval} onChange={(e) => setBatch({ ...batch, interval: e.target.value as typeof batch.interval })}>
               <option value="week">Week (ending Sunday)</option>
-              <option value="month">Month</option>
+              <option value="month">Mês</option>
               <option value="quarter">Quarter</option>
             </select>
           </label>
@@ -635,7 +635,7 @@ export function FinancialPeriodsDialog() {
             <thead>
               <tr>
                 <td>Period Name</td>
-                <td>Start Date</td>
+                <td>Data de início</td>
                 <td>End Date</td>
                 <td style={{ width: 90 }}>Stored</td>
               </tr>
@@ -648,7 +648,7 @@ export function FinancialPeriodsDialog() {
                   </td>
                   <td>{fmtDate(p.start)}</td>
                   <td>{fmtDate(p.finish - 1)}</td>
-                  <td>{(s.periods ?? []).some((x) => x.date >= p.start && x.date < p.finish) ? "Yes" : ""}</td>
+                  <td>{(s.periods ?? []).some((x) => x.date >= p.start && x.date < p.finish) ? "Sim" : ""}</td>
                 </tr>
               ))}
               {!list.length && (
@@ -710,10 +710,10 @@ export function BucketsDialog() {
       side={
         <>
           <SideBtn kind="ok" label="OK" primary onClick={save} />
-          <SideBtn kind="cancel" label="Cancel" onClick={close} />
+          <SideBtn kind="cancel" label="Cancelar" onClick={close} />
           <SideGap />
           <SideBtn kind="default" label="Spread evenly" onClick={spread} />
-          <SideBtn kind="delete" label="Clear" onClick={() => setQty(periods.map(() => 0))} />
+          <SideBtn kind="delete" label="Limpar" onClick={() => setQty(periods.map(() => 0))} />
           <SideGap />
           <SideHelp topic="bucket-planning" />
         </>
@@ -726,9 +726,9 @@ export function BucketsDialog() {
         <table>
           <thead>
             <tr>
-              <td>Period</td>
+              <td>Período</td>
               <td>From</td>
-              <td style={{ width: 140 }}>Remaining Units</td>
+              <td style={{ width: 140 }}>Unidades restantes</td>
             </tr>
           </thead>
           <tbody>
@@ -773,7 +773,7 @@ export function TopDownDialog() {
       side={
         <>
           <SideBtn kind="ok" label="Apply" primary disabled={!who || !(total > 0) || !sumW} onClick={apply} />
-          <SideBtn kind="cancel" label="Cancel" onClick={close} />
+          <SideBtn kind="cancel" label="Cancelar" onClick={close} />
           <SideGap />
           <SideHelp topic="top-down" />
         </>
@@ -785,12 +785,12 @@ export function TopDownDialog() {
           <select value={who} onChange={(e) => setWho(e.target.value)}>
             {(s.resources ?? []).map((r) => (
               <option key={r.id} value={`r:${r.id}`}>
-                Resource {r.code} – {r.name}
+                Recurso {r.code} – {r.name}
               </option>
             ))}
             {(s.roles ?? []).map((r) => (
               <option key={r.id} value={`o:${r.id}`}>
-                Role {r.code} – {r.name}
+                Função {r.code} – {r.name}
               </option>
             ))}
           </select>
@@ -804,9 +804,9 @@ export function TopDownDialog() {
         <table>
           <thead>
             <tr>
-              <td>WBS</td>
-              <td style={{ width: 100 }}>Weight</td>
-              <td style={{ width: 120 }}>Units</td>
+              <td>EAP</td>
+              <td style={{ width: 100 }}>Peso</td>
+              <td style={{ width: 120 }}>Unidades</td>
             </tr>
           </thead>
           <tbody>
@@ -860,7 +860,7 @@ export function PeriodPerformanceDialog() {
             }}
           />
           <SideBtn kind="delete" label="Delete Period" disabled={!cur} onClick={() => cur && window.confirm(`Delete stored period ${cur.name}?`) && (commit({ ...s, periods: list.filter((p) => p.id !== cur.id) }, "Delete period"), setSel(null))} />
-          <SideBtn kind="close" label="Close" onClick={close} />
+          <SideBtn kind="close" label="Fechar" onClick={close} />
           <SideGap />
           <SideHelp topic="period-performance" />
         </>
@@ -874,9 +874,9 @@ export function PeriodPerformanceDialog() {
         <table>
           <thead>
             <tr>
-              <td>Period</td>
-              <td>Data date</td>
-              <td>Activities</td>
+              <td>Período</td>
+              <td>Data de corte</td>
+              <td>Atividades</td>
             </tr>
           </thead>
           <tbody>
@@ -904,11 +904,11 @@ export function PeriodPerformanceDialog() {
             <table>
               <thead>
                 <tr>
-                  <td>Activity ID</td>
-                  <td>Activity Name</td>
-                  <td style={{ width: 90 }}>% Complete</td>
-                  <td style={{ width: 120 }}>Actual Cost</td>
-                  <td style={{ width: 110 }}>Actual Units</td>
+                  <td>ID da atividade</td>
+                  <td>Nome da atividade</td>
+                  <td style={{ width: 90 }}>% concluído</td>
+                  <td style={{ width: 120 }}>Custo real</td>
+                  <td style={{ width: 110 }}>Unidades realizadas</td>
                 </tr>
               </thead>
               <tbody>
@@ -971,7 +971,7 @@ export function RegisterDetailDialog() {
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
           {target.kind === "risks" && (
             <SideBtn kind="add" label="Add Step" onClick={() => put({ responsePlan: [...plan, { id: `rp-${Date.now()}`, step: `Step ${plan.length + 1}`, owner: "", start: null, finish: null, cost: 0, status: "proposed" }] }, "Add response step")} />
@@ -984,12 +984,12 @@ export function RegisterDetailDialog() {
       {target.kind === "issues" ? (
         <>
           <div>
-            <ListHead>History</ListHead>
+            <ListHead>Histórico</ListHead>
             <div className="p6-list2">
               <table>
                 <thead>
                   <tr>
-                    <td style={{ width: 170 }}>Date</td>
+                    <td style={{ width: 170 }}>Dados</td>
                     <td>Change or note</td>
                   </tr>
                 </thead>
@@ -1024,17 +1024,17 @@ export function RegisterDetailDialog() {
             Probability {it.values["Probability"] || "–"}, schedule impact {it.values["Impact (Schedule)"] || "–"}, cost impact {it.values["Impact (Cost)"] || "–"}. Response: {it.values["Response"] || "–"}.
           </p>
           <div>
-            <ListHead>Response Plan</ListHead>
+            <ListHead>Plano de resposta</ListHead>
             <div className="p6-list2">
               <table>
                 <thead>
                   <tr>
                     <td>Step</td>
                     <td style={{ width: 120 }}>Owner</td>
-                    <td style={{ width: 130 }}>Start</td>
-                    <td style={{ width: 130 }}>Finish</td>
-                    <td style={{ width: 100 }}>Cost</td>
-                    <td style={{ width: 110 }}>Status</td>
+                    <td style={{ width: 130 }}>Início</td>
+                    <td style={{ width: 130 }}>Término</td>
+                    <td style={{ width: 100 }}>Custo</td>
+                    <td style={{ width: 110 }}>Situação</td>
                     <td style={{ width: 30 }} />
                   </tr>
                 </thead>
@@ -1061,7 +1061,7 @@ export function RegisterDetailDialog() {
                           <option value="proposed">Proposed</option>
                           <option value="sanctioned">Sanctioned</option>
                           <option value="rejected">Rejected</option>
-                          <option value="done">Done</option>
+                          <option value="done">Concluído</option>
                         </select>
                       </td>
                       <td>
@@ -1130,8 +1130,8 @@ export function NetBoxDialog() {
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
-          <SideBtn kind="default" label="Default" onClick={() => tpl.set(NB_DEFAULT)} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
+          <SideBtn kind="default" label="Padrão" onClick={() => tpl.set(NB_DEFAULT)} />
           <SideGap />
           <SideHelp topic="activity-network" />
         </>

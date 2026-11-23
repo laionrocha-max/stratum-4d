@@ -65,9 +65,9 @@ function CopyField({ label, value }: { label: string; value: string }) {
     <div className="login-demo-row">
       <span className="login-demo-k">{label}</span>
       <code>{value}</code>
-      <button type="button" className="login-copy" onClick={() => void copy()} aria-label={`Copy ${label.toLowerCase()}`} title={`Copy ${label.toLowerCase()}`}>
+      <button type="button" className="login-copy" onClick={() => void copy()} aria-label={`Copiar ${label.toLowerCase()}`} title={`Copiar ${label.toLowerCase()}`}>
         {done ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-        <span>{done ? "Copied" : "Copy"}</span>
+        <span>{done ? "Copiado" : "Copiar"}</span>
       </button>
     </div>
   );
@@ -102,7 +102,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
     if (h === HASH) {
       remember(HASH);
       setOk(true);
-    } else setErr("The user name or password is not correct.");
+    } else setErr("Usuário ou senha incorretos.");
   };
   const year = new Date().getFullYear();
   return (
@@ -110,25 +110,25 @@ export function LoginGate({ children }: { children: ReactNode }) {
       <main className="login-main">
         <section className="login-brand" aria-label="Stratum 4D">
           <img className="login-lockup" src={`${BASE}stratum-lockup-dark.png`} alt="Stratum 4D" />
-          <h2>Planning and 4D simulation for construction projects</h2>
+          <h2>Planejamento e simulação 4D de obras</h2>
           <ul>
-            <li>Primavera P6 and Microsoft Project layouts, with CPM scheduling</li>
-            <li>Link the schedule to the IFC model and play the sequence day by day</li>
-            <li>Dashboards, reports and earned value from the same data</li>
+            <li>Layouts do Primavera P6 e do Microsoft Project, com cálculo do caminho crítico</li>
+            <li>Vincule o cronograma ao modelo IFC e reproduza a sequência dia a dia</li>
+            <li>Painéis, relatórios e valor agregado com os mesmos dados</li>
           </ul>
         </section>
 
         <section className="login-panel">
           <form className="login-card" onSubmit={submit}>
             <img className="login-logo" src={`${BASE}miqyas-labs.png`} alt="Miqyas Labs" />
-            <h1>Sign in to Stratum 4D</h1>
-            <p className="login-sub">Web demo. Your schedules stay in this browser.</p>
+            <h1>Entrar no Stratum 4D</h1>
+            <p className="login-sub">Demonstração web. Seus cronogramas ficam neste navegador.</p>
             <label>
-              User name
+              Usuário
               <input autoFocus autoComplete="username" value={user} onChange={(e) => (setUser(e.target.value), setErr(""))} />
             </label>
             <label>
-              Password
+              Senha
               <input type="password" autoComplete="current-password" value={pass} onChange={(e) => (setPass(e.target.value), setErr(""))} />
             </label>
             {err && (
@@ -137,20 +137,20 @@ export function LoginGate({ children }: { children: ReactNode }) {
               </p>
             )}
             <button className="primary login-submit" type="submit" disabled={busy || !user || !pass}>
-              Sign in
+              Entrar
             </button>
 
             {DEMO_USER && DEMO_PASS && (
-              <div className="login-demo" aria-label="Demo account">
+              <div className="login-demo" aria-label="Conta de demonstração">
                 <div className="login-demo-head">
-                  <b>Demo account</b>
+                  <b>Conta de demonstração</b>
                   <button type="button" className="login-fill" onClick={() => (setUser(DEMO_USER), setPass(DEMO_PASS), setErr(""))}>
-                    Fill in
+                    Preencher
                   </button>
                 </div>
-                <CopyField label="User name" value={DEMO_USER} />
-                <CopyField label="Password" value={DEMO_PASS} />
-                <p className="login-sub">The demo opens sample projects. Nothing you do here is sent to a server.</p>
+                <CopyField label="Usuário" value={DEMO_USER} />
+                <CopyField label="Senha" value={DEMO_PASS} />
+                <p className="login-sub">A demonstração abre projetos de exemplo. Os dados ficam neste navegador.</p>
               </div>
             )}
           </form>
@@ -158,13 +158,13 @@ export function LoginGate({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="login-foot">
-        <span>© {year} Miqyas Labs. All rights reserved.</span>
+        <span>© {year} Miqyas Labs. Todos os direitos reservados.</span>
         <nav aria-label="Links">
-          <a href="https://miqyaslabs.com/">Home</a>
-          <a href="https://miqyaslabs.com/manual/">User manual</a>
-          <a href="https://miqyaslabs.com/#download">Download</a>
+          <a href="https://miqyaslabs.com/">Página inicial</a>
+          <a href="https://miqyaslabs.com/manual/">Manual do usuário</a>
+          <a href="https://miqyaslabs.com/#download">Baixar</a>
           <a href="https://www.linkedin.com/in/junaidquamar/" target="_blank" rel="noopener noreferrer">
-            Developed by Junaid Quamar
+            Desenvolvido por Junaid Quamar
           </a>
         </nav>
       </footer>

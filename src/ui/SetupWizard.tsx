@@ -60,13 +60,13 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
 
   return (
     <div className="help-backdrop">
-      <div className="help wizard" role="dialog" aria-label="Set up Stratum">
+      <div className="help wizard" role="dialog" aria-label="Configurar o Stratum">
         <img src="./stratum-lockup.png" alt="Stratum 4D by Miqyas Labs" className="help-logo logo-light" />
         <img src="./stratum-lockup-dark.png" alt="" aria-hidden className="help-logo logo-dark" />
         {step === "mode" && (
           <>
-            <h2>How do you like to work?</h2>
-            <p className="muted">Pick the layout that feels familiar. The engine and your data are the same in all three, and you can switch any time in Settings.</p>
+            <h2>Qual layout você prefere?</h2>
+            <p className="muted">Escolha o layout que você prefere. Você pode trocar de layout a qualquer momento nas configurações.</p>
             <div className="mode-cards">
               {(Object.keys(MODE_INFO) as InterfaceMode[]).map((m) => (
                 <button key={m} className={`mode-card ${mode === m ? "active" : ""}`} onClick={() => setMode(m)}>
@@ -82,7 +82,7 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
             </div>
             <div className="row end">
               <button className="primary" onClick={() => setStep("storage")}>
-                Next
+                Avançar
               </button>
             </div>
           </>
@@ -90,10 +90,10 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
 
         {step === "storage" && (
           <>
-            <h2>Where should projects be stored?</h2>
+            <h2>Onde você quer armazenar os projetos?</h2>
             <div className="mode-cards two">
               <button className={`mode-card ${storage === "local" ? "active" : ""}`} onClick={() => setStorage("local")}>
-                <b>On this {desktop ? "computer" : "browser"}</b>
+                <b>Neste {desktop ? "computador" : "navegador"}</b>
                 <span className="muted">
                   {desktop
                     ? "A local database file in your profile. Works offline. Scheduled reports go out while Stratum is open."
@@ -101,18 +101,18 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
                 </span>
               </button>
               <button className={`mode-card ${storage === "server" ? "active" : ""}`} onClick={() => setStorage("server")}>
-                <b>Stratum Server (shared)</b>
-                <span className="muted">One database for the whole team, with sign-in and roles. Reports are emailed on schedule even when everyone's PC is off.</span>
+                <b>Servidor Stratum (compartilhado)</b>
+                <span className="muted">Um banco de dados para toda a equipe, com login e permissões. Os relatórios programados são enviados por e-mail mesmo com os computadores desligados.</span>
               </button>
             </div>
             {storage === "server" && (
               <div className="stack server-form">
                 <label>
-                  Server address
+                  Endereço do servidor
                   <div className="row">
                     <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://stratum.yourcompany.com" style={{ flex: 1 }} />
                     <button onClick={checkServer} disabled={!url || busy}>
-                      Check
+                      Verificar
                     </button>
                   </div>
                 </label>
@@ -120,16 +120,16 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
                   <>
                     {needsSetup && (
                       <label>
-                        Your name
+                        Seu nome
                         <input value={name} onChange={(e) => setName(e.target.value)} />
                       </label>
                     )}
                     <label>
-                      Email
+                      E-mail
                       <input value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
                     </label>
                     <label>
-                      Password{needsSetup ? " (at least 8 characters)" : ""}
+                      Senha{needsSetup ? " (at least 8 characters)" : ""}
                       <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={needsSetup ? "new-password" : "current-password"} />
                     </label>
                   </>
@@ -138,7 +138,7 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
             )}
             {msg && <p className={/error|cannot|wrong|invalid|failed/i.test(msg) ? "bad" : "muted"}>{msg}</p>}
             <div className="row end">
-              <button onClick={() => setStep("mode")}>Back</button>
+              <button onClick={() => setStep("mode")}>Voltar</button>
               {storage === "local" ? (
                 <button
                   className="primary"
@@ -147,11 +147,11 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
                     setStep("done");
                   }}
                 >
-                  Next
+                  Avançar
                 </button>
               ) : (
                 <button className="primary" disabled={needsSetup === null || !email || !password || busy} onClick={connect}>
-                  {needsSetup ? "Create admin and connect" : "Sign in"}
+                  {needsSetup ? "Create admin and connect" : "Entrar"}
                 </button>
               )}
             </div>
@@ -160,20 +160,20 @@ export function SetupWizard({ onDone }: { onDone: (openSettings?: "p6" | "email"
 
         {step === "done" && (
           <>
-            <h2>Ready</h2>
+            <h2>Tudo pronto</h2>
             <p>
               {MODE_INFO[mode].title} · {useConfig.getState().backend.label}
             </p>
             {useConfig.getState().backend.caps.p6 ? (
-              <p className="muted">You can connect to Primavera P6 (EPPM or a P6 Professional database) and set up email for scheduled reports now, or later from Settings.</p>
+              <p className="muted">Você pode conectar ao Primavera P6 (EPPM ou P6 Professional) e configurar o envio de relatórios por e-mail agora ou depois em Configurações.</p>
             ) : (
-              <p className="muted">P6 connections and emailed reports need the desktop app or a Stratum Server. Everything else works here.</p>
+              <p className="muted">Para conectar ao P6 ou enviar relatórios por e-mail, use o aplicativo para computador ou o servidor Stratum.</p>
             )}
             <div className="row end">
-              {useConfig.getState().backend.caps.p6 && <button onClick={() => finish("p6")}>Connect to P6…</button>}
-              {useConfig.getState().backend.caps.email && <button onClick={() => finish("email")}>Set up email…</button>}
+              {useConfig.getState().backend.caps.p6 && <button onClick={() => finish("p6")}>Conectar ao P6…</button>}
+              {useConfig.getState().backend.caps.email && <button onClick={() => finish("email")}>Configurar e-mail…</button>}
               <button className="primary" onClick={() => finish()}>
-                Start
+                Início
               </button>
             </div>
           </>

@@ -12,10 +12,10 @@ function MeasureToggle({ value, onChange, hasCost }: { value: Measure; onChange:
   return (
     <div className="seg">
       <button className={value === "cost" ? "active" : ""} onClick={() => onChange("cost")} disabled={!hasCost}>
-        Cost
+        Custo
       </button>
       <button className={value === "hours" ? "active" : ""} onClick={() => onChange("hours")}>
-        Labour hours
+        Horas de mão de obra
       </button>
     </div>
   );
@@ -43,7 +43,7 @@ export function CostPanel() {
   const [showTable, setShowTable] = useState(false);
 
   if (!schedule) return <div className="empty">Load a schedule first.</div>;
-  if (!metrics || metrics.bac === 0) return <div className="empty">No costs or labour hours in this schedule. Assign resources in the Activity tab, or import a resource-loaded P6 / MS Project file.</div>;
+  if (!metrics || metrics.bac === 0) return <div className="empty">Este cronograma não tem custos nem horas de mão de obra. Atribua recursos na aba Tarefa ou importe um cronograma do P6 ou do Microsoft Project com recursos.</div>;
 
   const tone = (v: number | null) => (v === null ? undefined : v >= 1 ? "good" : v < 0.95 ? "bad" : undefined);
   return (
@@ -66,13 +66,13 @@ export function CostPanel() {
         title={`Cumulative ${m === "cost" ? "cost" : "labour hours"} (S-curve)`}
         unit={unit}
         series={[
-          { id: "pv", label: "Planned", color: SERIES[0], points: curves.map((p) => ({ t: p.t, v: p.pv })) },
-          { id: "ev", label: "Earned", color: SERIES[1], points: curves.map((p) => ({ t: p.t, v: p.ev })) },
-          { id: "ac", label: "Actual", color: SERIES[2], points: curves.map((p) => ({ t: p.t, v: p.ac })) },
-          { id: "fc", label: "Forecast", color: SERIES[3], dashed: true, points: curves.map((p) => ({ t: p.t, v: p.forecast })) },
+          { id: "pv", label: "Planejado", color: SERIES[0], points: curves.map((p) => ({ t: p.t, v: p.pv })) },
+          { id: "ev", label: "Agregado", color: SERIES[1], points: curves.map((p) => ({ t: p.t, v: p.ev })) },
+          { id: "ac", label: "Realizado", color: SERIES[2], points: curves.map((p) => ({ t: p.t, v: p.ac })) },
+          { id: "fc", label: "Previsto", color: SERIES[3], dashed: true, points: curves.map((p) => ({ t: p.t, v: p.forecast })) },
         ]}
         markers={[
-          ...(schedule.dataDate !== null ? [{ t: schedule.dataDate, label: "Data date", color: "#1f6feb" }] : []),
+          ...(schedule.dataDate !== null ? [{ t: schedule.dataDate, label: "Data de corte", color: "#1f6feb" }] : []),
           { t: time, label: "", color: "#2e9d4f" },
         ]}
       />
@@ -85,7 +85,7 @@ export function CostPanel() {
       <table className="data">
         <thead>
           <tr>
-            <th>WBS</th>
+            <th>EAP</th>
             <th>BAC</th>
             <th>PV</th>
             <th>EV</th>
@@ -116,11 +116,11 @@ export function CostPanel() {
         <table className="data">
           <thead>
             <tr>
-              <th>Week</th>
-              <th>Planned</th>
-              <th>Earned</th>
-              <th>Actual</th>
-              <th>Forecast</th>
+              <th>Semana</th>
+              <th>Planejado</th>
+              <th>Agregado</th>
+              <th>Realizado</th>
+              <th>Previsto</th>
             </tr>
           </thead>
           <tbody>
@@ -167,7 +167,7 @@ export function ResourcePanel() {
   }, [schedule]);
 
   if (!schedule) return <div className="empty">Load a schedule first.</div>;
-  if (!resources.length) return <div className="empty">No resources in this schedule.</div>;
+  if (!resources.length) return <div className="empty">Este cronograma não tem recursos.</div>;
   const chosen = only ? resources.filter((r) => r.id === only) : resources.filter((r) => r.type !== "material");
   const unit = only ? resources.find((r) => r.id === only)?.unit ?? "" : "h";
 
@@ -184,10 +184,10 @@ export function ResourcePanel() {
         </select>
         <div className="seg">
           <button className={!baseline ? "active" : ""} onClick={() => setBaseline(false)}>
-            Current
+            Atual
           </button>
           <button className={baseline ? "active" : ""} onClick={() => setBaseline(true)}>
-            Baseline
+            Linha de base
           </button>
         </div>
       </div>
@@ -196,18 +196,18 @@ export function ResourcePanel() {
         unit={unit}
         bars={(hist?.bars ?? []).map((b) => ({ t: b.t, values: b.byResource }))}
         series={chosen.map((r) => ({ id: r.id, label: r.code, color: colorOf.get(r.id)! }))}
-        marker={schedule.dataDate !== null ? { t: schedule.dataDate, label: "Data date", color: "#1f6feb" } : { t: time, label: "", color: "#2e9d4f" }}
+        marker={schedule.dataDate !== null ? { t: schedule.dataDate, label: "Data de corte", color: "#1f6feb" } : { t: time, label: "", color: "#2e9d4f" }}
       />
       <table className="data">
         <thead>
           <tr>
-            <th>Resource</th>
-            <th>Type</th>
+            <th>Recurso</th>
+            <th>Tipo</th>
             <th>Rate</th>
             <th>Budget qty</th>
-            <th>Actual</th>
-            <th>Remaining</th>
-            <th>Budget cost</th>
+            <th>Realizado</th>
+            <th>Restante</th>
+            <th>Custo orçado</th>
             <th>Actual cost</th>
           </tr>
         </thead>
@@ -253,7 +253,7 @@ export function QuantityPanel() {
   }, [schedule, elements, links, profiles, k]);
 
   if (!schedule || !elements.length) return <div className="empty">Load a schedule and a model first.</div>;
-  if (!data) return <div className="empty">No numeric properties in the model.</div>;
+  if (!data) return <div className="empty">O modelo não tem propriedades numéricas.</div>;
   const rows = group === "type" ? data.byType : data.byActivity;
   const label = k === COUNT_KEY ? "elements" : k.split(".").pop();
 
@@ -279,23 +279,23 @@ export function QuantityPanel() {
       <div className="tiles">
         <Tile label={`Total ${label}`} value={fmtNum(data.total)} />
         <Tile label={`Installed by ${fmtDate(time)}`} value={fmtNum(data.installed)} hint={`${pct(data.total ? data.installed / data.total : 0)} of total`} />
-        <Tile label="Remaining" value={fmtNum(data.total - data.installed)} />
+        <Tile label="Restante" value={fmtNum(data.total - data.installed)} />
         <Tile label="Not scheduled" value={fmtNum(data.unscheduled)} tone={data.unscheduled > 0 ? "bad" : undefined} hint="Quantity on elements with no link" />
       </div>
       <LineChart
         title={`Installed ${label}, cumulative`}
         series={[
-          { id: "cur", label: "Current plan", color: SERIES[0], points: curve.map((p) => ({ t: p.t, v: p.current })) },
-          { id: "base", label: "Baseline", color: SERIES[1], dashed: true, points: curve.map((p) => ({ t: p.t, v: p.baseline })) },
+          { id: "cur", label: "Plano atual", color: SERIES[0], points: curve.map((p) => ({ t: p.t, v: p.current })) },
+          { id: "base", label: "Linha de base", color: SERIES[1], dashed: true, points: curve.map((p) => ({ t: p.t, v: p.baseline })) },
         ]}
         markers={[{ t: time, label: "", color: "#2e9d4f" }]}
       />
       <table className="data">
         <thead>
           <tr>
-            <th>{group === "type" ? "IFC type" : "Activity"}</th>
+            <th>{group === "type" ? "IFC type" : "Atividade"}</th>
             <th>Elements</th>
-            <th>Quantity</th>
+            <th>Quantidade</th>
             <th>Installed</th>
             <th>%</th>
           </tr>

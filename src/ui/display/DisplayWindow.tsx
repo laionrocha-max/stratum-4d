@@ -161,8 +161,8 @@ export function DisplayWindow({ route }: { route: { view: string; id: string } }
             <b>{act.code}</b> {act.name}
           </span>
         )}
-        <button className={`tb ${dirty ? "primary" : ""}`} onClick={schedule} disabled={!sched} title="Schedule (F9)">
-          Schedule <kbd>F9</kbd>
+        <button className={`tb ${dirty ? "primary" : ""}`} onClick={schedule} disabled={!sched} title="Calcular cronograma (F9)">
+          Cronograma <kbd>F9</kbd>
         </button>
       </div>
       <div className="display-body">{body}</div>

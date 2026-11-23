@@ -51,7 +51,7 @@ export function MspDlg({
       >
         <div className="msp-dlg-title">
           <span>{title}</span>
-          <button onClick={onClose} aria-label="Close" title="Close">
+          <button onClick={onClose} aria-label="Fechar" title="Fechar">
             <X size={14} aria-hidden />
           </button>
         </div>
@@ -66,7 +66,7 @@ export function MspDlg({
         )}
         <div className={`msp-dlg-body ${tabs ? "tabbed" : ""}`}>{children}</div>
         <div className="msp-dlg-foot">
-          <button className="msp-help" title="Help" onClick={() => window.dispatchEvent(new CustomEvent("stratum:help"))}>
+          <button className="msp-help" title="Ajuda" onClick={() => window.dispatchEvent(new CustomEvent("stratum:help"))}>
             <HelpCircle size={15} aria-hidden />
           </button>
           <span className="spacer" />
@@ -78,7 +78,7 @@ export function MspDlg({
           )}
           {!noCancel && (
             <button className="msp-btn" onClick={onClose}>
-              {onOk ? "Cancel" : "Close"}
+              {onOk ? "Cancelar" : "Fechar"}
             </button>
           )}
         </div>

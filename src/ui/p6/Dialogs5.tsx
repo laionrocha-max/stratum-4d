@@ -63,15 +63,15 @@ export function ObsDialog() {
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
-          <SideBtn kind="add" label="Add" onClick={() => add(cur?.id ?? null)} />
+          <SideBtn kind="add" label="Adicionar" onClick={() => add(cur?.id ?? null)} />
           <SideBtn kind="delete" label="Del. / Merge" disabled={!cur} onClick={delMerge} />
-          <SideBtn kind="cut" label="Cut" disabled={!cur} onClick={() => cur && (obsClip = { node: cur, cut: true })} />
-          <SideBtn kind="copy" label="Copy" disabled={!cur} onClick={() => cur && (obsClip = { node: cur, cut: false })} />
+          <SideBtn kind="cut" label="Recortar" disabled={!cur} onClick={() => cur && (obsClip = { node: cur, cut: true })} />
+          <SideBtn kind="copy" label="Copiar" disabled={!cur} onClick={() => cur && (obsClip = { node: cur, cut: false })} />
           <SideBtn
             kind="paste"
-            label="Paste"
+            label="Colar"
             onClick={() => {
               if (!obsClip) return;
               if (obsClip.cut) {
@@ -147,8 +147,8 @@ export function ObsDialog() {
                   <table>
                     <thead>
                       <tr>
-                        <td>WBS</td>
-                        <td>WBS Name</td>
+                        <td>EAP</td>
+                        <td>Nome da EAP</td>
                       </tr>
                     </thead>
                     <tbody>
@@ -278,11 +278,11 @@ export function BudgetsDialog() {
           <table className="p6-grid">
             <thead>
               <tr>
-                <td>Date</td>
+                <td>Dados</td>
                 <td>Amount</td>
                 <td>Reason</td>
                 <td>Responsible</td>
-                <td>Status</td>
+                <td>Situação</td>
                 <td />
               </tr>
             </thead>
@@ -310,7 +310,7 @@ export function BudgetsDialog() {
                   </td>
                   <td>
                     <button className="link" onClick={() => commit({ ...s, budgetChanges: (s.budgetChanges ?? []).filter((x) => x.id !== c.id) }, "Delete budget change")}>
-                      Delete
+                      Excluir
                     </button>
                   </td>
                 </tr>
@@ -336,7 +336,7 @@ export function BudgetsDialog() {
                         className="link"
                         onClick={() => window.confirm(`Delete ${f.name} and its funding?`) && commit({ ...s, fundingSources: sources.filter((x) => x.id !== f.id), funding: (s.funding ?? []).filter((x) => x.sourceId !== f.id) }, "Delete funding source")}
                       >
-                        Delete
+                        Excluir
                       </button>
                     </td>
                   </tr>
@@ -352,7 +352,7 @@ export function BudgetsDialog() {
             <table className="p6-grid">
               <thead>
                 <tr>
-                  <td>Source</td>
+                  <td>Origem</td>
                   <td>Amount</td>
                   <td>Fund share</td>
                   <td />
@@ -376,7 +376,7 @@ export function BudgetsDialog() {
                     <td className="num">{sum.current ? `${Math.round((f.amount / sum.current) * 100)}%` : "–"}</td>
                     <td>
                       <button className="link" onClick={() => commit({ ...s, funding: (s.funding ?? []).filter((x) => x.id !== f.id) }, "Delete funding")}>
-                        Delete
+                        Excluir
                       </button>
                     </td>
                   </tr>
@@ -407,13 +407,13 @@ export function BudgetsDialog() {
                 <table className="p6-grid sticky">
                   <thead>
                     <tr>
-                      <td>Month</td>
+                      <td>Mês</td>
                       <td>Spending plan</td>
                       <td>Benefit plan</td>
                       <td title="Actual + remaining cost of the activities in the month">At-completion cost</td>
                       <td>Cum. spending</td>
                       <td>Cum. at completion</td>
-                      <td>Variance</td>
+                      <td>Variação</td>
                     </tr>
                   </thead>
                   <tbody>
@@ -585,11 +585,11 @@ export function RiskMatrixDialog() {
           <p className="muted small">
             {(s.registers?.risks ?? []).length} risks, {heat.unscored} not scored. Rows: probability. Columns: impact.
           </p>
-          <h4>Thresholds</h4>
+          <h4>Limites</h4>
           <table className="p6-grid">
             <thead>
               <tr>
-                <td>Level</td>
+                <td>Nivelar</td>
                 <td>Probability from %</td>
                 <td>Impact from days</td>
                 <td>Impact from cost</td>
@@ -648,7 +648,7 @@ export function CurtainsAndTexts() {
         <table className="p6-grid">
           <thead>
             <tr>
-              <td>Show</td>
+              <td>Mostrar</td>
               <td>From</td>
               <td>To</td>
               <td>Label</td>
@@ -696,10 +696,10 @@ export function CurtainsAndTexts() {
         <table className="p6-grid">
           <thead>
             <tr>
-              <td>Show</td>
-              <td>Date</td>
+              <td>Mostrar</td>
+              <td>Dados</td>
               <td>Activity row</td>
-              <td>Text</td>
+              <td>Texto</td>
               <td>Colour</td>
               <td />
             </tr>

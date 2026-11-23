@@ -211,8 +211,8 @@ function P6Import({ onImport, onClose }: { onImport: (s: Schedule, c: P6Connecti
       .catch((e) => setMsg(e.message));
   }, [backend]);
 
-  if (!backend.caps.p6) return <p className="muted">P6 connections need the desktop app or a Stratum Server. Use Import schedule with an XER file instead.</p>;
-  if (!conns.length) return <p className="muted">No P6 connections yet. Add one in Settings → Primavera P6.</p>;
+  if (!backend.caps.p6) return <p className="muted">A conexão com o P6 requer o aplicativo para computador ou um servidor Stratum. No navegador, importe o cronograma em um arquivo XER.</p>;
+  if (!conns.length) return <p className="muted">Nenhuma conexão com o P6. Adicione uma em Configurações → Primavera P6.</p>;
   const shown = (projects ?? []).filter((p) => `${p.code} ${p.name}`.toLowerCase().includes(filter.toLowerCase()));
 
   return (
@@ -240,17 +240,17 @@ function P6Import({ onImport, onClose }: { onImport: (s: Schedule, c: P6Connecti
             }
           }}
         >
-          List projects
+          Listar projetos
         </button>
-        {projects && <input placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ flex: 1 }} />}
+        {projects && <input placeholder="Filtrar…" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ flex: 1 }} />}
       </div>
       {projects && (
         <table className="data">
           <thead>
             <tr>
-              <th>Project ID</th>
-              <th>Name</th>
-              <th>Data date</th>
+              <th>ID do projeto</th>
+              <th>Nome</th>
+              <th>Data de corte</th>
               <th />
             </tr>
           </thead>
@@ -280,7 +280,7 @@ function P6Import({ onImport, onClose }: { onImport: (s: Schedule, c: P6Connecti
                       }
                     }}
                   >
-                    import
+                    importar
                   </button>
                 </td>
               </tr>
