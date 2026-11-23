@@ -302,6 +302,68 @@ html[data-mode="p6"] .mode-switch button.on, html[data-mode="msp"] .ribbon-tabs 
 .left-tabs { flex: none; }
 .left-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .left-body > * { flex: 1; min-height: 0; }
+.ifc-tree-panel {
+  flex: 0 1 48%;
+  min-height: 175px;
+  max-height: 460px;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.ifc-tree-head, .ifc-tree-tools, .ifc-tree-actions, .ifc-ghost-opacity {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+}
+.ifc-tree-head strong, .ifc-tree-tools input { flex: 1; min-width: 0; }
+.ifc-tree-head small, .ifc-tree-row small { color: var(--muted); }
+.ifc-tree-tools select { max-width: 45%; }
+.ifc-tree-list { overflow: auto; flex: 1; min-height: 42px; }
+.ifc-tree-list > p { margin: 8px; }
+.ifc-tree-list:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ifc-tree-row {
+  position: absolute;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding-inline-end: 5px;
+  cursor: default;
+}
+.ifc-tree-row:hover, .ifc-tree-row.selected { background: var(--accent-soft); }
+.ifc-tree-list:focus-visible .ifc-tree-row.current { box-shadow: inset 2px 0 var(--accent); }
+.ifc-tree-row .icon-only, .ifc-tree-indent { flex: none; width: 24px; min-width: 24px; height: 24px; }
+.ifc-tree-row .icon-only {
+  display: inline-grid;
+  place-items: center;
+  min-height: 24px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+.ifc-tree-label { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ifc-tree-actions { flex-wrap: wrap; }
+.ifc-tree-actions button { min-height: 24px; padding: 2px 5px; font-size: 11px; }
+.ifc-tree-actions button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.ifc-ghost-opacity { font-size: 11px; }
+.ifc-context-menu {
+  position: fixed;
+  z-index: 70;
+  display: grid;
+  gap: 2px;
+  width: min(265px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 5px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px #0003;
+}
+.ifc-context-menu button { text-align: start; min-height: 25px; padding: 3px 8px; }
 .viewport-wrap { position: relative; width: 100%; height: 100%; min-height: 0; }
 .center > .viewport-wrap { position: absolute; inset: 0; }
 .viewport { position: absolute; inset: 0; }

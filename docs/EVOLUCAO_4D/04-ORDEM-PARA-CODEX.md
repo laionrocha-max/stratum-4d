@@ -13,10 +13,12 @@ Receber autorização explícita da etapa N; reler requisitos; revisar implement
 - [x] Etapa 1 — [projetos e persistência](RELATORIO-ETAPA-1.md)
 - [x] Etapa 1B — [revisões de IFC e cronograma](RELATORIO-ETAPA-1B.md)
 - [x] Etapa 2 — [câmera, órbita e interface em português](RELATORIO-ETAPA-2.md)
-- [ ] Etapa 3: seleção, visibilidade e Ghost (PRÓXIMA)
-- [ ] Etapa 4: vínculos BIM-cronograma
+- [x] Etapa 3 — [árvore IFC, seleção, visibilidade e Ghost](RELATORIO-ETAPA-3.md)
+- [ ] Etapa 4: vínculos BIM-cronograma (PRÓXIMA)
+- [ ] Etapa 4B: progresso físico, data de corte e previsão
 - [ ] Etapa 5: céu, iluminação, vegetação, água e materiais
 - [ ] Etapa 6: exportação e vídeo
+- [ ] Etapa 6B: exportação de fotos independente
 - [ ] Etapa 7: homologação
 
 ## Restrições de aceite

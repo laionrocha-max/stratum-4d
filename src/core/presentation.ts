@@ -12,6 +12,7 @@
 
 import { Quaternion } from "three";
 import type { ColorMode, DateSource } from "./types";
+import type { VisibilitySettings } from "./visibility";
 
 export type Vec3 = [number, number, number];
 
@@ -55,6 +56,7 @@ export interface ViewSettings {
   legend?: boolean;
   /** World-space extent used by the saved cut fractions. */
   sectionBounds?: { min: Vec3; max: Vec3 };
+  visibility?: VisibilitySettings;
 }
 
 export interface Viewpoint {

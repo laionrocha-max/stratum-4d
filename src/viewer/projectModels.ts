@@ -23,7 +23,9 @@ export async function loadModelPart(model: ProjectModel, buffer: ArrayBuffer, co
     elements: geometry.elements.map((e) => ({
       ...e,
       id: key(e.id),
-      properties: { ...e.properties, "Arquivo do modelo": model.name, ...(/\.ifc$/i.test(model.name) ? { "Arquivo IFC": model.name } : {}), GlobalId: e.id },
+      modelId: model.id,
+      properties: { ...e.properties, "Arquivo do modelo": model.name, ...(/\.ifc$/i.test(model.name) ? { "Arquivo IFC": model.name } : {}), GlobalId: e.id,
+        ...(e.systems?.length ? { "Sistema IFC": e.systems.join(", ") } : {}) },
     })),
     objects: new Map(Array.from(geometry.objects, ([id, object]) => [key(id), object])),
     coordination: "coordination" in geometry ? geometry.coordination : undefined,

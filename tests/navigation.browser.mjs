@@ -131,6 +131,62 @@ try {
   assert.equal(movement.width, 400);
   assert.equal(movement.height, 230);
   console.log("Bounds em coordenadas distantes, peça em movimento, explosão, corte e exportação da vista restaurada.");
+
+  const inspection = await page.evaluate(async () => {
+    const { EMPTY_VISIBILITY } = await import("/src/core/visibility.ts");
+    const { viewer, a, b, hidden, origin } = window.testNavigation;
+    viewer.setExplode(0, "radial");
+    viewer.setSections([], null);
+    viewer.setCamera({ pos: origin.clone().addScalar(20).toArray(), target: origin.toArray(), fov: 45 });
+    viewer.camera.updateMatrixWorld(true);
+    viewer.applyFrame(new Map([["hidden", { visible: false, color: null, transparency: 0 }]]), new Map());
+    viewer.setSelection(new Set(["a", "b", "hidden"]));
+    const keys = new Map([
+      ["a", { model: "arq", category: "paredes" }],
+      ["b", { model: "est", category: "vigas" }],
+      ["hidden", { model: "arq", category: "paredes" }],
+    ]);
+    const apply = (state, playing = false) => viewer.setInspection({ ...EMPTY_VISIBILITY, ...state }, keys, playing);
+    const visible = () => [a.visible, b.visible, hidden.visible];
+    const pick = (mesh) => {
+      const projected = mesh.position.clone().project(viewer.camera);
+      const panel = document.querySelector("canvas").getBoundingClientRect();
+      return viewer.pick(panel.left + (projected.x + 1) * panel.width / 2, panel.top + (1 - projected.y) * panel.height / 2);
+    };
+    apply({ hidden: ["b"] }, true);
+    const hiddenSelected = visible();
+    apply({ isolated: ["b"] }, true);
+    const isolated = visible();
+    apply({ ghost: ["a"], ghostOpacity: 0.75 }, true);
+    const ghost = { visible: visible(), opacity: b.material.opacity, target: pick(a), background: pick(b) };
+    apply({ hiddenModels: ["est"], ghost: ["b"] }, true);
+    const modelOff = visible();
+    apply({ hiddenCategories: ["paredes"] }, true);
+    const categoryOff = visible();
+    apply({}, true);
+    const restored = visible();
+    apply({});
+    const paused = visible();
+    viewer.setAnimationPreview(true);
+    const preview = visible();
+    viewer.setAnimationPreview(false);
+    viewer.setFocus(new Set(["b"]), { recolor: false });
+    apply({ ghost: ["a"] }, true);
+    apply({}, true);
+    const teardown = [a.material.opacity, b.material.opacity];
+    return { hiddenSelected, isolated, ghost, modelOff, categoryOff, restored, paused, preview, teardown };
+  });
+  assert.deepEqual(inspection.hiddenSelected, [true, false, false]);
+  assert.deepEqual(inspection.isolated, [false, true, false]);
+  assert.deepEqual(inspection.ghost, { visible: [true, true, false], opacity: 0.75, target: "a", background: null });
+  assert.deepEqual(inspection.modelOff, [true, false, false]);
+  assert.deepEqual(inspection.categoryOff, [false, true, false]);
+  assert.deepEqual(inspection.restored, [true, true, false]);
+  assert.deepEqual(inspection.paused, [true, true, true]);
+  assert.deepEqual(inspection.preview, [true, true, false]);
+  assert.ok(Math.abs(inspection.teardown[0] - 0.16) < 1e-6);
+  assert.equal(inspection.teardown[1], 1);
+  console.log("Inspeção no WebGL: visibilidade real de três peças, clique com Ghost, precedência 4D e foco prévio de Teardown.");
 } finally {
   await browser?.close();
   await server.close();

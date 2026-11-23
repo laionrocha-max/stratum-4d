@@ -23,6 +23,7 @@ import { combineModelParts, disposeModelParts, loadModelPart, restoreModelParts,
 import { modelHash, saveModelAsset } from "../backend/modelAssets";
 import { readCheckpoint, saveCheckpoint } from "../backend/revisionHistory";
 import { compareModelRevision } from "../viewer/modelRevision";
+import { elementVisibilityKey, EMPTY_VISIBILITY, normalizeVisibility, type VisibilitySettings } from "../core/visibility";
 import { Present } from "./Present";
 import { Teardown, teardownHud } from "./Teardown";
 import { reportRoute, useConfig } from "../backend/config";
@@ -52,9 +53,11 @@ import {
   CloudUpload,
   Database,
   Download,
+  Eye,
   FileUp,
   FolderOpen,
   LayoutDashboard,
+  ListTree,
   Maximize,
   Menu,
   Save,
@@ -70,6 +73,8 @@ import { download, downloadDataUrl, isNativeApp, pickFile, pickFiles } from "./f
 import { Gantt } from "./Gantt";
 import { Help } from "./Help";
 import { SidePanel } from "./SidePanel";
+import { focusElements, hideElements, ModelTree, showElements, type InspectionTarget } from "./ModelTree";
+import { InspectionMenu } from "./InspectionMenu";
 import { fmtDate, useStore, type LeftTab } from "./store";
 import { Timeline } from "./Timeline";
 import { assignBaseline } from "../core/baseline";
@@ -119,6 +124,9 @@ function Workspace() {
   const [revisionOffer, setRevisionOffer] = useState<{ review: RevisionOffer; finish: (value: Map<string, string> | null) => void } | null>(null);
   const finishReview = useRef<(value: Map<string, string> | null) => void>();
   const [showHistory, setShowHistory] = useState(false);
+  const [showTree, setShowTree] = useState(false);
+  const [inspectionTarget, setInspectionTarget] = useState<InspectionTarget | null>(null);
+  const closeInspection = useCallback(() => setInspectionTarget(null), []);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   useEffect(() => {
@@ -148,6 +156,7 @@ function Workspace() {
   }, []);
   const store = useStore();
   const { schedule, elements, links, profiles, time, sim, selectedElements, status, busy, segments, paths, pathDraft, leftTab, scheduleDirty, currentProjectId, currentVersion } = store;
+  const visibilityKeys = useMemo(() => new Map(elements.map((element) => [element.id, elementVisibilityKey(element)])), [elements]);
 
   // One viewer for the session, created the first time a layout shows a 3D view
   // (only the 4D layout does). A model loaded before then is handed over here.
@@ -159,6 +168,8 @@ function Workspace() {
       const v = new Viewer(viewportHost);
       viewerRef.current = v;
       v.setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+      const state = useStore.getState();
+      v.setInspection(state.view3d.visibility ?? EMPTY_VISIBILITY, new Map(state.elements.map((e) => [e.id, elementVisibilityKey(e)])), state.playing);
       if (objectsRef.current.size) {
         v.setObjects(objectsRef.current, useStore.getState().segments, true);
         v.setSelection(useStore.getState().selectedElements);
@@ -193,6 +204,9 @@ function Workspace() {
   }, [segKey]);
 
   const elementIds = useMemo(() => elements.map((e) => e.id), [elements]);
+  useEffect(() => {
+    viewerRef.current?.setInspection(store.view3d.visibility ?? EMPTY_VISIBILITY, visibilityKeys, store.playing || !!recording);
+  }, [store.view3d.visibility, visibilityKeys, store.playing, recording, viewerGen]);
 
   // One 4D frame: states for every element plus equipment motion.
   useEffect(() => {
@@ -350,6 +364,7 @@ function Workspace() {
 
   // Distinguish a click from an orbit drag.
   const down = useRef<{ x: number; y: number; pointer: number } | null>(null);
+  const rightDown = useRef<{ x: number; y: number; pointer: number } | null>(null);
 
   const importSchedule = async (update = false) => {
     const workspace = useStore.getState().workspaceRevision;
@@ -665,7 +680,24 @@ function Workspace() {
     const remap = (ids: string[]) => [...new Set(ids.filter((id) => !lost.has(id)).map(key))];
     const segments = st.segments.filter((s) => !lost.has(s.id) && !lost.has(s.parentId)).map((s) => ({ ...s, parentId: key(s.parentId) }));
     const groups = st.groups.map((g) => ({ ...g, elementIds: remap(g.elementIds) }));
+    const modelIds = new Set(manifest.files.map((file) => file.id));
+    const updateVisibility = (visibility: VisibilitySettings): VisibilitySettings => {
+      const scope = (ids: string[] | null) => ids === null ? null : remap(ids);
+      const isolated = scope(visibility.isolated);
+      const ghost = scope(visibility.ghost);
+      return {
+        ...visibility, hidden: remap(visibility.hidden), hiddenModels: visibility.hiddenModels.filter((id) => modelIds.has(id)),
+        isolated: isolated?.length ? isolated : null, ghost: ghost?.length ? ghost : null,
+      };
+    };
+    const visibility = st.view3d.visibility;
+    const visibilityAffected = lost.size > 0 || mapping.size > 0 || st.models?.files.some((file) => !modelIds.has(file.id));
     useStore.setState({
+      ...(visibilityAffected && {
+        view3d: { ...st.view3d, visibility: visibility && updateVisibility(visibility) },
+        visibilityPast: st.visibilityPast.map(updateVisibility),
+        visibilityFuture: st.visibilityFuture.map(updateVisibility),
+      }),
       baseElements: combined.elements, elements: expandElements(combined.elements, segments, groups),
       modelFileName: manifest.files[0]?.name ?? null, models: manifest, segments, groups,
       paths: st.paths.map((p) => ({ ...p, elementIds: remap(p.elementIds) })),
@@ -734,6 +766,11 @@ function Workspace() {
       ...st.paths.flatMap((p) => p.elementIds), ...st.segments.map((s) => s.parentId),
     ]);
     const lost = new Set<string>();
+    for (const visibility of [st.view3d.visibility, ...st.visibilityPast, ...st.visibilityFuture]) {
+      for (const ids of [visibility?.hidden, visibility?.isolated, visibility?.ghost]) {
+        for (const id of ids ?? []) referenced.add(id);
+      }
+    }
     for (const id of referenced) {
       const key = segmented.get(id) ?? id;
       const belongs = target ? (before ? oldIds.has(key) : target.id ? key.startsWith(`${target.id}:`) : !key.includes(":")) : !!demoKindOf(st.modelFileName);
@@ -875,12 +912,16 @@ function Workspace() {
       workspaceRevision: st.workspaceRevision + 1, pathDraft: null, clipboard: null, playing: false,
       collapsedWbs: new Set(), ganttFilter: { text: "", kind: "all" }, ganttTracking: false,
       time: Number.isFinite(p.view?.time) ? p.view!.time : p.schedule?.dataDate ?? range?.start ?? Date.now(),
-      sim: simulation, view3d: { ...EMPTY_VIEW, ...p.view?.settings },
+      sim: simulation, view3d: { ...EMPTY_VIEW, ...p.view?.settings, visibility: normalizeVisibility(p.view?.settings.visibility) },
+      visibilityPast: [], visibilityFuture: [],
     }));
+    const restored = useStore.getState();
+    viewerRef.current?.setInspection(restored.view3d.visibility ?? EMPTY_VISIBILITY, new Map(restored.elements.map((e) => [e.id, elementVisibilityKey(e)])), false);
     loadObjects(scene.objects);
     if (cameraRef.current) viewerRef.current?.setCamera(cameraRef.current);
     setRestore(null);
     setShowHistory(false);
+    setInspectionTarget(null);
     setSavedAt(null);
   };
 
@@ -1082,16 +1123,29 @@ function Workspace() {
         ref={setViewportHost}
         onPointerDown={(e) => {
           down.current = e.isPrimary && e.button === 0 ? { x: e.clientX, y: e.clientY, pointer: e.pointerId } : null;
+          rightDown.current = e.isPrimary && e.button === 2 ? { x: e.clientX, y: e.clientY, pointer: e.pointerId } : null;
         }}
         onPointerMove={(e) => {
           const start = down.current;
           if (start?.pointer === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 4) down.current = null;
+          const right = rightDown.current;
+          if (right?.pointer === e.pointerId && Math.hypot(e.clientX - right.x, e.clientY - right.y) >= 4) rightDown.current = null;
         }}
-        onPointerCancel={() => { down.current = null; }}
+        onPointerCancel={() => { down.current = null; rightDown.current = null; }}
+        onContextMenu={(e) => e.preventDefault()}
         onPointerUp={(e) => {
           const d = down.current;
+          const right = rightDown.current;
           down.current = null;
+          rightDown.current = null;
           if (e.button === 0 && d?.pointer === e.pointerId && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) onViewportClick(e);
+          if (e.button === 2 && right?.pointer === e.pointerId && Math.hypot(e.clientX - right.x, e.clientY - right.y) < 4) {
+            const id = viewerRef.current?.pick(e.clientX, e.clientY);
+            const current = useStore.getState();
+            const ids = id ? current.selectedElements.has(id) ? [...current.selectedElements] : [id] : [];
+            if (id && !current.selectedElements.has(id)) current.selectElements(new Set(ids));
+            setInspectionTarget({ ids, x: e.clientX, y: e.clientY, label: id ? current.elements.find((element) => element.id === id)?.name ?? "Elemento" : "" });
+          }
         }}
       />
       {elements.length === 0 && (
@@ -1366,12 +1420,22 @@ function Workspace() {
           {store.projectTitle && <span className="project-active" title={store.projectTitle}>{store.projectTitle}</span>}
           <span className="sep" />
           {btn.importIfc}
+          <button className="tb" aria-label="Árvore IFC" aria-pressed={showTree} title="Árvore IFC e visibilidade" onClick={() => setShowTree((open) => !open)}><ListTree {...I} /><span>Árvore IFC</span></button>
           {btn.importSchedule}
           {btn.push}
           {btn.run}
           {btn.exportMenu}
           <span className="sep" />
           {btn.fit}
+          <details className="menu">
+            <summary className="tb" aria-label="Visibilidade" title="Visibilidade da vista 3D"><Eye {...I} /><span>Visibilidade</span><ChevronDown {...I} /></summary>
+            <div className="menu-body" onClick={(e) => e.currentTarget.parentElement?.removeAttribute("open")}>
+              <button disabled={!selectedElements.size} onClick={() => hideElements([...selectedElements])}>Ocultar seleção</button>
+              <button disabled={!selectedElements.size} onClick={() => focusElements([...selectedElements], "isolated")}>Isolar seleção</button>
+              <button disabled={!selectedElements.size} onClick={() => focusElements([...selectedElements], "ghost")}>Destacar com Ghost</button>
+              <button onClick={showElements}>Mostrar todos</button>
+            </div>
+          </details>
           {btn.record}
           {toolbarRight}
         </header>
@@ -1394,6 +1458,7 @@ function Workspace() {
       {mode === "4d" && (
         <main className="workspace">
           <section className="left">
+            {showTree && <ModelTree key={store.workspaceRevision} onClose={() => setShowTree(false)} onMenu={setInspectionTarget} />}
             <div className="tabs left-tabs">
               {LEFT_TABS.map((x) => (
                 <button key={x.id} className={leftTab === x.id ? "active" : ""} onClick={() => store.setLeftTab(x.id)}>
@@ -1480,6 +1545,7 @@ function Workspace() {
       {settingsTab && <SettingsDialog initialTab={settingsTab} onClose={() => setSettingsTab(null)} />}
       {revisionOffer && <RevisionDialog offer={revisionOffer.review} onFinish={revisionOffer.finish} />}
       {showHistory && <RevisionHistory entries={store.revisions ?? []} busy={busy} onClose={() => setShowHistory(false)} onRestore={(e) => void restoreRevision(e)} onDownload={(e) => void downloadRevision(e)} />}
+      {inspectionTarget && <InspectionMenu target={inspectionTarget} viewer={viewerRef.current} onClose={closeInspection} />}
       {!config.configured && (
         <SetupWizard
           onDone={(open) => {

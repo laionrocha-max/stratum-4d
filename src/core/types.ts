@@ -599,6 +599,9 @@ export interface ModelElement {
   ifcType: string;
   name: string;
   properties: Record<string, string>;
+  modelId?: string;
+  spatial?: { id: string; name: string; type: string }[];
+  systems?: string[];
 }
 
 export type ProfileAction = "install" | "remove" | "temporary" | "maintain" | "neutral";

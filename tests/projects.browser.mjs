@@ -6,7 +6,11 @@ import { createServer, preview } from "vite";
 
 const room = await readFile("tests/fixtures/project-room.ifc", "utf8");
 const model = (name, contents = room) => ({ name, mimeType: "application/octet-stream", buffer: Buffer.from(contents) });
-const base = model("arquitetura.ifc");
+const base = model("arquitetura.ifc", room.replace(/ENDSEC;\r?\nEND-ISO-10303-21;/, [
+  "#200=IFCSYSTEM('3ST0000000000000000001',#5,'Agua fria',$,$);",
+  "#201=IFCRELASSIGNSTOGROUP('3ST0000000000000000002',#5,$,$,(#39),$,#200);",
+  "ENDSEC;", "END-ISO-10303-21;",
+].join("\n")));
 const federation = model("estrutura.ifc", room.replace("'w1'", "'Elemento estrutural'"));
 const revision = model("arquitetura-r2.ifc", room.replace("'w1'", "'Parede revisada'").replace(
   "#16=IFCAXIS2PLACEMENT3D(#11,$,$);",
@@ -105,6 +109,13 @@ try {
     await page.getByTitle("Salvar obra na biblioteca (Ctrl+S)").click();
     await visibleStatus(page, new RegExp(`Projeto ${name} salvo`));
   };
+  const sameCamera = (actual, expected) => {
+    const { orbitOffset: actualRotation, ...actualPose } = actual;
+    const { orbitOffset: expectedRotation, ...expectedPose } = expected;
+    assert.deepEqual(actualPose, expectedPose);
+    assert.equal(actualRotation?.length, expectedRotation?.length);
+    actualRotation?.forEach((value, i) => assert.ok(Math.abs(value - expectedRotation[i]) < 1e-12));
+  };
 
   const ctx = await context();
   let page = await openPage(ctx);
@@ -129,6 +140,60 @@ try {
   await visibleStatus(page, /Ponto de vista .* salvo/);
   await page.getByTitle(/Pontos de vista salvos/).click();
   await add(page, federation);
+  await page.getByRole("button", { name: "Árvore IFC", exact: true }).click();
+  const tree = page.getByRole("region", { name: "Painel da árvore IFC" });
+  const rowNamed = (name) => tree.getByRole("treeitem", { name, exact: true });
+  const search = tree.getByRole("textbox", { name: "Buscar na árvore IFC" });
+  await tree.getByLabel("Sistema IFC", { exact: true }).selectOption("Agua fria");
+  await rowNamed("Level 0").waitFor();
+  await rowNamed("w1").click();
+  await tree.getByText("1 selecionado(s)", { exact: true }).waitFor();
+  assert.equal(await rowNamed("w1").getAttribute("aria-selected"), "true");
+  await tree.getByLabel("Sistema IFC", { exact: true }).selectOption("");
+  await search.fill("1DCsuvJtmnHvlZDV2Ph6gE");
+  await rowNamed("Elemento estrutural").click({ modifiers: ["Control"] });
+  await tree.getByText("2 selecionado(s)", { exact: true }).waitFor();
+  await rowNamed("w1").click();
+  await tree.getByRole("button", { name: "Ocultar seleção", exact: true }).click();
+  await rowNamed("w1").getByRole("button", { name: "Mostrar w1" }).waitFor();
+  await tree.getByRole("button", { name: "Desfazer visibilidade" }).click();
+  await rowNamed("w1").getByRole("button", { name: "Ocultar w1" }).waitFor();
+  await tree.getByRole("button", { name: "Refazer visibilidade" }).click();
+  await rowNamed("w1").getByRole("button", { name: "Mostrar w1" }).waitFor();
+  await tree.getByRole("button", { name: "Mostrar todos", exact: true }).click();
+  const structureEye = rowNamed("estrutura.ifc").getByRole("button", { name: "Ocultar estrutura.ifc", exact: true });
+  assert.ok((await structureEye.locator("svg").boundingBox()).width >= 14);
+  await structureEye.click();
+  await rowNamed("w1").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Isolar seleção" }).click();
+  assert.equal(await tree.getByRole("button", { name: "Isolar", exact: true }).getAttribute("aria-pressed"), "true");
+  await page.getByTitle("Enquadrar seleção", { exact: true }).click();
+  await search.fill("");
+  const treeList = tree.getByRole("tree", { name: "Elementos do IFC" });
+  await treeList.focus();
+  await treeList.press("Escape");
+  await tree.getByText("0 selecionado(s)", { exact: true }).waitFor();
+  await rowNamed("arquitetura.ifc").getByRole("button", { name: "Recolher arquitetura.ifc", exact: true }).click();
+  await page.waitForTimeout(700);
+  const canvas = await page.locator(".viewport canvas").boundingBox();
+  await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+  await tree.getByText("1 selecionado(s)", { exact: true }).waitFor();
+  assert.equal(await rowNamed("w1").getAttribute("aria-selected"), "true");
+  await tree.getByRole("button", { name: "Ghost", exact: true }).click();
+  assert.equal(await tree.getByRole("button", { name: "Isolar", exact: true }).getAttribute("aria-pressed"), "false");
+  await tree.getByRole("slider", { name: "Opacidade dos elementos Ghost" }).fill("0.4");
+  const muted = await savedManifest(page);
+  assert.equal(muted.view.settings.visibility.ghostOpacity, 0.4);
+  assert.deepEqual(muted.view.settings.visibility.hiddenModels, [muted.models.files[1].id]);
+  assert.equal(muted.view.settings.visibility.ghost.length, 1);
+  assert.equal(muted.links.length, 4);
+  if (process.env.STRATUM_TREE_SCREENSHOT) await page.screenshot({ path: process.env.STRATUM_TREE_SCREENSHOT });
+  await tree.getByRole("button", { name: "Mostrar todos", exact: true }).click();
+  await rowNamed("estrutura.ifc").getByRole("button", { name: "Mostrar estrutura.ifc", exact: true }).waitFor();
+  await tree.getByRole("button", { name: "Reativar modelos", exact: true }).click();
+  await rowNamed("arquitetura.ifc").getByRole("button", { name: "Ocultar arquitetura.ifc", exact: true }).click();
+  await tree.getByRole("button", { name: "Fechar árvore IFC" }).click();
+  console.log("Árvore IFC: pavimento, sistema IFC, GlobalId em dois modelos, Ctrl, menu, ocultar, isolar, Ghost, opacidade e desfazer/refazer.");
   await save(page, "Bloco A");
   const original = await savedManifest(page);
   assert.equal(original.version, 4);
@@ -159,7 +224,7 @@ try {
   assert.equal(revised.models.files[0].id, original.models.files[0].id);
   assert.equal(revised.models.files[0].revision, 2);
   assert.notEqual(revised.models.files[0].hash, original.models.files[0].hash);
-  assert.deepEqual(revised.view.camera, original.view.camera);
+  sameCamera(revised.view.camera, original.view.camera);
   assert.equal(revised.revisions.at(-1).kind, "ifc");
   await save(page, "Bloco A");
   console.log("Revisão: GlobalId duplicado rejeitado, cancelamento preservou estado e atualização manteve os vínculos.");
@@ -174,7 +239,7 @@ try {
   assert.ok(updated.links.every((link) => Number(link.activityId) > 100));
   assert.ok(updated.schedule.activities.some((a) => a.name === "Columns L1 revised"));
   assert.equal(updated.schedule.activities[0].baselineStart, original.schedule.activities[0].baselineStart);
-  assert.deepEqual(updated.view.camera, revised.view.camera);
+  sameCamera(updated.view.camera, revised.view.camera);
   assert.deepEqual(updated.presentation, original.presentation);
   assert.notEqual(updated.schedule.dataDate, revised.schedule.dataDate);
   await save(page, "Bloco A");
@@ -187,6 +252,7 @@ try {
   await save(page, "Bloco B");
   const second = await savedManifest(page);
   assert.notEqual(second.projectKey, revised.projectKey);
+  assert.deepEqual(second.view.settings.visibility.hiddenModels, []);
   assert.equal(second.links.length, 0);
   assert.notEqual(second.schedule.projectCode, revised.schedule.projectCode);
 
@@ -198,7 +264,9 @@ try {
   const reopened = await savedManifest(page);
   assert.deepEqual(reopened.models, updated.models);
   assert.deepEqual(reopened.links, updated.links);
-  assert.deepEqual(reopened.view.camera, revised.view.camera);
+  sameCamera(reopened.view.camera, revised.view.camera);
+  assert.deepEqual(reopened.view.settings.visibility, updated.view.settings.visibility);
+  assert.deepEqual(reopened.view.settings.visibility.hiddenModels, [reopened.models.files[0].id]);
   await (await fileAction(page, "Histórico de revisões…")).click();
   const revisions = page.getByRole("dialog", { name: "Histórico de revisões" });
   await revisions.getByText("Revisão de cronograma · torre-2026-03-11.xml").waitFor();
@@ -300,6 +368,33 @@ try {
   assert.equal(migrated.models.files[0].id, "");
   assert.equal(migrated.version, 4);
   console.log("Migração: JSON v2 localizou o IFC e conservou os vínculos legados.");
+
+  if (process.env.STRATUM_BIG_IFC) {
+    other.setDefaultTimeout(45000);
+    await newProject(other, "Ensaio de escala");
+    const start = performance.now();
+    await add(other, model("escala.ifc", await readFile(process.env.STRATUM_BIG_IFC)));
+    const loadSeconds = ((performance.now() - start) / 1000).toFixed(1);
+    await other.getByRole("button", { name: "Árvore IFC", exact: true }).click();
+    const largeTree = other.getByRole("tree", { name: "Elementos do IFC" });
+    const startFilter = performance.now();
+    await other.getByRole("textbox", { name: "Buscar na árvore IFC" }).fill("IFCWALL");
+    const metrics = await largeTree.evaluate((list) => ({
+      rows: list.querySelectorAll('[role="treeitem"]').length,
+      treeHeight: list.scrollHeight,
+      viewportHeight: list.clientHeight,
+    }));
+    assert.ok(metrics.treeHeight >= 4000 * 30, JSON.stringify(metrics));
+    assert.ok(metrics.rows < 45, JSON.stringify(metrics));
+    await largeTree.focus();
+    await largeTree.press("End");
+    const end = await largeTree.evaluate((list) => list.scrollTop + list.clientHeight);
+    assert.ok(end >= metrics.treeHeight - 2);
+    await largeTree.press("Enter");
+    await other.getByText("1 selecionado(s)", { exact: true }).waitFor();
+    const filterMs = Math.round(performance.now() - startFilter);
+    console.log(`Escala: IFC com 4.000 paredes importado em ${loadSeconds}s, ${metrics.rows} linhas montadas, busca e seleção pelo teclado em ${filterMs}ms.`);
+  }
 } finally {
   await browser?.close();
   if (production) await new Promise((resolve) => server.httpServer.close(resolve));

@@ -15,6 +15,7 @@ import type { ElementState } from "../core/simulation";
 import { solarPosition, type SolarSettings } from "../core/solar";
 import type { CameraState, CutBox, CutPlane, Vec3 } from "../core/presentation";
 import type { ElementSegment, MotionPath } from "../core/types";
+import { compileVisibility, displayElement, EMPTY_VISIBILITY, type ElementVisibilityKey, type VisibilitySettings } from "../core/visibility";
 
 interface Entry {
   object: THREE.Object3D;
@@ -27,6 +28,7 @@ interface Entry {
   baseYaw: number;
   segment: Region | null;
   key: string;
+  pickable?: boolean;
 }
 
 const SELECT_COLOR = new THREE.Color("#ff7a00");
@@ -82,6 +84,11 @@ export class Viewer {
   private sections: { planes: CutPlane[]; box: CutBox | null } = { planes: [], box: null };
   private boxHelper: THREE.Box3Helper | null = null;
   private focus: Set<string> | null = null;
+  private inspection = compileVisibility(EMPTY_VISIBILITY);
+  private inspectionSignature = JSON.stringify(EMPTY_VISIBILITY);
+  private visibilityKeys = new Map<string, ElementVisibilityKey>();
+  private animationPreview = false;
+  private playing = false;
   /** Whether focused elements take the accent colour (otherwise they keep their 4D colours). */
   private focusRecolor = true;
   private flight: {
@@ -602,6 +609,24 @@ export class Viewer {
     this.needsRender = true;
   }
 
+  setInspection(settings: VisibilitySettings, keys = this.visibilityKeys, playing = this.playing) {
+    const signature = JSON.stringify(settings);
+    if (signature === this.inspectionSignature && keys === this.visibilityKeys && playing === this.playing) return;
+    this.inspectionSignature = signature;
+    this.inspection = compileVisibility(settings);
+    this.visibilityKeys = keys;
+    this.playing = playing;
+    for (const id of this.entries.keys()) this.paint(id);
+    this.needsRender = true;
+  }
+
+  setAnimationPreview(playing: boolean) {
+    if (playing === this.animationPreview) return;
+    this.animationPreview = playing;
+    for (const id of this.entries.keys()) this.paint(id);
+    this.needsRender = true;
+  }
+
   /** World box of some elements, at their current (exploded) positions. */
   boxOf(ids?: Iterable<string>): THREE.Box3 {
     const box = new THREE.Box3();
@@ -739,20 +764,26 @@ export class Viewer {
     const entry = this.entries.get(id);
     if (!entry) return false;
     const s0 = this.states.get(id) ?? DEFAULT_STATE;
-    // Focus: work under way in the accent, the rest ghosted (hidden elements stay hidden).
-    const ghost = this.focus !== null && !this.focus.has(id);
-    const s: ElementState = !this.focus ? s0 : ghost ? { ...s0, color: GHOST_COLOR, transparency: Math.max(s0.transparency, 0.84) } : this.focusRecolor ? { ...s0, color: FOCUS_COLOR, transparency: 0 } : s0;
     const motion = this.motions.get(id);
     const ex = this.explodeOffset(id, entry);
     const isSel = this.selected.has(id);
-    const clip = regionWithGrowth(entry.segment, s.clip ?? null);
+    const clip = regionWithGrowth(entry.segment, s0.clip ?? null);
+    const playing = this.playing || this.animationPreview;
+    const display = displayElement(this.inspection, id, this.visibilityKeys.get(id), s0.visible && !regionEmpty(clip), isSel, playing, this.focus);
+    const highlight = isSel && !display.ghosted;
+    const accent = display.emphasized && (this.inspection.ghost !== null || this.focusRecolor);
+    const color = display.ghosted ? GHOST_COLOR : accent ? FOCUS_COLOR : s0.color;
+    const opacityLimit = this.inspection.ghost ? this.inspection.ghostOpacity : 0.16;
+    const transparency = display.ghosted ? Math.max(s0.transparency, 1 - opacityLimit) : accent ? 0 : s0.transparency;
+    const clipping = highlight && !playing ? null : clip;
+    entry.pickable = display.pickable && (highlight || transparency <= 0.8);
     const r = (x: number) => Math.round(x * 1000) / 1000;
     const key = [
-      s.visible ? 1 : 0,
-      s.color ?? "",
-      r(s.transparency),
-      isSel ? 1 : 0,
-      regionKey(clip),
+      display.visible ? 1 : 0,
+      color ?? "",
+      r(transparency),
+      highlight ? 1 : 0,
+      regionKey(clipping),
       motion ? `${r(motion.offset[0])},${r(motion.offset[1])},${r(motion.offset[2])},${r(motion.yaw)}` : "",
       ex[0] || ex[1] || ex[2] ? `${r(ex[0])},${r(ex[1])},${r(ex[2])}` : "",
     ].join("|");
@@ -768,10 +799,10 @@ export class Viewer {
     obj.updateMatrix();
     obj.updateMatrixWorld(true);
 
-    const clipEmpty = regionEmpty(clip);
-    obj.visible = (s.visible && !clipEmpty) || isSel;
+    obj.visible = display.visible;
+    if (!display.visible) return true;
 
-    const needOverride = isSel || s.color !== null || s.transparency > 0 || clip !== null;
+    const needOverride = highlight || color !== null || transparency > 0 || clipping !== null;
     if (!needOverride) {
       for (const [mesh, mat] of entry.originals) {
         mesh.material = this.presentationLook ? this.presentationMaterial(mat) : mat;
@@ -788,11 +819,11 @@ export class Viewer {
       }
     }
     let planes: THREE.Plane[] | null = null;
-    if (clip && !isSel) {
+    if (clipping) {
       const box = entry.box.clone().translate(new THREE.Vector3(off[0], off[1], off[2]));
       planes = [];
       for (const ax of ["x", "y", "z"] as const) {
-        const range = clip[ax];
+        const range = clipping[ax];
         if (!range) continue;
         const min = box.min[ax];
         const size = box.max[ax] - min;
@@ -801,11 +832,11 @@ export class Viewer {
         planes.push(new THREE.Plane(AXIS[ax].clone(), -a), new THREE.Plane(AXIS[ax].clone().negate(), b));
       }
     }
-    const opacity = isSel ? 1 : 1 - s.transparency;
+    const opacity = highlight ? 1 : 1 - transparency;
     for (const [mesh, m] of entry.overrides) {
       const orig = entry.originals.get(mesh) as THREE.MeshLambertMaterial;
-      if (isSel) m.color.copy(SELECT_COLOR);
-      else if (s.color) m.color.set(s.color);
+      if (highlight) m.color.copy(SELECT_COLOR);
+      else if (color) m.color.set(color);
       else m.color.copy(orig.color ?? new THREE.Color("#cccccc"));
       m.transparent = opacity < 1;
       m.opacity = opacity;
@@ -846,8 +877,7 @@ export class Viewer {
       while (o && !o.userData.elementId) o = o.parent;
       const id = o?.userData.elementId as string | undefined;
       if (!id) continue;
-      const st = this.states.get(id);
-      if (st && st.transparency > 0.8 && !this.selected.has(id)) continue;
+      if (!this.entries.get(id)?.pickable) continue;
       const mesh = h.object as THREE.Mesh;
       const material = Array.isArray(mesh.material) ? mesh.material[h.face?.materialIndex ?? 0] : mesh.material;
       if (outsideClip(h.point, this.renderer.clippingPlanes) || (material?.clippingPlanes && outsideClip(h.point, material.clippingPlanes))) continue;

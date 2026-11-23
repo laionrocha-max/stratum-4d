@@ -135,6 +135,7 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
 
     onProgress?.(`Reading properties for ${objects.size} elements…`);
     const spatial = await spatialStructure(ifc, modelID);
+    const systems = modelSystems(ifc, modelID);
     let n = 0;
     for (const [expressID, key] of expressToKey) {
       const line = ifc.GetLine(modelID, expressID);
@@ -171,6 +172,8 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
         ifcType: ifc.GetNameFromTypeCode(typeCode) || String(typeCode),
         name: str(line?.Name) || `#${expressID}`,
         properties: props,
+        spatial: place?.ancestors,
+        systems: systems.get(expressID),
       });
       if (++n % 500 === 0) onProgress?.(`Reading properties… ${n}/${expressToKey.size}`);
     }
@@ -199,24 +202,52 @@ interface SpatialNode {
 }
 
 async function spatialStructure(ifc: WebIFC.IfcAPI, modelID: number) {
-  const out = new Map<number, { storey: string | null; path: string }>();
+  type Ancestors = NonNullable<ModelElement["spatial"]>;
+  const out = new Map<number, { storey: string | null; path: string; ancestors: Ancestors }>();
   const spatialTypes = new Set(["IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY", "IFCSPACE"]);
   try {
     const root = (await ifc.properties.getSpatialStructure(modelID)) as unknown as SpatialNode;
-    const walk = (node: SpatialNode, storey: string | null, path: string) => {
+    const walk = (node: SpatialNode, storey: string | null, path: string, ancestors: Ancestors) => {
       const type = String(node.type).toUpperCase();
-      if (path) out.set(node.expressID, { storey, path });
+      if (path) out.set(node.expressID, { storey, path, ancestors });
       if (spatialTypes.has(type)) {
         const line = ifc.GetLine(modelID, node.expressID);
         const name = str(line?.Name) || type;
-        path = [path, `${type} ${name} [${str(line?.GlobalId)}]`].filter(Boolean).join(" / ");
+        const gid = str(line?.GlobalId);
+        path = [path, `${type} ${name} [${gid}]`].filter(Boolean).join(" / ");
+        ancestors = [...ancestors, { id: gid || `express-${node.expressID}`, name, type }];
         if (type === "IFCBUILDINGSTOREY") storey = name;
       }
-      for (const c of node.children ?? []) walk(c, storey, path);
+      for (const c of node.children ?? []) walk(c, storey, path, ancestors);
     };
-    walk(root, null, "");
+    walk(root, null, "", []);
   } catch {
     // Spatial structure is optional.
   }
   return out;
+}
+
+function modelSystems(ifc: WebIFC.IfcAPI, modelID: number) {
+  const assigned = new Map<number, string[]>();
+  const relations = ifc.GetLineIDsWithType(modelID, WebIFC.IFCRELASSIGNSTOGROUP);
+  for (let i = 0; i < relations.size(); i++) {
+    try {
+      const relation = ifc.GetLine(modelID, relations.get(i));
+      const id = relation?.RelatingGroup?.value;
+      if (typeof id !== "number") continue;
+      const type = ifc.GetNameFromTypeCode(ifc.GetLineType(modelID, id));
+      if (!/SYSTEM|CIRCUIT/i.test(type)) continue;
+      const name = str(ifc.GetLine(modelID, id)?.Name);
+      if (!name) continue;
+      for (const element of relation.RelatedObjects ?? []) {
+        if (typeof element?.value !== "number") continue;
+        const groups = assigned.get(element.value) ?? [];
+        if (!groups.includes(name)) groups.push(name);
+        assigned.set(element.value, groups);
+      }
+    } catch {
+      // Optional system assignments may reference missing IFC records.
+    }
+  }
+  return assigned;
 }

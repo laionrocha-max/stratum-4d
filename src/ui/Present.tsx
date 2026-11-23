@@ -29,6 +29,7 @@ import {
 import { STATUS_COLORS } from "../core/profiles";
 import { uid } from "../core/reporting";
 import { computeStates, PLAN_COLORS, scheduleRange, type SimulationOptions } from "../core/simulation";
+import { EMPTY_VISIBILITY, normalizeVisibility } from "../core/visibility";
 import type { AppearanceProfile, Link } from "../core/types";
 import type { Viewer } from "../viewer/Viewer";
 import { download, downloadDataUrl } from "./files";
@@ -148,10 +149,23 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
     dateSource: useStore.getState().sim.dateSource,
   });
 
+  const normalizedVisibility = useMemo(() => new WeakMap<NonNullable<ViewSettings["visibility"]>, NonNullable<ViewSettings["visibility"]>>(), []);
+
   /** Apply view settings (sections, legend, colour mode, dates) to the store. */
   const applyView = (v: ViewSettings) => {
     const s = useStore.getState();
-    s.setView3d({ cuts: v.cuts, box: v.box, legend: v.legend, sectionBounds: v.sectionBounds });
+    let visibility = s.view3d.visibility;
+    if (v.visibility) {
+      visibility = normalizedVisibility.get(v.visibility);
+      if (!visibility) {
+        visibility = normalizeVisibility(v.visibility);
+        normalizedVisibility.set(v.visibility, visibility);
+      }
+    }
+    s.setView3d({
+      cuts: v.cuts, box: v.box, legend: v.legend, sectionBounds: v.sectionBounds,
+      visibility,
+    });
     const patch: Partial<SimulationOptions> = {};
     if (v.colorMode && v.colorMode !== s.sim.colorMode) patch.colorMode = v.colorMode;
     if (v.dateSource && v.dateSource !== s.sim.dateSource) patch.dateSource = v.dateSource;
@@ -288,7 +302,7 @@ function ViewpointsPanel({ viewer, current, applyView }: { viewer: Viewer; curre
   const list = presentation.viewpoints;
   const put = (viewpoints: Viewpoint[]) => setPresentation({ ...useStore.getState().presentation, viewpoints });
   const save = () => {
-    const name = window.prompt("Name of the viewpoint", `Viewpoint ${list.length + 1} – ${fmtDate(time)}`);
+    const name = window.prompt("Nome do ponto de vista", `Ponto de vista ${list.length + 1} – ${fmtDate(time)}`);
     if (!name) return;
     put([...list, { id: uid("vp"), name, time, camera: viewer.getCamera(), view: current(), createdAt: new Date().toISOString() }]);
     setStatus(`Ponto de vista «${name}» salvo.`);
@@ -315,7 +329,7 @@ function ViewpointsPanel({ viewer, current, applyView }: { viewer: Viewer; curre
           <Plus size={12} aria-hidden /> Salvar ponto de vista
         </button>
       </div>
-      <p className="muted">Um ponto de vista salva a data, a câmera, os planos e a caixa de corte, o modo de cor e as datas da simulação.</p>
+      <p className="muted">Um ponto de vista salva a data, a câmera, os cortes, a visibilidade e o modo de cor da simulação.</p>
       {list.length === 0 && <p className="muted">Nenhum ponto de vista salvo.</p>}
       <ul className="pr-list">
         {list.map((vp) => (
@@ -323,7 +337,7 @@ function ViewpointsPanel({ viewer, current, applyView }: { viewer: Viewer; curre
             <button className="link pr-name" title="Exibir este ponto de vista" onClick={() => activate(vp)} onDoubleClick={() => activate(vp, 0)}>
               {vp.name}
             </button>
-            <span className="muted">{vp.time !== null ? fmtDate(vp.time) : "any date"}</span>
+            <span className="muted">{vp.time !== null ? fmtDate(vp.time) : "qualquer data"}</span>
             <span className="spacer" />
             <button className="mini" title="Substituir pela vista atual" onClick={() => put(list.map((x) => (x.id === vp.id ? { ...x, time, camera: viewer.getCamera(), view: current() } : x)))}>
               Atualizar
@@ -332,7 +346,7 @@ function ViewpointsPanel({ viewer, current, applyView }: { viewer: Viewer; curre
               className="mini"
               title="Renomear"
               onClick={() => {
-                const name = window.prompt("Name of the viewpoint", vp.name);
+                const name = window.prompt("Nome do ponto de vista", vp.name);
                 if (name) put(list.map((x) => (x.id === vp.id ? { ...x, name } : x)));
               }}
             >
@@ -402,6 +416,7 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
   // Preview: play the animation in real time.
   useEffect(() => {
     if (!playing || !anim) return;
+    viewer.setAnimationPreview(true);
     let raf = 0;
     const t0 = performance.now() - t * 1000;
     const step = (now: number) => {
@@ -417,7 +432,10 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      viewer.setAnimationPreview(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, anim?.id]);
 
@@ -527,6 +545,7 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
         const date = f.date ?? s.time;
         const view = f.view ?? current();
         const simV: SimulationOptions = { ...s.sim, colorMode: view.colorMode ?? s.sim.colorMode, dateSource: view.dateSource ?? s.sim.dateSource };
+        viewer.setInspection(view.visibility ?? s.view3d.visibility ?? EMPTY_VISIBILITY, undefined, true);
         viewer.applyFrame(computeStates(schedule, s.links, s.profiles, ids, date, simV), motionAt(schedule, s.paths, date, simV.dateSource));
         viewer.setSections(view.cuts, view.box, view.sectionBounds);
         if (f.camera) viewer.setCamera(f.camera, 0);
@@ -571,6 +590,7 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
       const live = useStore.getState().sim;
       viewer.setPresentationLook(live.presentationLook === true);
       viewer.setGridVisible(live.showGrid !== false);
+      viewer.setInspection(useStore.getState().view3d.visibility ?? EMPTY_VISIBILITY, undefined, useStore.getState().playing);
       setProgress(null);
       show(anim, t);
     }

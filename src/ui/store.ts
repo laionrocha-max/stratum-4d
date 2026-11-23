@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { expandElements } from "../core/motion";
 import { EMPTY_PRESENTATION, EMPTY_VIEW, type Presentation, type ViewSettings } from "../core/presentation";
 import { DEFAULT_PROFILES } from "../core/profiles";
+import { EMPTY_VISIBILITY, normalizeVisibility, type VisibilitySettings } from "../core/visibility";
 import type { ModelManifest, ProjectRevision, RevisionSource } from "../core/project";
 import { DEFAULT_SIM_OPTIONS, scheduleRange, type SimulationOptions } from "../core/simulation";
 import type {
@@ -52,6 +53,8 @@ export interface AppState {
   presentation: Presentation;
   /** Live 3D view settings: section planes, section box, legend. */
   view3d: ViewSettings;
+  visibilityPast: VisibilitySettings[];
+  visibilityFuture: VisibilitySettings[];
   modelFileName: string | null;
   models?: ModelManifest;
   scheduleSource?: RevisionSource;
@@ -108,6 +111,9 @@ export interface AppState {
   setPaths: (p: MotionPath[]) => void;
   setPresentation: (p: Presentation) => void;
   setView3d: (v: Partial<ViewSettings>) => void;
+  setVisibility: (v: VisibilitySettings) => void;
+  undoVisibility: () => void;
+  redoVisibility: () => void;
   setPathDraft: (p: [number, number, number][] | null) => void;
   setCurrentProject: (id: string | null, version: number | null) => void;
   setView: (v: AppState["view"]) => void;
@@ -174,6 +180,8 @@ export const useStore = create<AppState>((set) => {
     paths: [],
     presentation: EMPTY_PRESENTATION,
     view3d: EMPTY_VIEW,
+    visibilityPast: [],
+    visibilityFuture: [],
     modelFileName: null,
     projectKey: null,
     projectTitle: null,
@@ -239,6 +247,29 @@ export const useStore = create<AppState>((set) => {
     setPaths: (paths) => set({ paths }),
     setPresentation: (presentation) => set({ presentation }),
     setView3d: (v) => set((s) => ({ view3d: { ...s.view3d, ...v } })),
+    setVisibility: (value) => set((s) => ({
+      view3d: { ...s.view3d, visibility: normalizeVisibility(value) },
+      visibilityPast: [...s.visibilityPast.slice(-29), s.view3d.visibility ?? EMPTY_VISIBILITY],
+      visibilityFuture: [],
+    })),
+    undoVisibility: () => set((s) => {
+      const previous = s.visibilityPast.at(-1);
+      if (!previous) return {};
+      return {
+        view3d: { ...s.view3d, visibility: previous },
+        visibilityPast: s.visibilityPast.slice(0, -1),
+        visibilityFuture: [s.view3d.visibility ?? EMPTY_VISIBILITY, ...s.visibilityFuture],
+      };
+    }),
+    redoVisibility: () => set((s) => {
+      const next = s.visibilityFuture[0];
+      if (!next) return {};
+      return {
+        view3d: { ...s.view3d, visibility: next },
+        visibilityPast: [...s.visibilityPast, s.view3d.visibility ?? EMPTY_VISIBILITY],
+        visibilityFuture: s.visibilityFuture.slice(1),
+      };
+    }),
     setPathDraft: (pathDraft) => set({ pathDraft }),
     setCurrentProject: (currentProjectId, currentVersion) => set({ currentProjectId, currentVersion }),
     setView: (view) => set({ view }),
