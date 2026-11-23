@@ -9,6 +9,8 @@ No teste de **Nova obra**, confira a entrada na biblioteca logo após criar e ap
 
 Crie duas obras em sequência, abra **Arquivo → Abrir da biblioteca**, confira a lista com a busca vazia e pesquise os dois nomes. Em uma atualização que muda a gravação, teste também uma sessão com a compilação anterior carregada, a preservação da obra ativa e a reabertura na compilação entregue.
 
+Exercite também a preparação de dez obras vazias. Todas devem aparecer ao reabrir a biblioteca antes de usar **Salvar** para qualquer alteração posterior.
+
 ## Comandos baseline (confirmar ambiente)
 ```sh
 npm ci

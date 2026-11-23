@@ -135,12 +135,22 @@ try {
   await search.fill("Segunda obra");
   await second.waitFor();
   await first.waitFor({ state: "hidden" });
+  const extraTitles = Array.from({ length: 8 }, (_, i) => `Obra vazia ${i + 3}`);
+  for (const title of extraTitles) {
+    await start();
+    await name.fill(title);
+    await create.click();
+    await app.locator(".status").getByText(`Obra ${title} criada e salva na biblioteca.`, { exact: false }).waitFor();
+  }
   await page.reload({ waitUntil: "domcontentloaded", timeout: 45000 });
   await library.waitFor({ timeout: 45000 });
-  await second.waitFor();
+  for (const title of ["Teste", "Segunda obra", ...extraTitles]) {
+    await library.getByRole("cell", { name: title, exact: true }).waitFor();
+  }
   assert.equal(await library.getByRole("row", { name: /Criação com falha/ }).count(), 0);
   await first.getByRole("button", { name: "Abrir", exact: true }).click();
-  await app.locator(".status").getByText(/Projeto Teste aberto/).waitFor();
+  await app.locator(".status").getByText(/Projeto Teste aberto\. 0 modelo\(s\) e 0 vínculo\(s\)/).waitFor();
+  console.log("Dez obras vazias apareceram na biblioteca após recarregar, antes de clicar em Salvar. A primeira abriu com zero modelos e vínculos.");
   await app.getByTitle("Salvar obra na biblioteca (Ctrl+S)").click();
   await app.locator(".status").getByText(/Projeto Teste salvo \(versão 2\)/).waitFor();
   await openLibrary();
