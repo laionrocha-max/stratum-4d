@@ -9,11 +9,11 @@ import { expandElements, motionAt } from "../core/motion";
 import { parseMspdi } from "../core/mspdi";
 import { writeMspdi } from "../core/mspdiWrite";
 import { EMPTY_PRESENTATION, EMPTY_VIEW, type CameraState } from "../core/presentation";
-import { normalizeProject, parseProject, PROJECT_FORMAT, PROJECT_VERSION, type ModelManifest, type ProjectModel, type StratumProject } from "../core/project";
+import { normalizeProject, parseProject, PROJECT_FORMAT, PROJECT_VERSION, type ModelManifest, type ProjectModel, type ProjectRevision, type RevisionSource, type StratumProject } from "../core/project";
 import { DEFAULT_PROFILES } from "../core/profiles";
 import { computeStates, DEFAULT_SIM_OPTIONS, scheduleRange } from "../core/simulation";
 import type { Schedule } from "../core/types";
-import { diffSchedules, remapLinks } from "../core/update";
+import { applyScheduleRevision, planScheduleRevision, sameScheduleIdentity } from "../core/update";
 import { decodeXer, listXerProjects, parseXerTables, xerToSchedule } from "../core/xer";
 import { exportCsv, exportXer } from "../core/xerExport";
 import { Viewer } from "../viewer/Viewer";
@@ -21,6 +21,8 @@ import { DEMO_SESSIONS, demoSession, demoStoreKind } from "../backend/demo";
 import { MESH_FORMATS } from "../viewer/meshLoader";
 import { combineModelParts, disposeModelParts, loadModelPart, restoreModelParts, type ModelPart } from "../viewer/projectModels";
 import { modelHash, saveModelAsset } from "../backend/modelAssets";
+import { readCheckpoint, saveCheckpoint } from "../backend/revisionHistory";
+import { compareModelRevision } from "../viewer/modelRevision";
 import { Present } from "./Present";
 import { Teardown, teardownHud } from "./Teardown";
 import { reportRoute, useConfig } from "../backend/config";
@@ -30,6 +32,7 @@ import { DashboardsView } from "./Dashboards";
 import { isCombined } from "../core/multiproject";
 import { saveCombined } from "./p6/EnterpriseProjects";
 import { ProjectsDialog } from "./ProjectsDialog";
+import { RevisionDialog, RevisionHistory, type RevisionOffer } from "./RevisionDialog";
 import { ReportView } from "./ReportView";
 import { SettingsDialog } from "./SettingsDialog";
 import { SetupWizard } from "./SetupWizard";
@@ -113,6 +116,9 @@ function Workspace() {
   const cameraRef = useRef<CameraState>();
   const [recording, setRecording] = useState<MediaRecorder | null>(null);
   const [restore, setRestore] = useState<StratumProject | null>(null);
+  const [revisionOffer, setRevisionOffer] = useState<{ review: RevisionOffer; finish: (value: Map<string, string> | null) => void } | null>(null);
+  const finishReview = useRef<(value: Map<string, string> | null) => void>();
+  const [showHistory, setShowHistory] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   useEffect(() => {
@@ -336,12 +342,12 @@ function Workspace() {
   // Distinguish a click from an orbit drag.
   const down = useRef<{ x: number; y: number } | null>(null);
 
-  const importSchedule = async () => {
+  const importSchedule = async (update = false) => {
     const workspace = useStore.getState().workspaceRevision;
     const f = await pickFile(".xer,.xml");
     if (!f) return;
     const buffer = await f.arrayBuffer();
-    if (workspace === useStore.getState().workspaceRevision) await importScheduleBytes(f.name, new Uint8Array(buffer));
+    if (workspace === useStore.getState().workspaceRevision) await importScheduleBytes(f.name, new Uint8Array(buffer), update);
   };
 
   /** Read an XER / MS Project XML file into a schedule (first project, or the one the user picks). */
@@ -362,15 +368,20 @@ function Workspace() {
 
   /** P6 "Assign Baselines": take baseline dates from an approved-baseline XER or XML, matched by Activity ID. */
   const assignBaselineFromFile = async () => {
-    const cur = useStore.getState().schedule;
+    const original = useStore.getState();
+    const cur = original.schedule;
     if (!cur) return store.setStatus("Open the current schedule first, then assign its baseline.");
     const f = await pickFile(".xer,.xml");
-    if (!f) return;
+    if (!f || original.workspaceRevision !== useStore.getState().workspaceRevision) return;
     try {
       store.setStatus(`Reading baseline ${f.name}…`, true);
-      const bl = readScheduleFile(f.name, new Uint8Array(await f.arrayBuffer()));
+      const bytes = await f.arrayBuffer();
+      const latest = useStore.getState();
+      if (latest.workspaceRevision !== original.workspaceRevision) return;
+      if (latest.schedule !== cur) return store.setStatus("O cronograma mudou enquanto a baseline era lida. Selecione a baseline novamente.");
+      const bl = readScheduleFile(f.name, new Uint8Array(bytes));
       if (!bl) return store.setStatus("Baseline not assigned.");
-      const r = assignBaseline(useStore.getState().schedule ?? cur, bl, `${bl.projectCode} – ${bl.projectName}`);
+      const r = assignBaseline(cur, bl, `${bl.projectCode} – ${bl.projectName}`);
       if (!r.matched) return store.setStatus(`No Activity IDs in ${f.name} match the open project; baseline not assigned.`);
       store.setSchedule(r.schedule, { keepTime: true, dirty: false });
       store.setStatus(
@@ -380,84 +391,132 @@ function Workspace() {
           ". Commit to keep it.",
       );
     } catch (err) {
-      store.setStatus(`Baseline import failed: ${(err as Error).message}`);
+      if (original.workspaceRevision === useStore.getState().workspaceRevision) store.setStatus(`Baseline import failed: ${(err as Error).message}`);
     }
   };
 
-  const importScheduleBytes = async (name: string, bytes: Uint8Array) => {
+  const reviewRevision = (review: RevisionOffer) => new Promise<Map<string, string> | null>((resolve) => {
+    finishReview.current?.(null);
+    const finish = (value: Map<string, string> | null) => {
+      finishReview.current = undefined;
+      setRevisionOffer(null);
+      resolve(value);
+    };
+    finishReview.current = finish;
+    setRevisionOffer({
+      review,
+      finish,
+    });
+  });
+
+  const recordRevision = async (kind: ProjectRevision["kind"], source: RevisionSource, before: StratumProject, summary: string, dataDate: number | null, number?: number): Promise<ProjectRevision> => ({
+    id: crypto.randomUUID(),
+    kind,
+    date: new Date().toISOString(),
+    author: useConfig.getState().backend.user?.name || "Usuário local",
+    source,
+    dataDate,
+    number,
+    checkpoint: await saveCheckpoint(before),
+    summary,
+  });
+
+  const importScheduleBytes = async (name: string, bytes: Uint8Array, update = false) => {
+    const request = ++projectAction.current;
     try {
-      store.setStatus(`Reading ${name}…`, true);
-      let s: Schedule;
-      const head = new TextDecoder().decode(bytes.subarray(0, 400)).trimStart();
-      if (/\.xml$/i.test(name) || head.startsWith("<")) {
-        s = parseMspdi(new TextDecoder().decode(bytes));
-      } else {
-        const tables = parseXerTables(decodeXer(bytes));
-        const projects = listXerProjects(tables);
-        let projectId = projects[0]?.id;
-        if (projects.length > 1) {
-          const pick = window.prompt(
-            `This XER has ${projects.length} projects. Enter the number to import:\n` + projects.map((p, i) => `${i + 1}. ${p.code} – ${p.name}`).join("\n"),
-            "1",
-          );
-          const idx = Number(pick) - 1;
-          if (!projects[idx]) return store.setStatus("Import cancelled.");
-          projectId = projects[idx].id;
-        }
-        s = xerToSchedule(tables, { projectId });
-      }
-      adoptSchedule(s);
+      store.setStatus(`Lendo ${name}…`, true);
+      const schedule = readScheduleFile(name, bytes);
+      if (!schedule) return store.setStatus("Importação cancelada.");
+      const file = new Blob([new Uint8Array(bytes)]);
+      const source = { name, hash: await modelHash(await file.arrayBuffer()) };
+      if (request !== projectAction.current) return;
+      await adoptSchedule(schedule, source, request, update, file);
     } catch (err) {
-      store.setStatus(`Schedule import failed: ${(err as Error).message}`);
+      if (request === projectAction.current) store.setStatus(`Falha na revisão ou importação. ${(err as Error).message}`);
     }
   };
 
-  /** Bring an imported schedule in: as an update of the open project when IDs overlap, else as a new project. */
-  const adoptSchedule = (s: Schedule) => {
-    {
-      const prev = useStore.getState().schedule;
-      const prevLinks = useStore.getState().links;
-      // Treat it as an update of the open project when Activity IDs overlap.
-      const previousCodes = new Set(prev?.activities.map((a) => a.code));
-      const overlap = prev && prev.projectCode === s.projectCode ? s.activities.filter((a) => previousCodes.has(a.code)).length : 0;
-      const isUpdate =
-        !!prev &&
-        overlap > 0 &&
-        window.confirm(
-          `Update the open schedule (${prev.projectCode}) with this file?\n\n${overlap} Activity IDs match. Links will be kept by Activity ID.\n\nCancel to load it as a new project instead.`,
-        );
-      if (isUpdate && prev) {
-        const nextCodes = new Set(s.activities.map((a) => a.code));
-        if (nextCodes.size !== s.activities.length || previousCodes.size !== prev.activities.length) {
-          store.setStatus("Atualização cancelada: corrija os códigos de atividade duplicados antes de transferir vínculos.");
-          return;
-        }
-        const diff = diffSchedules(prev, s);
-        const { links: kept, dropped } = remapLinks(prev, s, prevLinks);
-        const idMap = new Map(prev.activities.map((a) => [a.id, s.activities.find((b) => b.code === a.code)?.id]));
-        store.setPaths(useStore.getState().paths.flatMap((p) => (idMap.get(p.activityId) ? [{ ...p, activityId: idMap.get(p.activityId)! }] : [])));
-        store.setSchedule(s);
-        store.setLinks(kept);
-        store.setLastUpdate({ ...diff, keptLinks: kept.length, droppedLinks: dropped.length, at: Date.now() });
-        store.setSideTab("check");
-        const fin = diff.finishShiftDays;
-        store.setStatus(
-          `Updated ${s.projectCode}: ${diff.changed.length} changed, ${diff.added.length} added, ${diff.removed.length} removed. ` +
-            `Finish ${fin ? `${fin > 0 ? "+" : ""}${fin}d` : "unchanged"}. ${kept.length} links kept${dropped.length ? `, ${dropped.length} dropped` : ""}.`,
-        );
-      } else {
-        if (prev) applyProject({ ...emptyProject(), schedule: s });
-        else {
-          store.setSchedule(s);
-          if (!useStore.getState().projectKey) useStore.setState({ projectKey: crypto.randomUUID() });
-        }
-        const src = s.sourceFormat === "mspdi" ? "MS Project" : s.sourceFormat === "p6-eppm" ? "P6 EPPM" : s.sourceFormat === "p6-db" ? "P6 database" : "P6";
-        store.setStatus(
-          `Imported ${s.projectCode} (${src}): ${s.activities.length} activities, ` +
-            `${s.relationships.length} relationships, ${s.resources?.length ?? 0} resources. Data date ${fmtDate(s.dataDate)}.`,
-        );
+  const adoptSchedule = async (schedule: Schedule, source: RevisionSource, request: number, update = false, file?: Blob) => {
+    const st = useStore.getState();
+    const prev = st.schedule;
+    const sameProject = prev && sameScheduleIdentity(prev, schedule);
+    if (update || sameProject) {
+      if (!prev) throw new Error("Importe o primeiro cronograma antes de atualizar.");
+      const plan = planScheduleRevision(prev, schedule);
+      const imported = new Map(schedule.activities.map((a) => [a.code, a.id]));
+      const linked = new Map<string, number>();
+      for (const link of st.links) linked.set(link.activityId, (linked.get(link.activityId) ?? 0) + 1);
+      const diff = plan.diff;
+      const manual = await reviewRevision({
+        title: "Prévia da revisão de cronograma",
+        file: source.name,
+        summary: [
+          `${plan.matches.size} atividade(s) correspondentes · ${diff.added.length} adicionada(s) · ${diff.removed.length} removida(s) · ${diff.changed.length} alterada(s)`,
+          `Corte ${fmtDate(diff.dataDateFrom)} → ${fmtDate(diff.dataDateTo)}`,
+          `${st.links.filter((l) => plan.matches.has(l.activityId)).length} vínculo(s) com correspondência automática`,
+          "A baseline, os IFCs e as vistas salvas serão preservados.",
+        ],
+        warnings: [
+          ...(plan.ambiguous.size ? [`${plan.ambiguous.size} atividade(s) com identidade ambígua. Confira as correspondências manuais.`] : []),
+          ...(diff.calendarsChanged ? ["Calendários alterados."] : []),
+          ...(diff.relationshipsChanged ? ["Relações entre atividades alteradas."] : []),
+          ...(diff.removed.length && diff.added.length ? ["Confira possíveis renumerações, divisões ou fusões entre atividades removidas e adicionadas."] : []),
+        ],
+        changes: [
+          { title: "Atividades adicionadas", items: diff.added.map((a) => `${a.code} · ${a.name}`) },
+          { title: "Atividades removidas", items: diff.removed.map((a) => `${a.code} · ${a.name}`) },
+          { title: "Atividades alteradas", items: diff.changed.map((a) => `${a.code} · ${a.name} · ${a.fields.join(", ")}`) },
+        ],
+        mappings: prev.activities.filter((a) => !plan.matches.has(a.id)).map((a) => ({
+          id: a.id, label: `${a.code} · ${a.name}${plan.ambiguous.has(a.id) ? " (ambígua)" : ""}`, links: linked.get(a.id) ?? 0,
+        })),
+        destinations: imported,
+        occupied: new Set(plan.matches.values()),
+        destinationLabel: "o código da atividade",
+      });
+      if (request !== projectAction.current) return;
+      if (!manual) return store.setStatus("Revisão de cronograma cancelada. A obra ficou na versão anterior.");
+      const before = currentPayload();
+      if (prev !== before.schedule) throw new Error("O cronograma mudou durante a prévia. Abra a revisão novamente.");
+      const mapping = new Map([...plan.matches, ...manual]);
+      const result = applyScheduleRevision(prev, schedule, before.links, before.paths ?? [], mapping);
+      const summary = `${result.links.length} vínculo(s) mantido(s) e ${result.orphaned.length} sem correspondência.`;
+      if (file && source.hash) await saveModelAsset(source.hash, file);
+      const number = (before.revisions?.filter((entry) => entry.kind === "schedule").length ?? 0) + 2;
+      const entry = await recordRevision("schedule", source, before, summary, schedule.dataDate, number);
+      if (request !== projectAction.current) return;
+      if (prev !== useStore.getState().schedule || before.links !== useStore.getState().links || before.paths !== useStore.getState().paths) {
+        throw new Error("A obra mudou durante a revisão. Abra a prévia novamente.");
+      }
+      useStore.setState({
+        schedule: result.schedule, scheduleSource: source, scheduleDirty: false, past: [], future: [],
+        links: result.links, paths: result.paths, selectedActivity: null, selectedActivities: new Set(), collapsedWbs: new Set(),
+        revisions: [...(before.revisions ?? []), entry], playing: false, scheduleReport: null,
+        lastUpdate: { ...diff, keptLinks: result.links.length, droppedLinks: result.orphaned.length, at: Date.now() },
+        sideTab: "check",
+      });
+      store.setStatus(`Revisão de cronograma aplicada. ${summary}`);
+      return;
+    }
+    if (prev && !window.confirm(`Abrir ${schedule.projectCode} como nova obra? Salve a obra atual antes de trocar.`)) {
+      return store.setStatus("Importação cancelada.");
+    }
+    if (file && source.hash) {
+      try {
+        await saveModelAsset(source.hash, file);
+      } catch {
+        // An initial import can still work in memory. Revisions require a checkpoint.
+        source = { name: source.name };
       }
     }
+    if (request !== projectAction.current) return;
+    if (prev) applyProject({ ...emptyProject(), schedule, scheduleSource: source });
+    else {
+      store.setSchedule(schedule);
+      useStore.setState({ scheduleSource: source, projectKey: st.projectKey ?? crypto.randomUUID() });
+    }
+    const label = schedule.sourceFormat === "mspdi" ? "MS Project" : schedule.sourceFormat === "p6-eppm" ? "P6 EPPM" : "P6";
+    store.setStatus(`Imported ${schedule.projectCode} (${label}): ${schedule.activities.length} activities, ${schedule.relationships.length} relationships. Data date ${fmtDate(schedule.dataDate)}.`);
   };
 
   // ---- database
@@ -472,8 +531,18 @@ function Workspace() {
       title: st.projectTitle ?? undefined,
       archived: st.projectArchived || undefined,
       models: st.models,
+      scheduleSource: st.scheduleSource,
+      revisions: st.revisions,
       simulation: st.sim,
-      view: { camera: viewerRef.current?.getCamera() ?? cameraRef.current, settings: st.view3d, time: st.time },
+      view: {
+        camera: viewerRef.current?.getCamera() ?? cameraRef.current,
+        settings: {
+          ...st.view3d,
+          sectionBounds: st.view3d.sectionBounds ??
+            (st.view3d.cuts.some((cut) => cut.on) || st.view3d.box?.on ? viewerRef.current?.getSectionBounds() : undefined),
+        },
+        time: st.time,
+      },
       schedule: st.schedule,
       links: st.links,
       rules: st.rules,
@@ -534,8 +603,10 @@ function Workspace() {
   };
 
   const importFromP6 = (s: Schedule, c: P6Connection) => {
-    adoptSchedule(s);
-    store.setStatus(`${useStore.getState().status} Pulled from ${c.name}.`);
+    const request = ++projectAction.current;
+    void adoptSchedule(s, { name: c.name }, request).catch((error) => {
+      if (request === projectAction.current) store.setStatus((error as Error).message);
+    });
   };
 
   const pushToP6 = async () => {
@@ -567,22 +638,71 @@ function Workspace() {
     disposeModelParts([{ objects: new Map([...previous].filter(([id, object]) => objects.get(id) !== object)) }]);
   };
 
-  const commitModels = (manifest: ModelManifest, parts: Map<string, ModelPart>, lost = new Set<string>()) => {
+  const commitModels = (manifest: ModelManifest, parts: Map<string, ModelPart>, lost = new Set<string>(), mapping = new Map<string, string>(), entry?: ProjectRevision) => {
     const st = useStore.getState();
     const combined = combineModelParts(parts.values());
     const fit = !objectsRef.current.size || !!demoKindOf(st.modelFileName);
     partsRef.current = parts;
-    const segments = st.segments.filter((s) => !lost.has(s.id) && !lost.has(s.parentId));
-    const groups = st.groups.map((g) => ({ ...g, elementIds: g.elementIds.filter((id) => !lost.has(id)) }));
+    const key = (id: string) => mapping.get(id) ?? id;
+    const remap = (ids: string[]) => [...new Set(ids.filter((id) => !lost.has(id)).map(key))];
+    const segments = st.segments.filter((s) => !lost.has(s.id) && !lost.has(s.parentId)).map((s) => ({ ...s, parentId: key(s.parentId) }));
+    const groups = st.groups.map((g) => ({ ...g, elementIds: remap(g.elementIds) }));
     useStore.setState({
       baseElements: combined.elements, elements: expandElements(combined.elements, segments, groups),
       modelFileName: manifest.files[0]?.name ?? null, models: manifest, segments, groups,
-      paths: st.paths.map((p) => ({ ...p, elementIds: p.elementIds.filter((id) => !lost.has(id)) })),
-      links: st.links.filter((l) => !lost.has(l.elementId)),
+      paths: st.paths.map((p) => ({ ...p, elementIds: remap(p.elementIds) })),
+      links: st.links.filter((l) => !lost.has(l.elementId)).map((l) => ({ ...l, elementId: key(l.elementId) })),
+      revisions: entry ? [...(st.revisions ?? []), entry] : st.revisions,
       selectedElements: new Set(), projectKey: st.projectKey ?? crypto.randomUUID(), pathDraft: null,
     });
     loadObjects(combined.objects, fit);
     if (fit && cameraRef.current) viewerRef.current?.setCamera(cameraRef.current);
+  };
+
+  const previewModelRevision = async (target: ProjectModel, model: ProjectModel, part: ModelPart) => {
+    const previous = partsRef.current.get(target.id);
+    if (!previous || !target.hash) throw new Error("Localize o modelo atual antes de substituir a revisão.");
+    const diff = compareModelRevision(previous, part);
+    const st = useStore.getState();
+    const unmatched = new Set(diff.removed.map((e) => e.id));
+    const targets = new Map(diff.added.filter((e) => !/(?:^|:)express-\d+$/.test(e.id)).map((e) =>
+      [e.properties.GlobalId ?? e.id, e.id],
+    ));
+    const parents = new Map(st.segments.map((s) => [s.id, s.parentId]));
+    const base = (id: string) => parents.get(id) ?? id;
+    const counts = new Map<string, number>();
+    const referenced = new Set([
+      ...st.links.map((l) => base(l.elementId)), ...st.groups.flatMap((g) => g.elementIds.map(base)),
+      ...st.paths.flatMap((p) => p.elementIds.map(base)), ...st.segments.map((s) => s.parentId),
+    ]);
+    for (const l of st.links) counts.set(base(l.elementId), (counts.get(base(l.elementId)) ?? 0) + 1);
+    const choice = await reviewRevision({
+      title: "Prévia da revisão de modelo",
+      file: model.name,
+      summary: [
+        `${diff.matched} identificador(es) compatível(is), ${diff.added.length} novo(s), ${diff.removed.length} removido(s), ${diff.changed.length} alterado(s).`,
+        `${st.links.length - diff.removed.reduce((total, e) => total + (counts.get(e.id) ?? 0), 0)} vínculo(s) mantido(s) automaticamente.`,
+        "A câmera e as vistas existentes serão mantidas.",
+      ],
+      warnings: [
+        ...(diff.georeferenceChanged ? ["A referência geográfica do IFC mudou. Confira o alinhamento com os demais modelos antes de aplicar."] : []),
+        ...(diff.translated ? ["Vários elementos mudaram de posição na mesma direção. Confira a origem compartilhada do IFC."] : []),
+        ...(diff.added.length && diff.removed.length ? ["Confira possíveis mudanças de GlobalId, divisões ou fusões. Nenhuma correspondência será deduzida pelo nome."] : []),
+      ],
+      changes: [
+        { title: "Elementos adicionados", items: diff.added.map((e) => `${e.name} · ${e.properties.GlobalId ?? e.id}`) },
+        { title: "Elementos removidos ou sem identidade estável", items: diff.removed.map((e) => `${e.name} · ${e.properties.GlobalId ?? e.id}`) },
+        { title: "Elementos alterados", items: diff.changed.map((e) => `${e.label} · ${e.fields.join(", ")}`) },
+      ],
+      mappings: diff.removed.filter((e) => referenced.has(e.id)).map((e) => ({ id: e.id, label: e.name, links: counts.get(e.id) ?? 0 })),
+      destinations: targets,
+      destinationLabel: "o GlobalId do elemento",
+    });
+    if (!choice) return null;
+    const lost = new Set<string>([...unmatched].filter((id) => !choice.has(id)));
+    for (const segment of st.segments) if (lost.has(segment.parentId)) lost.add(segment.id);
+    const dropped = st.links.filter((l) => lost.has(l.elementId)).length;
+    return { choice, lost, summary: `${diff.changed.length} elemento(s) alterado(s), ${choice.size} remapeado(s) e ${dropped} vínculo(s) sem correspondência.` };
   };
 
   const confirmModelChange = (target: ProjectModel | undefined, next?: ModelPart) => {
@@ -622,6 +742,7 @@ function Workspace() {
       const hash = await modelHash(buffer);
       if (request !== projectAction.current) return;
       if (target?.hash && !revision && target.hash !== hash) throw new Error("O arquivo difere da versão salva. Para atualizar, use Substituir revisão.");
+      if (revision && target?.hash === hash) return store.setStatus("O modelo selecionado é idêntico à revisão ativa.");
       if (target && /\.ifc$/i.test(target.name) !== /\.ifc$/i.test(name)) throw new Error("Selecione um arquivo do mesmo formato do original.");
       if (!target && current.files.some((f) => f.hash === hash)) {
         store.setStatus("Esse arquivo já está na obra.");
@@ -642,7 +763,10 @@ function Workspace() {
           return;
         }
       }
-      const lost = revision || !target ? confirmModelChange(target, part) : new Set<string>();
+      const before = currentPayload();
+      const preview = revision && target ? await previewModelRevision(target, model, part) : undefined;
+      if (request !== projectAction.current) return;
+      const lost = revision ? preview?.lost : !target ? confirmModelChange(target, part) : new Set<string>();
       if (!lost) {
         store.setStatus("Importação cancelada. A versão anterior continua ativa.");
         return;
@@ -650,13 +774,20 @@ function Workspace() {
       let stored = true;
       try {
         await saveModelAsset(hash, file);
-      } catch {
+      } catch (error) {
+        if (revision) throw error;
         stored = false;
       }
+      const entry = preview ? await recordRevision("ifc", { name, hash }, before, preview.summary, before.schedule?.dataDate ?? null, model.revision) : undefined;
       if (request !== projectAction.current) return;
+      const active = useStore.getState();
+      if (revision && (before.links !== active.links || before.models !== active.models || before.segments !== active.segments || before.paths !== active.paths || before.groups !== active.groups || before.schedule !== active.schedule)) {
+        throw new Error("A obra mudou durante a prévia. Abra a revisão novamente.");
+      }
       const parts = new Map(partsRef.current).set(model.id, part);
       const files = target ? current.files.map((f) => f.id === target.id ? model : f) : [...current.files, model];
-      commitModels({ files, coordination: current.coordination ?? part.coordination }, parts, lost);
+      commitModels({ files, coordination: current.coordination ?? part.coordination }, parts, lost, preview?.choice, entry);
+      if (entry && before.view?.settings.sectionBounds) useStore.getState().setView3d({ sectionBounds: before.view.settings.sectionBounds });
       part = undefined;
       store.setStatus(`Modelo ${name} carregado. ${parts.size} de ${files.length} modelo(s) na obra.${stored ? "" : " O armazenamento local falhou. Guarde o arquivo original para localizá-lo ao reabrir."}`);
     } catch (err) {
@@ -695,11 +826,12 @@ function Workspace() {
 
   const applyProject = (p: StratumProject, parts = new Map<string, ModelPart>(), scene = combineModelParts(parts.values()), id: string | null = null, version: number | null = null) => {
     ++projectAction.current;
+    finishReview.current?.(null);
     partsRef.current = parts;
     cameraRef.current = p.view?.camera;
     viewerRef.current?.setPathOverlay([]);
     viewerRef.current?.setExplode(0, "storeys");
-    viewerRef.current?.setCamera({ pos: [12, 9, 12], target: [0, 0, 0], fov: 45 });
+    viewerRef.current?.setCamera({ pos: [12, 9, 12], target: [0, 0, 0], fov: 45, up: [0, 1, 0], clipping: [0.1, 5000] });
     const projectSegments = p.segments ?? [];
     const groups = p.groups ?? [];
     const simulation = { ...DEFAULT_SIM_OPTIONS, ...p.simulation };
@@ -712,6 +844,7 @@ function Workspace() {
       presentation: p.presentation ?? EMPTY_PRESENTATION,
       selectedActivity: null, selectedActivities: new Set(), selectedElements: new Set(),
       models: p.models, projectKey: p.projectKey ?? id ?? (p.schedule || p.modelFileName ? crypto.randomUUID() : null),
+      scheduleSource: p.scheduleSource, revisions: p.revisions,
       projectTitle: p.title ?? null, projectArchived: !!p.archived, currentProjectId: id, currentVersion: version,
       workspaceRevision: st.workspaceRevision + 1, pathDraft: null, clipboard: null, playing: false,
       collapsedWbs: new Set(), ganttFilter: { text: "", kind: "all" }, ganttTracking: false,
@@ -721,10 +854,11 @@ function Workspace() {
     loadObjects(scene.objects);
     if (cameraRef.current) viewerRef.current?.setCamera(cameraRef.current);
     setRestore(null);
+    setShowHistory(false);
     setSavedAt(null);
   };
 
-  const restoreProject = async (p: StratumProject, request: number, id: string | null = null, version: number | null = null) => {
+  const restoreProject = async (p: StratumProject, request: number, id: string | null = null, version: number | null = null, strict = false) => {
     const label = p.title ?? p.schedule?.projectCode ?? "sem nome";
     const sample = !p.models && demoKindOf(p.modelFileName);
     if (sample) {
@@ -740,9 +874,46 @@ function Workspace() {
       disposeModelParts(result.parts.values());
       return;
     }
+    if (strict && result.missing.length) {
+      disposeModelParts(result.parts.values());
+      throw new Error(`Arquivos anteriores indisponíveis: ${result.missing.map((file) => file.name).join(", ")}. A obra atual foi preservada.`);
+    }
     applyProject({ ...p, models: result.manifest }, result.parts, undefined, id, version);
     const missing = result.missing.map((f) => f.name);
     store.setStatus(`Projeto ${label} aberto. ${result.parts.size} modelo(s) e ${p.links.length} vínculo(s).${missing.length ? ` Use Modelos → Localizar arquivo para: ${missing.join(", ")}.` : ""}`);
+  };
+
+  const downloadRevision = async (entry: ProjectRevision) => {
+    try {
+      const previous = await readCheckpoint(entry.checkpoint);
+      const name = previous.title ?? previous.schedule?.projectCode ?? "obra";
+      download(`${name}-anterior.stratum.json`, JSON.stringify(previous, null, 2), "application/json");
+    } catch (err) {
+      store.setStatus((err as Error).message);
+      setShowHistory(false);
+    }
+  };
+
+  const restoreRevision = async (item: ProjectRevision) => {
+    if (!window.confirm("Restaurar o estado anterior a esta revisão, incluindo cronograma, modelos, vínculos e vistas? O estado atual será guardado no histórico.")) return;
+    const request = ++projectAction.current;
+    const st = useStore.getState();
+    const before = currentPayload();
+    try {
+      store.setStatus("Preparando o estado anterior…", true);
+      const previous = await readCheckpoint(item.checkpoint);
+      const entry = await recordRevision("restore", item.source, before, `Estado restaurado para antes de ${item.source.name}.`, previous.schedule?.dataDate ?? null);
+      if (request !== projectAction.current) return;
+      await restoreProject({
+        ...previous, projectKey: before.projectKey, title: before.title, archived: before.archived,
+        revisions: [...(before.revisions ?? []), entry],
+      }, request, st.currentProjectId, st.currentVersion, true);
+    } catch (err) {
+      if (request === projectAction.current) {
+        setShowHistory(false);
+        store.setStatus(`A restauração não foi aplicada. ${(err as Error).message}`);
+      }
+    }
   };
 
   const saveProject = () => {
@@ -913,10 +1084,14 @@ function Workspace() {
   const I = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
   const btn = {
     importSchedule: (
-      <button className="tb" onClick={importSchedule} title="Import a Primavera P6 .xer or Microsoft Project .xml">
-        <FileUp {...I} />
-        <span>Importar cronograma</span>
-      </button>
+      <details className="menu">
+        <summary className="tb" title="Cronograma da obra"><FileUp {...I} /> Cronograma <ChevronDown {...I} /></summary>
+        <div className="menu-body" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute("open")}>
+          <button disabled={busy} onClick={() => void importSchedule()}>Importar cronograma (XER / XML)…</button>
+          <button disabled={busy || !schedule} onClick={() => void importSchedule(true)}>Atualizar cronograma…</button>
+          <button disabled={!store.revisions?.length} onClick={() => setShowHistory(true)}>Histórico de revisões…</button>
+        </div>
+      </details>
     ),
     importIfc: (
       <details className="menu">
@@ -1030,7 +1205,9 @@ function Workspace() {
         <button onClick={() => setProjectsTab("database")}>Abrir da biblioteca…</button>
         <button onClick={() => void saveToDb(true).catch((e) => window.alert(e.message))} disabled={busy || (!schedule && !store.projectKey)}>Salvar como nova obra</button>
         <hr />
-        <button onClick={importSchedule}>Importar cronograma (XER / XML)…</button>
+        <button disabled={busy} onClick={() => void importSchedule()}>Importar cronograma (XER / XML)…</button>
+        <button disabled={busy || !schedule} onClick={() => void importSchedule(true)}>Atualizar cronograma…</button>
+        <button disabled={!store.revisions?.length} onClick={() => setShowHistory(true)}>Histórico de revisões…</button>
         <button onClick={() => void importIfc()}>Adicionar modelo 3D…</button>
         <button onClick={() => setProjectsTab("p6")}>Import from P6…</button>
         {canPush && <button onClick={pushToP6}>Update P6 with progress</button>}
@@ -1125,7 +1302,7 @@ function Workspace() {
     saveDb: () => saveToDb(false),
     save: () => void saveToDb(false).catch((e) => window.alert(e.message)),
     saveAsNew: () => void saveToDb(true).catch((e) => window.alert(e.message)),
-    importSchedule,
+    importSchedule: () => void importSchedule(),
     importP6: () => setProjectsTab("p6"),
     pushP6: canPush ? pushToP6 : null,
     schedule: runSchedule,
@@ -1155,6 +1332,7 @@ function Workspace() {
           {store.projectTitle && <span className="project-active" title={store.projectTitle}>{store.projectTitle}</span>}
           <span className="sep" />
           {btn.importIfc}
+          {btn.importSchedule}
           {btn.push}
           {btn.run}
           {btn.exportMenu}
@@ -1266,6 +1444,8 @@ function Workspace() {
         />
       )}
       {settingsTab && <SettingsDialog initialTab={settingsTab} onClose={() => setSettingsTab(null)} />}
+      {revisionOffer && <RevisionDialog offer={revisionOffer.review} onFinish={revisionOffer.finish} />}
+      {showHistory && <RevisionHistory entries={store.revisions ?? []} busy={busy} onClose={() => setShowHistory(false)} onRestore={(e) => void restoreRevision(e)} onDownload={(e) => void downloadRevision(e)} />}
       {!config.configured && (
         <SetupWizard
           onDone={(open) => {

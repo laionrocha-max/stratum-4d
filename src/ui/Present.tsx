@@ -111,8 +111,8 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
 
   // The live sections follow the store.
   useEffect(() => {
-    getViewer()?.setSections(view3d.cuts, view3d.box);
-  }, [view3d.cuts, view3d.box, gen, getViewer]);
+    getViewer()?.setSections(view3d.cuts, view3d.box, view3d.sectionBounds);
+  }, [view3d.cuts, view3d.box, view3d.sectionBounds, gen, getViewer]);
 
   // Ctrl+Shift+A: link the selected elements to the selected activity (profile last used in the Selection tab).
   useEffect(() => {
@@ -141,12 +141,17 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const current = (): ViewSettings => ({ ...structuredClone(useStore.getState().view3d), colorMode: useStore.getState().sim.colorMode, dateSource: useStore.getState().sim.dateSource });
+  const current = (): ViewSettings => ({
+    ...structuredClone(useStore.getState().view3d),
+    sectionBounds: getViewer()?.getSectionBounds(),
+    colorMode: useStore.getState().sim.colorMode,
+    dateSource: useStore.getState().sim.dateSource,
+  });
 
   /** Apply view settings (sections, legend, colour mode, dates) to the store. */
   const applyView = (v: ViewSettings) => {
     const s = useStore.getState();
-    s.setView3d({ cuts: v.cuts, box: v.box, legend: v.legend });
+    s.setView3d({ cuts: v.cuts, box: v.box, legend: v.legend, sectionBounds: v.sectionBounds });
     const patch: Partial<SimulationOptions> = {};
     if (v.colorMode && v.colorMode !== s.sim.colorMode) patch.colorMode = v.colorMode;
     if (v.dateSource && v.dateSource !== s.sim.dateSource) patch.dateSource = v.dateSource;
@@ -265,7 +270,7 @@ function SectionsPanel({ viewer }: { viewer: Viewer }) {
           <input type="checkbox" checked={!!view3d.legend} onChange={(e) => setView3d({ legend: e.target.checked })} /> Show the legend and date
         </label>
         <span className="spacer" />
-        <button className="mini" onClick={() => setView3d({ cuts: [], box: null })} disabled={!view3d.cuts.length && !view3d.box}>
+        <button className="mini" onClick={() => setView3d({ cuts: [], box: null, sectionBounds: undefined })} disabled={!view3d.cuts.length && !view3d.box}>
           Clear
         </button>
       </div>
@@ -517,7 +522,7 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
       const view = f.view ?? current();
       const simV: SimulationOptions = { ...s.sim, colorMode: view.colorMode ?? s.sim.colorMode, dateSource: view.dateSource ?? s.sim.dateSource };
       viewer.applyFrame(computeStates(schedule, s.links, s.profiles, ids, date, simV), motionAt(schedule, s.paths, date, simV.dateSource));
-      viewer.setSections(view.cuts, view.box);
+      viewer.setSections(view.cuts, view.box, view.sectionBounds);
       if (f.camera) viewer.setCamera(f.camera, 0);
       const frame = viewer.renderFrame(o.width, o.height);
       g.drawImage(frame, 0, 0);

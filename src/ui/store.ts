@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { expandElements } from "../core/motion";
 import { EMPTY_PRESENTATION, EMPTY_VIEW, type Presentation, type ViewSettings } from "../core/presentation";
 import { DEFAULT_PROFILES } from "../core/profiles";
-import type { ModelManifest } from "../core/project";
+import type { ModelManifest, ProjectRevision, RevisionSource } from "../core/project";
 import { DEFAULT_SIM_OPTIONS, scheduleRange, type SimulationOptions } from "../core/simulation";
 import type {
   Activity,
@@ -54,6 +54,8 @@ export interface AppState {
   view3d: ViewSettings;
   modelFileName: string | null;
   models?: ModelManifest;
+  scheduleSource?: RevisionSource;
+  revisions?: ProjectRevision[];
   projectKey: string | null;
   projectTitle: string | null;
   projectArchived: boolean;

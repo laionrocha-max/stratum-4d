@@ -13,6 +13,7 @@ export interface LoadedGeometry {
 
 export interface LoadedIfc extends LoadedGeometry {
   coordination: number[];
+  geographicReference: string;
 }
 
 let api: WebIFC.IfcAPI | null = null;
@@ -104,7 +105,7 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
     if (duplicates.size) throw new Error(`IFC com ${duplicates.size} GlobalId(s) duplicado(s). Corrija os IDs no modelo de origem: ${[...duplicates].slice(0, 4).join(", ")}`);
 
     onProgress?.(`Reading properties for ${objects.size} elements…`);
-    const storeyOf = await spatialStoreys(ifc, modelID);
+    const spatial = await spatialStructure(ifc, modelID);
     let n = 0;
     for (const [expressID, key] of expressToKey) {
       const line = ifc.GetLine(modelID, expressID);
@@ -114,8 +115,9 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
       if (tag) props.Tag = tag;
       const objType = str(line?.ObjectType);
       if (objType) props.ObjectType = objType;
-      const storey = storeyOf.get(expressID);
-      if (storey) props.Storey = storey;
+      const place = spatial.get(expressID);
+      if (place?.storey) props.Storey = place.storey;
+      if (place?.path) props.SpatialPath = place.path;
       try {
         const psets = await ifc.properties.getPropertySets(modelID, expressID, true);
         for (const ps of psets ?? []) {
@@ -143,7 +145,15 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
       });
       if (++n % 500 === 0) onProgress?.(`Reading properties… ${n}/${expressToKey.size}`);
     }
-    return { elements, objects, coordination: coordination ?? ifc.GetCoordinationMatrix(modelID) };
+    const conversions = ifc.GetLineIDsWithType(modelID, WebIFC.IFCMAPCONVERSION);
+    const reference = [];
+    for (let i = 0; i < conversions.size(); i++) {
+      const m = ifc.GetLine(modelID, conversions.get(i));
+      const target = m?.TargetCRS?.value;
+      const crs = typeof target === "number" ? ifc.GetLine(modelID, target) : undefined;
+      reference.push([str(crs?.Name), ...["Eastings", "Northings", "OrthogonalHeight", "XAxisAbscissa", "XAxisOrdinate", "Scale"].map((k) => str(m?.[k]))].join("|"));
+    }
+    return { elements, objects, coordination: coordination ?? ifc.GetCoordinationMatrix(modelID), geographicReference: reference.sort().join(";") };
   } catch (error) {
     for (const object of objects.values()) for (const mesh of object.children as THREE.Mesh[]) mesh.geometry.dispose();
     for (const material of materials.values()) material.dispose();
@@ -159,17 +169,23 @@ interface SpatialNode {
   children: SpatialNode[];
 }
 
-async function spatialStoreys(ifc: WebIFC.IfcAPI, modelID: number): Promise<Map<number, string>> {
-  const out = new Map<number, string>();
+async function spatialStructure(ifc: WebIFC.IfcAPI, modelID: number) {
+  const out = new Map<number, { storey: string | null; path: string }>();
+  const spatialTypes = new Set(["IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY", "IFCSPACE"]);
   try {
     const root = (await ifc.properties.getSpatialStructure(modelID)) as unknown as SpatialNode;
-    const walk = (node: SpatialNode, storey: string | null) => {
-      let current = storey;
-      if (String(node.type).toUpperCase() === "IFCBUILDINGSTOREY") current = str(ifc.GetLine(modelID, node.expressID)?.Name) || `Storey #${node.expressID}`;
-      else if (current) out.set(node.expressID, current);
-      for (const c of node.children ?? []) walk(c, current);
+    const walk = (node: SpatialNode, storey: string | null, path: string) => {
+      const type = String(node.type).toUpperCase();
+      if (path) out.set(node.expressID, { storey, path });
+      if (spatialTypes.has(type)) {
+        const line = ifc.GetLine(modelID, node.expressID);
+        const name = str(line?.Name) || type;
+        path = [path, `${type} ${name} [${str(line?.GlobalId)}]`].filter(Boolean).join(" / ");
+        if (type === "IFCBUILDINGSTOREY") storey = name;
+      }
+      for (const c of node.children ?? []) walk(c, storey, path);
     };
-    walk(root, null);
+    walk(root, null, "");
   } catch {
     // Spatial structure is optional.
   }

@@ -69,6 +69,8 @@ export function startAutosave(snapshot: () => StratumProject, onSaved?: (at: Dat
       s.view3d === prev.view3d &&
       s.sim === prev.sim &&
       s.models === prev.models &&
+      s.revisions === prev.revisions &&
+      s.scheduleSource === prev.scheduleSource &&
       s.projectTitle === prev.projectTitle &&
       s.workspaceRevision === prev.workspaceRevision
     )

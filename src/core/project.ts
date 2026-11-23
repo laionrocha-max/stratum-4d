@@ -6,7 +6,7 @@ import type { SimulationOptions } from "./simulation";
 import type { AppearanceProfile, ElementGroup, ElementSegment, Link, LinkRule, MotionPath, Schedule } from "./types";
 
 export const PROJECT_FORMAT = "stratum-project";
-export const PROJECT_VERSION = 3;
+export const PROJECT_VERSION = 4;
 
 export interface ProjectModel {
   /** Empty only for the first model migrated from an unqualified legacy file. */
@@ -23,6 +23,23 @@ export interface ModelManifest {
   coordination?: number[];
 }
 
+export interface RevisionSource {
+  name: string;
+  hash?: string;
+}
+
+export interface ProjectRevision {
+  id: string;
+  kind: "ifc" | "schedule" | "restore";
+  date: string;
+  author: string;
+  source: RevisionSource;
+  dataDate: number | null;
+  checkpoint: string;
+  summary: string;
+  number?: number;
+}
+
 export interface StratumProject {
   format: typeof PROJECT_FORMAT;
   version: number;
@@ -32,6 +49,8 @@ export interface StratumProject {
   title?: string;
   archived?: boolean;
   models?: ModelManifest;
+  scheduleSource?: RevisionSource;
+  revisions?: ProjectRevision[];
   simulation?: SimulationOptions;
   view?: { camera?: CameraState; settings: ViewSettings; time: number };
   schedule: Schedule | null;
@@ -83,6 +102,8 @@ export function normalizeProject(doc: Partial<StratumProject> & { ifcAssembly?: 
     title: doc.title,
     archived: doc.archived,
     models,
+    scheduleSource: doc.scheduleSource,
+    revisions: Array.isArray(doc.revisions) ? doc.revisions.filter((r) => r && typeof r.id === "string" && /^[0-9a-f]{64}$/.test(r.checkpoint)) : undefined,
     simulation: doc.simulation,
     view: doc.view,
     schedule: doc.schedule ?? null,

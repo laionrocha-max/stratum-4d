@@ -11,7 +11,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { DemoBox } from "../core/demo";
 import { regionEmpty, regionKey, regionWithGrowth, segmentRegion, type Motion, type Region } from "../core/motion";
 import type { ElementState } from "../core/simulation";
-import type { CameraState, CutBox, CutPlane } from "../core/presentation";
+import type { CameraState, CutBox, CutPlane, Vec3 } from "../core/presentation";
 import type { ElementSegment, MotionPath } from "../core/types";
 
 interface Entry {
@@ -276,16 +276,25 @@ export class Viewer {
   }
 
   /** Section planes and a section box (fractions of the model's extent). Everything outside all of them is cut away. */
-  setSections(planes: CutPlane[], box: CutBox | null) {
+  setSections(planes: CutPlane[], box: CutBox | null, bounds?: { min: Vec3; max: Vec3 }) {
     this.sections = { planes, box };
+    this.sectionBounds = bounds && [bounds.min, bounds.max].every((vec) =>
+      Array.isArray(vec) && vec.length === 3 && vec.every(Number.isFinite)) ? bounds : undefined;
     this.applyCut();
     this.needsRender = true;
   }
 
+  private sectionBounds?: { min: Vec3; max: Vec3 };
+
+  getSectionBounds(): { min: Vec3; max: Vec3 } | undefined {
+    return this.sectionBounds ?? (this.modelBox.isEmpty() ? undefined : { min: this.modelBox.min.toArray(), max: this.modelBox.max.toArray() });
+  }
+
   /** World coordinate of a fraction across the model on one axis. */
-  private at(axis: "x" | "y" | "z", pos: number) {
-    const min = this.modelBox.min[axis];
-    const max = this.modelBox.max[axis];
+  private at(axis: "x" | "y" | "z", pos: number, bounds?: { min: Vec3; max: Vec3 }) {
+    const i = axis === "x" ? 0 : axis === "y" ? 1 : 2;
+    const min = bounds?.min[i] ?? this.modelBox.min[axis];
+    const max = bounds?.max[i] ?? this.modelBox.max[axis];
     return min + (max - min) * Math.max(0, Math.min(1, pos));
   }
 
@@ -308,15 +317,15 @@ export class Viewer {
     // Room for an exploded model: cuts are placed on the modelled positions.
     const planes: THREE.Plane[] = [];
     if (this.cut) planes.push(this.keep(this.cut.axis, this.at(this.cut.axis, this.cut.pos), this.cut.flip));
-    for (const c of this.sections.planes) if (c.on) planes.push(this.keep(c.axis, this.at(c.axis, c.pos), c.flip));
+    for (const c of this.sections.planes) if (c.on) planes.push(this.keep(c.axis, this.at(c.axis, c.pos, this.sectionBounds), c.flip));
     const b = this.sections.box;
     if (b?.on) {
       const axes = ["x", "y", "z"] as const;
       const lo = new THREE.Vector3();
       const hi = new THREE.Vector3();
       axes.forEach((a, i) => {
-        const p = this.at(a, Math.min(b.min[i], b.max[i]));
-        const q = this.at(a, Math.max(b.min[i], b.max[i]));
+        const p = this.at(a, Math.min(b.min[i], b.max[i]), this.sectionBounds);
+        const q = this.at(a, Math.max(b.min[i], b.max[i]), this.sectionBounds);
         lo[a] = p;
         hi[a] = q;
         planes.push(this.keep(a, p, true), this.keep(a, q, false));
@@ -334,10 +343,12 @@ export class Viewer {
       const e = this.entries.get(id);
       if (e) box.union(e.box);
     }
-    if (box.isEmpty() || this.modelBox.isEmpty()) return null;
+    const bounds = this.getSectionBounds();
+    if (box.isEmpty() || !bounds) return null;
     const f = (v: number, a: "x" | "y" | "z") => {
-      const span = this.modelBox.max[a] - this.modelBox.min[a];
-      return span > 0 ? Math.max(0, Math.min(1, (v - this.modelBox.min[a]) / span)) : 0;
+      const i = a === "x" ? 0 : a === "y" ? 1 : 2;
+      const span = bounds.max[i] - bounds.min[i];
+      return span > 0 ? Math.max(0, Math.min(1, (v - bounds.min[i]) / span)) : 0;
     };
     // A small margin, so faces on the box do not flicker.
     const pad = 0.01;
@@ -351,13 +362,24 @@ export class Viewer {
   getCamera(): CameraState {
     const p = this.camera.position;
     const t = this.controls.target;
-    return { pos: [p.x, p.y, p.z], target: [t.x, t.y, t.z], fov: this.camera.fov };
+    const { up, near, far, fov, aspect } = this.camera;
+    return {
+      pos: p.toArray(), target: t.toArray(), fov, up: up.toArray(), aspect,
+      viewport: [this.renderer.domElement.width, this.renderer.domElement.height],
+      clipping: [near, far], projection: "perspective",
+    };
   }
 
   /** Put the camera at a stored state, at once (ms = 0) or in a short flight. */
   setCamera(c: CameraState, ms = 0) {
     const pos = new THREE.Vector3(...c.pos);
     const target = new THREE.Vector3(...c.target);
+    if (c.up && c.up.length === 3 && c.up.every(Number.isFinite) && c.up.some((value) => value !== 0)) this.camera.up.set(...c.up);
+    const clipping = c.clipping;
+    if (clipping?.length === 2 && clipping.every(Number.isFinite) && clipping[0] > 0 && clipping[1] > clipping[0]) {
+      [this.camera.near, this.camera.far] = clipping;
+      this.camera.updateProjectionMatrix();
+    }
     if (ms > 0) {
       this.flight = { from: [this.camera.position.clone(), this.controls.target.clone()], to: [pos, target], t0: performance.now(), ms, fov: [this.camera.fov, c.fov] };
     } else {

@@ -7,8 +7,23 @@ const room = await readFile("tests/fixtures/project-room.ifc", "utf8");
 const model = (name, contents = room) => ({ name, mimeType: "application/octet-stream", buffer: Buffer.from(contents) });
 const base = model("arquitetura.ifc");
 const federation = model("estrutura.ifc", room.replace("'w1'", "'Elemento estrutural'"));
-const revision = model("arquitetura-r2.ifc", room.replace("'w1'", "'Parede revisada'"));
+const revision = model("arquitetura-r2.ifc", room.replace("'w1'", "'Parede revisada'").replace(
+  "#16=IFCAXIS2PLACEMENT3D(#11,$,$);",
+  "#200=IFCCARTESIANPOINT((25.,0.,0.));\n#16=IFCAXIS2PLACEMENT3D(#200,$,$);",
+));
 const duplicateGuid = model("duplicados.ifc", room.replace("2Ce487x0W8sn4pHI5ncm$z", "1DCsuvJtmnHvlZDV2Ph6gE"));
+const changedGuid = "1DCsuvJtmnHvlZDV2Ph6ZZ";
+const guidRevision = model("arquitetura-r3.ifc", revision.buffer.toString("utf8").replace("1DCsuvJtmnHvlZDV2Ph6gE", changedGuid));
+const xml = await readFile("samples/demo-msproject.xml", "utf8");
+const scheduleRevision = {
+  name: "torre-2026-03-11.xml",
+  mimeType: "application/xml",
+  buffer: Buffer.from(xml
+    .replace(/(<Task><UID>|<TaskUID>|<PredecessorUID>)([234])(?=<)/g, (_, prefix, id) => prefix + (100 + Number(id)))
+    .replace("2026-03-04T08:00:00</StatusDate>", "2026-03-11T08:00:00</StatusDate>")
+    .replace("Columns L1", "Columns L1 revised")
+    .replace(/(<Baseline><Number>0<\/Number><Start>)[^<]+/, (_, prefix) => prefix + "2026-01-01T08:00:00")),
+};
 const options = { host: "127.0.0.1", port: 5191, strictPort: true };
 const production = process.env.STRATUM_TEST_BUILD === "1";
 const server = production ? await preview({ preview: options }) : await createServer({ server: options });
@@ -37,6 +52,7 @@ try {
     const page = await ctx.newPage();
     page.setDefaultTimeout(12000);
     page.on("pageerror", (error) => console.error("Browser:", error));
+    page.on("crash", () => console.error("A página de teste do STRATUM encerrou o processo de renderização."));
     await page.goto("http://127.0.0.1:5191/", { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.locator(".viewport canvas").waitFor({ state: "attached", timeout: 60000 });
     return page;
@@ -105,10 +121,15 @@ try {
   await page.locator(".gantt-row:not(.wbs)").first().click();
   await page.getByRole("button", { name: "Link", exact: true }).click();
   await visibleStatus(page, /Linked 4 element/);
+  await page.getByTitle(/Saved viewpoints: date/).click();
+  page.once("dialog", (message) => message.accept("Vista de conferência"));
+  await page.getByRole("button", { name: "Save viewpoint" }).click();
+  await visibleStatus(page, /Saved viewpoint/);
+  await page.getByTitle(/Saved viewpoints: date/).click();
   await add(page, federation);
   await save(page, "Bloco A");
   const original = await savedManifest(page);
-  assert.equal(original.version, 3);
+  assert.equal(original.version, 4);
   assert.equal(original.models.files.length, 2);
   assert.equal(original.links.length, 4);
   assert.ok(original.links.every((link) => link.elementId.startsWith(original.models.files[0].id + ":")));
@@ -121,21 +142,41 @@ try {
   assert.deepEqual((await savedManifest(page)).models, original.models);
 
   const row = (await menu(page, "Modelos da obra")).locator(".model-menu-entry").filter({ hasText: "arquitetura.ifc" });
-  page.once("dialog", (dialog) => dialog.dismiss());
   await choose(page, row.getByRole("button", { name: "Substituir revisão…" }), revision);
+  const modelPreview = page.getByRole("dialog", { name: "Prévia da revisão de modelo" });
+  await modelPreview.getByText(/Confira a origem compartilhada/).waitFor();
+  await modelPreview.getByRole("button", { name: "Cancelar" }).click();
   await visibleStatus(page, /Importação cancelada/);
   assert.deepEqual((await savedManifest(page)).models, original.models);
   await menu(page, "Modelos da obra");
-  page.once("dialog", (dialog) => dialog.accept());
   await choose(page, row.getByRole("button", { name: "Substituir revisão…" }), revision);
+  await modelPreview.getByRole("button", { name: "Aplicar revisão" }).click();
   await visibleStatus(page, /Modelo arquitetura-r2.ifc carregado/);
   const revised = await savedManifest(page);
   assert.deepEqual(revised.links, original.links);
   assert.equal(revised.models.files[0].id, original.models.files[0].id);
   assert.equal(revised.models.files[0].revision, 2);
   assert.notEqual(revised.models.files[0].hash, original.models.files[0].hash);
+  assert.deepEqual(revised.view.camera, original.view.camera);
+  assert.equal(revised.revisions.at(-1).kind, "ifc");
   await save(page, "Bloco A");
   console.log("Revisão: GlobalId duplicado rejeitado, cancelamento preservou estado e atualização manteve os vínculos.");
+
+  await choose(page, await fileAction(page, "Atualizar cronograma…"), scheduleRevision);
+  const schedulePreview = page.getByRole("dialog", { name: "Prévia da revisão de cronograma" });
+  await schedulePreview.getByText(/4 vínculo\(s\) com correspondência automática/).waitFor();
+  await schedulePreview.getByRole("button", { name: "Aplicar revisão" }).click();
+  await visibleStatus(page, /Revisão de cronograma aplicada/);
+  const updated = await savedManifest(page);
+  assert.equal(updated.links.length, 4);
+  assert.ok(updated.links.every((link) => Number(link.activityId) > 100));
+  assert.ok(updated.schedule.activities.some((a) => a.name === "Columns L1 revised"));
+  assert.equal(updated.schedule.activities[0].baselineStart, original.schedule.activities[0].baselineStart);
+  assert.deepEqual(updated.view.camera, revised.view.camera);
+  assert.deepEqual(updated.presentation, original.presentation);
+  assert.notEqual(updated.schedule.dataDate, revised.schedule.dataDate);
+  await save(page, "Bloco A");
+  console.log("Cronograma: nova data de corte, UID renumerado, baseline original e câmera mantidas.");
 
   await newProject(page, "Bloco B");
   await choose(page, await fileAction(page, "Importar cronograma (XER / XML)…"), "samples/demo.xer");
@@ -153,9 +194,39 @@ try {
   await selectProject(page, "Bloco A");
   await visibleStatus(page, /2 modelo\(s\) e 4 vínculo\(s\)/);
   const reopened = await savedManifest(page);
-  assert.deepEqual(reopened.models, revised.models);
-  assert.deepEqual(reopened.links, revised.links);
+  assert.deepEqual(reopened.models, updated.models);
+  assert.deepEqual(reopened.links, updated.links);
   assert.deepEqual(reopened.view.camera, revised.view.camera);
+  await (await fileAction(page, "Histórico de revisões…")).click();
+  const revisions = page.getByRole("dialog", { name: "Histórico de revisões" });
+  await revisions.getByText("Revisão de cronograma · torre-2026-03-11.xml").waitFor();
+  page.once("dialog", (message) => message.accept());
+  await revisions.getByRole("button", { name: "Restaurar estado anterior" }).first().click();
+  await visibleStatus(page, /Projeto Bloco A aberto/);
+  const rolledBack = await savedManifest(page);
+  assert.deepEqual(rolledBack.links, revised.links);
+  assert.deepEqual(rolledBack.models, revised.models);
+  assert.equal(rolledBack.schedule.dataDate, revised.schedule.dataDate);
+  assert.equal(rolledBack.revisions.at(-1).kind, "restore");
+  console.log("Histórico: reabertura e rollback restauraram os vínculos, cronograma e IFCs anteriores.");
+  const revisedModel = (await menu(page, "Modelos da obra")).locator(".model-menu-entry").filter({ hasText: "arquitetura-r2.ifc" });
+  await choose(page, revisedModel.getByRole("button", { name: "Substituir revisão…" }), guidRevision);
+  const manualPreview = page.getByRole("dialog", { name: "Prévia da revisão de modelo" });
+  await manualPreview.waitFor();
+  const manual = manualPreview.getByRole("textbox");
+  assert.equal(await manual.count(), 1);
+  await manual.fill("identificador-incorreto");
+  await manualPreview.getByRole("button", { name: "Aplicar revisão" }).click();
+  await manualPreview.getByRole("alert").getByText(/Destino inválido/).waitFor();
+  await manual.fill(changedGuid);
+  await manualPreview.getByRole("button", { name: "Aplicar revisão" }).click();
+  await visibleStatus(page, /Modelo arquitetura-r3.ifc carregado/);
+  const remapped = await savedManifest(page);
+  assert.equal(remapped.links.length, rolledBack.links.length);
+  assert.ok(remapped.links.some((link) => link.elementId.endsWith(changedGuid)));
+  assert.ok(remapped.links.every((link) => !link.elementId.endsWith("1DCsuvJtmnHvlZDV2Ph6gE")));
+  assert.deepEqual(remapped.presentation, original.presentation);
+  console.log("IFC: GlobalId alterado exigiu destino válido e preservou o vínculo após remapeamento explícito.");
   await selectProject(page, "Bloco B");
   const reopenedSecond = await savedManifest(page);
   assert.deepEqual(reopenedSecond.models, second.models);
@@ -196,7 +267,7 @@ try {
   const migrated = await savedManifest(other);
   assert.deepEqual(migrated.links, legacy.links);
   assert.equal(migrated.models.files[0].id, "");
-  assert.equal(migrated.version, 3);
+  assert.equal(migrated.version, 4);
   console.log("Migração: JSON v2 localizou o IFC e conservou os vínculos legados.");
 } finally {
   await browser?.close();

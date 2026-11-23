@@ -8,6 +8,7 @@ export interface ModelPart {
   elements: ModelElement[];
   objects: Map<string, THREE.Object3D>;
   coordination?: number[];
+  geographicReference?: string;
 }
 
 export async function loadModelPart(model: ProjectModel, buffer: ArrayBuffer, coordination?: number[]): Promise<ModelPart> {
@@ -25,6 +26,7 @@ export async function loadModelPart(model: ProjectModel, buffer: ArrayBuffer, co
     })),
     objects: new Map(Array.from(geometry.objects, ([id, object]) => [key(id), object])),
     coordination: "coordination" in geometry ? geometry.coordination : undefined,
+    geographicReference: "geographicReference" in geometry ? geometry.geographicReference : undefined,
   };
 }
 
