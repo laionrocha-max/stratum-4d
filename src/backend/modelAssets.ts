@@ -18,9 +18,14 @@ async function access<T>(mode: IDBTransactionMode, operation: (store: IDBObjectS
   try {
     return await new Promise<T>((resolve, reject) => {
       const tx = db.transaction(STORE, mode);
-      const req = operation(tx.objectStore(STORE));
-      tx.oncomplete = () => resolve(req.result);
-      tx.onabort = () => reject(tx.error ?? req.error ?? new Error("Armazenamento local indisponível."));
+      try {
+        const req = operation(tx.objectStore(STORE));
+        tx.oncomplete = () => resolve(req.result);
+        tx.onabort = () => reject(tx.error ?? req.error ?? new Error("Armazenamento local indisponível."));
+      } catch (error) {
+        tx.abort();
+        reject(error);
+      }
     });
   } finally {
     db.close();
@@ -29,6 +34,15 @@ async function access<T>(mode: IDBTransactionMode, operation: (store: IDBObjectS
 
 export async function saveModelAsset(hash: string, file: Blob): Promise<void> {
   await access("readwrite", (store) => store.put(file, hash));
+}
+
+export async function saveModelAssets(files: ReadonlyMap<string, Blob>): Promise<void> {
+  if (!files.size) return;
+  await access("readwrite", (store) => {
+    let last: IDBRequest<IDBValidKey> | undefined;
+    for (const [hash, file] of files) last = store.put(file, hash);
+    return last!;
+  });
 }
 
 export function getModelAsset(hash: string): Promise<Blob | undefined> {

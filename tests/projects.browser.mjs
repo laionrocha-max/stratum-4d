@@ -20,6 +20,14 @@ const duplicateGuid = model("duplicados.ifc", room.replace("2Ce487x0W8sn4pHI5ncm
 const changedGuid = "1DCsuvJtmnHvlZDV2Ph6ZZ";
 const guidRevision = model("arquitetura-r3.ifc", revision.buffer.toString("utf8").replace("1DCsuvJtmnHvlZDV2Ph6gE", changedGuid));
 const xml = await readFile("samples/demo-msproject.xml", "utf8");
+const xer = await readFile("samples/demo.xer", "utf8");
+const xerRevision = {
+  name: "obra-revisada.xer",
+  mimeType: "application/octet-stream",
+  buffer: Buffer.from(xer.replace(/(?<=\t)1010(?=\t|\r?$)/gm, "9010")
+    .replace("SW-100\tExcavation", "SW-100\tExcavation revised")
+    .replace("2026-04-20 08:00", "2026-04-27 08:00")),
+};
 const scheduleRevision = {
   name: "torre-2026-03-11.xml",
   mimeType: "application/xml",
@@ -245,6 +253,84 @@ try {
   await save(page, "Bloco A");
   console.log("Cronograma: nova data de corte, UID renumerado, baseline original e câmera mantidas.");
 
+  const backupAction = await fileAction(page, "Gerar cópia de segurança…");
+  const [backupDownload] = await Promise.all([page.waitForEvent("download"), backupAction.click()]);
+  const backup = { name: backupDownload.suggestedFilename(), mimeType: "application/octet-stream", buffer: await readFile(await backupDownload.path()) };
+  const cold = await context();
+  const restoredPage = await openPage(cold);
+  const manifestOnly = { name: "manifesto.stratum.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(updated)) };
+  await choose(restoredPage, await fileAction(restoredPage, "Abrir arquivo de projeto…"), manifestOnly);
+  await visibleStatus(restoredPage, /0 modelo\(s\) e 4 vínculo\(s\).*Localizar arquivo/);
+  await (await fileAction(restoredPage, "Histórico de revisões…")).click();
+  const coldHistory = restoredPage.getByRole("dialog", { name: "Histórico de revisões" });
+  restoredPage.once("dialog", (prompt) => prompt.accept());
+  await coldHistory.getByRole("button", { name: "Restaurar estado anterior" }).first().click();
+  await visibleStatus(restoredPage, /restauração não foi aplicada.*indisponível/);
+  await choose(restoredPage, await fileAction(restoredPage, "Restaurar cópia de segurança…"), {
+    ...backup, buffer: backup.buffer.subarray(0, backup.buffer.length - 1),
+  });
+  await visibleStatus(restoredPage, /A cópia não foi restaurada.*incompleto/i);
+  assert.deepEqual((await savedManifest(restoredPage)).links, updated.links);
+  await restoredPage.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    let writes = 0;
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.transaction.db.name === "stratum-model-files" && ++writes === 2) {
+        IDBObjectStore.prototype.put = put;
+        throw new DOMException("Limite de armazenamento simulado", "QuotaExceededError");
+      }
+      return put.apply(this, args);
+    };
+  });
+  await choose(restoredPage, await fileAction(restoredPage, "Restaurar cópia de segurança…"), backup);
+  await visibleStatus(restoredPage, /A cópia não foi restaurada.*Limite de armazenamento simulado/);
+  const partialAssets = await restoredPage.evaluate(async () => {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open("stratum-model-files");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const count = await new Promise((resolve, reject) => {
+      const request = db.transaction("files").objectStore("files").count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return count;
+  });
+  assert.equal(partialAssets, 0);
+  assert.deepEqual((await savedManifest(restoredPage)).links, updated.links);
+  await choose(restoredPage, await fileAction(restoredPage, "Restaurar cópia de segurança…"), backup);
+  await visibleStatus(restoredPage, /Cópia restaurada na biblioteca/);
+  await selectProject(restoredPage, "Bloco A — cópia restaurada");
+  await visibleStatus(restoredPage, /2 modelo\(s\) e 4 vínculo\(s\)/);
+  const coldRestored = await savedManifest(restoredPage);
+  assert.notEqual(coldRestored.projectKey, updated.projectKey);
+  assert.deepEqual(coldRestored.models, updated.models);
+  assert.deepEqual(coldRestored.links, updated.links);
+  assert.deepEqual(coldRestored.schedule, updated.schedule);
+  assert.deepEqual(coldRestored.presentation, updated.presentation);
+  assert.deepEqual(coldRestored.revisions, updated.revisions);
+  sameCamera(coldRestored.view.camera, updated.view.camera);
+  await (await fileAction(restoredPage, "Histórico de revisões…")).click();
+  restoredPage.once("dialog", (prompt) => prompt.accept());
+  await coldHistory.getByRole("button", { name: "Restaurar estado anterior" }).first().click();
+  await visibleStatus(restoredPage, /2 modelo\(s\) e 4 vínculo\(s\)/);
+  const coldPrevious = await savedManifest(restoredPage);
+  assert.deepEqual(coldPrevious.links, revised.links);
+  assert.equal(coldPrevious.schedule.dataDate, revised.schedule.dataDate);
+  assert.equal(coldPrevious.revisions.at(-1).kind, "restore");
+  const earlierIfc = updated.revisions.find((entry) => entry.kind === "ifc");
+  await (await fileAction(restoredPage, "Histórico de revisões…")).click();
+  const previousIfc = coldHistory.locator("section").filter({ has: restoredPage.getByRole("heading", { name: `Revisão de modelo · ${earlierIfc.source.name}`, exact: true }) });
+  restoredPage.once("dialog", (prompt) => prompt.accept());
+  await previousIfc.getByRole("button", { name: "Restaurar estado anterior" }).click();
+  await visibleStatus(restoredPage, /2 modelo\(s\) e 4 vínculo\(s\)/);
+  const restoredIfc = await savedManifest(restoredPage);
+  assert.deepEqual(restoredIfc.models, original.models);
+  await cold.close();
+  console.log("Perfil vazio: manifesto simples pediu arquivos; backup truncado foi rejeitado; cópia completa recuperou dois IFCs, cronograma, vínculos, vistas e os estados anteriores.");
+
   await newProject(page, "Bloco B");
   await choose(page, await fileAction(page, "Importar cronograma (XER / XML)…"), "samples/demo.xer");
   await visibleStatus(page, /Cronograma .* importado/);
@@ -303,6 +389,27 @@ try {
   assert.equal(reopenedSecond.links.length, 0);
   console.log("Reabertura: duas obras recuperaram somente seus próprios modelos, cronograma, vínculos e câmera.");
 
+  await page.getByRole("button", { name: "Seleção", exact: true }).click();
+  const topographyProperties = page.locator("section").filter({ has: page.getByRole("heading", { name: "Selecionar por propriedade" }) }).last();
+  await topographyProperties.locator("select").first().selectOption("IfcType");
+  await topographyProperties.locator("select").nth(1).selectOption(wallType);
+  await topographyProperties.getByRole("button", { name: "Selecionar", exact: true }).click();
+  await page.locator(".gantt-row:not(.wbs)").filter({ hasText: "SW-100" }).click();
+  await page.getByRole("button", { name: "Vincular", exact: true }).click();
+  await visibleStatus(page, /4 elemento\(s\) vinculado/);
+  await choose(page, await fileAction(page, "Atualizar cronograma…"), xerRevision);
+  const xerPreview = page.getByRole("dialog", { name: "Prévia da revisão de cronograma" });
+  await xerPreview.getByText(/4 vínculo\(s\) com correspondência automática/).waitFor();
+  await xerPreview.getByRole("button", { name: "Aplicar revisão" }).click();
+  await visibleStatus(page, /Revisão de cronograma aplicada/);
+  const xerUpdated = await savedManifest(page);
+  assert.equal(xerUpdated.links.length, 4);
+  assert.ok(xerUpdated.links.every((link) => link.activityId === "9010"));
+  assert.equal(xerUpdated.schedule.activities.find((activity) => activity.code === "SW-100").name, "Excavation revised");
+  assert.ok(xerUpdated.schedule.dataDate > second.schedule.dataDate);
+  await save(page, "Bloco B");
+  console.log("XER: revisão preservou quatro vínculos pelo código da atividade após mudança do ID interno e da data de corte.");
+
   const dialog = await projectDialog(page);
   const secondRow = dialog.getByRole("row", { name: /Bloco B/ });
   await secondRow.locator("summary").click();
@@ -311,16 +418,21 @@ try {
   const copy = dialog.getByRole("row", { name: /Cópia de B/ });
   await copy.waitFor();
   await copy.locator("summary").click();
-  await copy.getByRole("button", { name: "Arquivar", exact: true }).click();
-  await copy.waitFor({ state: "detached" });
+  page.once("dialog", (prompt) => prompt.accept("Cópia renomeada"));
+  await copy.getByRole("button", { name: "Renomear", exact: true }).click();
+  const renamed = dialog.getByRole("row", { name: /Cópia renomeada/ });
+  await renamed.waitFor();
+  if (await renamed.locator("summary").evaluate((node) => !node.parentElement.open)) await renamed.locator("summary").click();
+  await renamed.getByRole("button", { name: "Arquivar", exact: true }).click();
+  await renamed.waitFor({ state: "detached" });
   await dialog.getByLabel("Mostrar arquivadas").check();
-  await copy.waitFor();
-  await copy.locator("summary").click();
+  await renamed.waitFor();
+  await renamed.locator("summary").click();
   page.once("dialog", (prompt) => prompt.accept());
-  await copy.getByRole("button", { name: "Excluir", exact: true }).click();
-  await copy.waitFor({ state: "detached" });
+  await renamed.getByRole("button", { name: "Excluir", exact: true }).click();
+  await renamed.waitFor({ state: "detached" });
   assert.ok(await secondRow.isVisible());
-  console.log("Biblioteca: duplicar, arquivar e excluir a cópia preservou a obra original.");
+  console.log("Biblioteca: duplicar, renomear, arquivar e excluir a cópia preservou a obra original.");
 
   await dialog.getByRole("button", { name: "Fechar", exact: true }).click();
   await page.getByRole("button", { name: "Exibição", exact: true }).click();

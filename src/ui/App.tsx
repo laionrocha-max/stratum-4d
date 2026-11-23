@@ -20,7 +20,7 @@ import { Viewer } from "../viewer/Viewer";
 import { DEMO_SESSIONS, demoSession, demoStoreKind } from "../backend/demo";
 import { MESH_FORMATS } from "../viewer/meshLoader";
 import { combineModelParts, disposeModelParts, loadModelPart, restoreModelParts, type ModelPart } from "../viewer/projectModels";
-import { modelHash, saveModelAsset } from "../backend/modelAssets";
+import { getModelAsset, modelHash, saveModelAsset, saveModelAssets } from "../backend/modelAssets";
 import { readCheckpoint, saveCheckpoint } from "../backend/revisionHistory";
 import { compareModelRevision } from "../viewer/modelRevision";
 import { elementVisibilityKey, EMPTY_VISIBILITY, normalizeVisibility, type VisibilitySettings } from "../core/visibility";
@@ -989,6 +989,45 @@ function Workspace() {
     store.setStatus("Arquivo de projeto salvo. Os modelos ficam no armazenamento local.");
   };
 
+  const backupProject = async () => {
+    const request = projectAction.current;
+    const project = currentPayload();
+    try {
+      store.setStatus("Verificando os arquivos da obra e do histórico…", true);
+      const { createProjectBackup } = await import("../backend/projectBackup");
+      const backup = await createProjectBackup(project, getModelAsset);
+      if (request !== projectAction.current) return;
+      const name = (project.title ?? project.schedule?.projectCode ?? "obra").replace(/[\\/:*?"<>|]+/g, "-");
+      download(`${name}.stratum-backup`, backup);
+      store.setStatus("Cópia de segurança gerada com a obra, os arquivos e o histórico.");
+    } catch (error) {
+      if (request === projectAction.current) store.setStatus(`Falha ao gerar a cópia de segurança. ${(error as Error).message}`);
+    }
+  };
+
+  const importBackup = async () => {
+    const request = projectAction.current;
+    const file = await pickFile(".stratum-backup");
+    if (!file || request !== projectAction.current) return;
+    const backend = useConfig.getState().backend;
+    try {
+      store.setStatus("Verificando a integridade da cópia de segurança…", true);
+      const { readProjectBackup } = await import("../backend/projectBackup");
+      const { project, assets } = await readProjectBackup(file);
+      if (request !== projectAction.current) return;
+      await saveModelAssets(assets);
+      if (request !== projectAction.current) return;
+      const id = uid("prj");
+      const title = `${project.title ?? project.schedule?.projectName ?? "Obra"} — cópia restaurada`;
+      await backend.saveProject(id, { ...project, title, projectKey: id, archived: undefined, savedAt: new Date().toISOString() });
+      if (request !== projectAction.current) return;
+      store.setStatus(`Cópia restaurada na biblioteca. ${title}.`);
+      setProjectsTab("database");
+    } catch (error) {
+      if (request === projectAction.current) store.setStatus(`A cópia não foi restaurada. ${(error as Error).message}`);
+    }
+  };
+
   const openProject = async () => {
     const f = await pickFile(".json");
     if (!f) return;
@@ -1302,6 +1341,8 @@ function Workspace() {
         <hr />
         <button onClick={openProject}>Abrir arquivo de projeto…</button>
         <button onClick={saveProject} disabled={busy || (!schedule && !store.projectKey)}>Salvar arquivo de projeto</button>
+        <button onClick={() => void backupProject()} disabled={busy || (!schedule && !store.projectKey)}>Gerar cópia de segurança…</button>
+        <button onClick={() => void importBackup()} disabled={busy}>Restaurar cópia de segurança…</button>
         <button disabled={!store.projectKey} onClick={() => {
           if (!window.confirm("Fechar esta obra? Salve as alterações que deseja guardar antes de fechar.")) return;
           applyProject({ ...emptyProject(), projectKey: undefined });
