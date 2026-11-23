@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConfig } from "../backend/config";
 import type { P6ProjectInfo, ProjectSummary } from "../backend/types";
 import type { P6Connection } from "../core/reporting";
@@ -35,6 +35,8 @@ export function ProjectsDialog({
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [newName, setNewName] = useState<string | null>(null);
+  const newButton = useRef<HTMLButtonElement>(null);
 
   const load = () =>
     backend
@@ -79,6 +81,14 @@ export function ProjectsDialog({
     setMsg(duplicate ? "Cópia criada." : "Biblioteca atualizada.");
   });
   const locked = busy || workspaceBusy;
+  const cancelNew = () => {
+    setNewName(null);
+    newButton.current?.focus();
+  };
+  const createNew = () => {
+    const title = newName?.trim();
+    if (title && !locked) onNew(title);
+  };
 
   return (
     <div className="help-backdrop" onClick={onClose}>
@@ -100,10 +110,14 @@ export function ProjectsDialog({
           {tab === "database" && (
             <div className="stack">
               <div className="row">
-                <button className="primary" disabled={locked} onClick={() => {
-                  const name = window.prompt("Nome da nova obra")?.trim();
-                  if (name) onNew(name);
-                }}>Nova obra</button>
+                <button
+                  ref={newButton}
+                  className="primary"
+                  disabled={locked}
+                  aria-expanded={newName !== null}
+                  aria-controls={newName !== null ? "new-project-form" : undefined}
+                  onClick={() => setNewName((previous) => previous ?? "")}
+                >Nova obra</button>
                 <button
                   disabled={(!schedule && !projectKey) || locked}
                   onClick={() => void run(async () => {
@@ -127,6 +141,41 @@ export function ProjectsDialog({
                   </button>
                 )}
               </div>
+              {newName !== null && (
+                <div
+                  id="new-project-form"
+                  className="stack"
+                  role="group"
+                  aria-label="Criar nova obra"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      cancelNew();
+                    }
+                  }}
+                >
+                  <label>
+                    Nome da nova obra
+                    <input
+                      autoFocus
+                      value={newName}
+                      onChange={(event) => setNewName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                          event.preventDefault();
+                          createNew();
+                        }
+                      }}
+                    />
+                  </label>
+                  {projectKey && <p>A obra atual será fechada ao criar outra. Salve antes as alterações que deseja guardar.</p>}
+                  <div className="row">
+                    <button className="primary" type="button" disabled={locked || !newName.trim()} onClick={createNew}>Criar obra</button>
+                    <button type="button" onClick={cancelNew}>Cancelar</button>
+                  </div>
+                </div>
+              )}
               <div className="row">
                 <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar obras" placeholder="Buscar por nome ou código" />
                 <label><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Mostrar arquivadas</label>

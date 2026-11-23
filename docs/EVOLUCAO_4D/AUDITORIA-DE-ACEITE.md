@@ -43,6 +43,12 @@ O pacote usa fatias de Blob. A conferência de integridade lê cada arquivo indi
 
 Os workflows existentes de servidor e desktop foram inspecionados. O servidor tem gatilho para PR e executa tipos, testes e build. A consulta aos dois commits da base não encontrou execuções de PR visíveis. A execução local foi usada como evidência.
 
+### Regressão reportada em Projetos → Nova obra
+
+O roteiro anterior aceitava automaticamente a caixa de nome do navegador. Reproduzi o clique na versão que estava na porta 5180 dentro de um painel com caixas nativas bloqueadas. O Edge registrou que ignorou a chamada a `prompt()`. Uma primeira versão com campo na interface também falhou ao enviar o formulário nesse painel, por falta da permissão `allow-forms`.
+
+A criação agora acontece no painel Projetos, com campo de nome, aviso ao trocar de obra, ação Criar obra e cancelamento. O roteiro `tests/new-project.browser.mjs` passou no Edge com os dois bloqueios ativos, incluindo mouse, teclado, validação de nome, cancelamento, salvamento e reabertura. `tests/desktop.browser.mjs` passou no Electron 33.2.1, com reabertura após reiniciar. A compilação e a suíte local passaram, com 312 testes aprovados e cinco condicionais pulados.
+
 ## Ordem de trabalho após o aceite da base
 
 1. Concluir a Etapa 4 com vínculo de quatro paredes de um IFC específico, prévia, conflito, auditoria, atualização e reabertura.

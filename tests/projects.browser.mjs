@@ -94,14 +94,10 @@ try {
   };
   const newProject = async (page, name) => {
     const dialog = await projectDialog(page);
-    const answer = (prompt) => prompt.accept(prompt.type() === "prompt" ? name : undefined);
-    page.on("dialog", answer);
-    try {
-      await dialog.getByRole("button", { name: "Nova obra", exact: true }).click();
-      await visibleStatus(page, new RegExp(`Obra ${name} criada`));
-    } finally {
-      page.off("dialog", answer);
-    }
+    await dialog.getByRole("button", { name: "Nova obra", exact: true }).click();
+    await dialog.getByRole("textbox", { name: "Nome da nova obra" }).fill(name);
+    await dialog.getByRole("button", { name: "Criar obra", exact: true }).click();
+    await visibleStatus(page, new RegExp(`Obra ${name} criada`));
   };
   const selectProject = async (page, name) => {
     const dialog = await projectDialog(page);

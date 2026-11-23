@@ -1558,7 +1558,6 @@ function Workspace() {
           }}
           onSave={saveToDb}
           onNew={(name) => {
-            if (useStore.getState().projectKey && !window.confirm("Abrir uma nova obra? Salve as alterações que deseja manter antes de trocar.")) return;
             applyProject(emptyProject(name));
             setRestore(null);
             setProjectsTab(null);

@@ -31,8 +31,12 @@ try {
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator(".viewport canvas").waitFor({ state: "attached" });
   assert.equal(await page.evaluate(() => typeof window.stratumDesktop?.invoke), "function");
-  await page.getByRole("button", { name: /Subestação GIS de 220 kV/ }).click();
-  await page.locator(".status").getByText(/elementos vinculados a .* atividades/).waitFor();
+  await page.getByTitle("Abrir a biblioteca de projetos").click();
+  const creation = page.getByRole("dialog", { name: "Projetos" });
+  await creation.getByRole("button", { name: "Nova obra", exact: true }).click();
+  await creation.getByRole("textbox", { name: "Nome da nova obra" }).fill("Obra no Electron");
+  await creation.getByRole("button", { name: "Criar obra", exact: true }).click();
+  await page.locator(".status").getByText(/Obra Obra no Electron criada/).waitFor();
   await page.getByTitle("Salvar obra na biblioteca (Ctrl+S)").click();
   await page.locator(".status").getByText(/Projeto .* salvo/).waitFor();
   await application.close();
@@ -41,9 +45,11 @@ try {
   page.setDefaultTimeout(20000);
   const library = page.getByRole("dialog", { name: "Projetos" });
   await library.waitFor();
-  await library.getByRole("button", { name: "Abrir", exact: true }).first().click();
-  await page.locator(".status").getByText(/Projeto .* aberto com o modelo de exemplo/).waitFor();
-  console.log(`Electron ${version}: carregamento, ponte nativa, gravação e reabertura após reiniciar em perfil temporário.`);
+  await library.getByRole("row", { name: /Obra no Electron/ }).getByRole("button", { name: "Abrir", exact: true }).click();
+  await page.locator(".status").getByText(/Projeto Obra no Electron aberto/).waitFor();
+  await page.getByRole("button", { name: /Subestação GIS de 220 kV/ }).click();
+  await page.locator(".status").getByText(/elementos vinculados a .* atividades/).waitFor();
+  console.log(`Electron ${version}: criação de obra, gravação, reabertura após reiniciar e carregamento do exemplo em perfil temporário.`);
 } finally {
   await application?.close();
 }

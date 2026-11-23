@@ -3,6 +3,8 @@
 ## Política de qualidade
 Não confiar somente em build verde. Executar unitários, integração, E2E de UI quando infraestrutura disponível, testes manuais guiados e benchmarks. Para cada bug: reprodução, teste falhando, correção, teste passando, suíte completa. Documentar falhas preexistentes separadamente. Cada PR deve ter checklist e evidências; bloquear merge em regressões críticas. Criar testes novos antes ou junto da implementação.
 
+Toda mudança de interface deve ser testada na compilação que será disponibilizada. Use os controles que o usuário realmente aciona e confira o resultado. Se o fluxo grava dados, verifique também a reabertura. Para **Projetos → Nova obra**, execute `tests/new-project.browser.mjs` em um painel com caixas nativas e envio de formulários bloqueados e `tests/desktop.browser.mjs` no Electron. Registre o resultado antes de entregar a atualização.
+
 ## Comandos baseline (confirmar ambiente)
 ```sh
 npm ci
