@@ -7,6 +7,8 @@ Toda mudança de interface deve ser testada na compilação que será disponibil
 
 No teste de **Nova obra**, confira a entrada na biblioteca logo após criar e após reiniciar ou recarregar, antes de acionar **Salvar**. Verifique que um salvamento posterior atualiza a mesma entrada e que uma falha de gravação mantém a obra anterior aberta.
 
+Crie duas obras em sequência, abra **Arquivo → Abrir da biblioteca**, confira a lista com a busca vazia e pesquise os dois nomes. Em uma atualização que muda a gravação, teste também uma sessão com a compilação anterior carregada, a preservação da obra ativa e a reabertura na compilação entregue.
+
 ## Comandos baseline (confirmar ambiente)
 ```sh
 npm ci

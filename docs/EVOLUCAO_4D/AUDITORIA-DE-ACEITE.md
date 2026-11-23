@@ -51,6 +51,8 @@ A criação agora acontece no painel Projetos, com campo de nome, aviso ao troca
 
 Um teste posterior reproduziu a obra aberta e ausente da biblioteca antes de **Salvar**. **Criar obra** agora grava a entrada antes de abrir a obra. O teste conferiu a entrada imediata, a persistência após recarregar o Edge e reiniciar o Electron e a atualização da mesma entrada por **Salvar**. Em uma falha simulada de armazenamento, a interface exibiu o erro e manteve a obra anterior aberta.
 
+O cenário de atualização com uma aba aberta foi reproduzido na porta 5180 por `tests/new-project.browser.mjs`, com `STRATUM_STALE_ENTRY=./assets/index-Zu_iMc1u.js` apontando para a compilação anterior ainda disponível. As duas criações na versão antiga deixaram a biblioteca vazia. **Salvar obra atual** registrou a segunda e ela reapareceu depois de carregar a compilação atual. O roteiro também cria duas obras na versão entregue e verifica a lista pelo caminho **Arquivo → Abrir da biblioteca** e a busca por cada nome.
+
 ## Ordem de trabalho após o aceite da base
 
 1. Concluir a Etapa 4 com vínculo de quatro paredes de um IFC específico, prévia, conflito, auditoria, atualização e reabertura.
