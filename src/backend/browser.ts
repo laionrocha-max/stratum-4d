@@ -65,8 +65,10 @@ const unsupported = async (): Promise<never> => {
   throw new Error(NOT_IN_BROWSER);
 };
 
-export function browserBackend(kv: Kv = idbKv("stratum-local"), label = "This browser", listSummaries?: () => Promise<ProjectSummary[]>): Backend {
+export function browserBackend(kv: Kv = idbKv("stratum-local"), label = "este navegador", listSummaries?: () => Promise<ProjectSummary[]>): Backend {
   const { get, all, put, del } = kv;
+  const withProjectLock = <T>(id: string, work: () => Promise<T>): Promise<T> =>
+    globalThis.navigator?.locks ? navigator.locks.request(`stratum-project-${id}`, work) : work();
   return {
     kind: "browser",
     label,
@@ -80,20 +82,24 @@ export function browserBackend(kv: Kv = idbKv("stratum-local"), label = "This br
       const p = await get<StoredProject>("projects", id);
       return p ? { project: p.project, version: p.summary.version } : null;
     },
-    async saveProject(id, project, expectedVersion) {
+    saveProject: (id, project, expectedVersion) => withProjectLock(id, async () => {
       const old = await get<StoredProject>("projects", id);
-      if (old && expectedVersion !== undefined && old.summary.version !== expectedVersion) {
-        throw new ConflictError("This project was saved in another tab. Reload it before saving.", old.summary.version);
+      if (expectedVersion !== undefined && old?.summary.version !== expectedVersion) {
+        throw new ConflictError("A obra foi alterada ou excluída em outra aba. Abra novamente a versão salva.", old?.summary.version ?? 0);
       }
       const version = (old?.summary.version ?? 0) + 1;
       const s = project.schedule;
       await put("projects", id, {
         project,
-        summary: { id, code: s?.projectCode ?? "PROJECT", name: s?.projectName ?? "Untitled", dataDate: s?.dataDate ?? null, version, updatedAt: new Date().toISOString(), updatedBy: null },
+        summary: {
+          id, code: s?.projectCode ?? "PROJECT", name: project.title ?? s?.projectName ?? "Sem nome",
+          dataDate: s?.dataDate ?? null, version, updatedAt: new Date().toISOString(), updatedBy: null,
+          archived: project.archived || undefined,
+        },
       } satisfies StoredProject);
       return version;
-    },
-    deleteProject: (id) => del("projects", id),
+    }),
+    deleteProject: (id) => withProjectLock(id, () => del("projects", id)),
     async listDashboards() {
       return (await all<Dashboard>("dashboards")).sort((a, b) => a.name.localeCompare(b.name));
     },

@@ -120,41 +120,41 @@ import { STOCK_LAYOUTS, useLayout, type LowerTab, type LowerView } from "./layou
 import { AssignmentsWindow, NetworkView, ProjectsWindow, RegisterWindow, ResourcesWindow, TraceLogicView, UsageSpreadsheet, WbsWindow } from "./Windows";
 
 const WINDOW_LABEL: Record<P6Window, string> = {
-  activities: "Activities",
-  wbs: "WBS",
-  assignments: "Assignments",
-  resources: "Resources",
-  projects: "Projects",
-  documents: "WPs & Docs",
-  expenses: "Expenses",
-  thresholds: "Thresholds",
-  issues: "Issues",
-  risks: "Risks",
-  tracking: "Tracking",
+  activities: "Atividades",
+  wbs: "EAP",
+  assignments: "Atribuições",
+  resources: "Recursos",
+  projects: "Projetos",
+  documents: "Entregáveis e documentos",
+  expenses: "Despesas",
+  thresholds: "Limites",
+  issues: "Pendências",
+  risks: "Riscos",
+  tracking: "Acompanhamento",
 };
 
 const LOWER_TABS: [LowerTab, string, EditorSection[]][] = [
-  ["general", "General", ["general"]],
-  ["status", "Status", ["status", "dates"]],
-  ["resources", "Resources", ["resources"]],
-  ["predecessors", "Predecessors", ["predecessors"]],
-  ["successors", "Successors", ["successors"]],
-  ["relationships", "Relationships", ["predecessors", "successors"]],
-  ["codes", "Codes", ["codes"]],
-  ["steps", "Steps", ["steps"]],
-  ["notebook", "Notebook", ["notebook"]],
+  ["general", "Geral", ["general"]],
+  ["status", "Situação", ["status", "dates"]],
+  ["resources", "Recursos", ["resources"]],
+  ["predecessors", "Predecessoras", ["predecessors"]],
+  ["successors", "Sucessoras", ["successors"]],
+  ["relationships", "Dependências", ["predecessors", "successors"]],
+  ["codes", "Códigos", ["codes"]],
+  ["steps", "Etapas", ["steps"]],
+  ["notebook", "Anotações", ["notebook"]],
   ["udf", "UDFs", ["udf"]],
-  ["wpdocs", "WPs & Docs", []],
+  ["wpdocs", "Entregáveis e documentos", []],
 ];
 
 const LOWER_VIEWS: [LowerView | "resourceProfile" | "activityProfile", string][] = [
-  ["details", "Activity Details"],
-  ["resourceProfile", "Resource Usage Profile"],
-  ["activityProfile", "Activity Usage Profile"],
-  ["resourceUsage", "Resource Usage Spreadsheet"],
-  ["activityUsage", "Activity Usage Spreadsheet"],
-  ["trace", "Trace Logic"],
-  ["none", "Nothing"],
+  ["details", "Detalhes da atividade"],
+  ["resourceProfile", "Perfil de uso de recursos"],
+  ["activityProfile", "Perfil de uso de atividades"],
+  ["resourceUsage", "Planilha de uso de recursos"],
+  ["activityUsage", "Planilha de uso de atividades"],
+  ["trace", "Rastrear dependências"],
+  ["none", "Nenhum"],
 ];
 
 // ---------------------------------------------------------------- rails
@@ -194,11 +194,11 @@ function DirectoryBar({ a }: { a: ClassicActions }) {
   return (
     <Rail
       side="left"
-      label="Directory"
+      label="Diretório"
       items={[
         item("projects", FolderKanban, "Projects window"),
         item("resources", Users, "Resources window: the resource dictionary"),
-        { id: "reports", label: "Reports", title: "Reports and dashboards", Icon: FileChartColumn, onClick: a.dashboards },
+        { id: "reports", label: "Relatórios", title: "Relatórios e painéis", Icon: FileChartColumn, onClick: a.dashboards },
         { ...item("tracking", Gauge, "Tracking: project-level table, Gantt and bar charts across a portfolio"), disabled: false },
         "sep",
         item("wbs", Network, "WBS window: edit the work breakdown structure"),
@@ -210,7 +210,7 @@ function DirectoryBar({ a }: { a: ClassicActions }) {
         item("issues", TriangleAlert, "Project issues"),
         item("risks", ShieldAlert, "Project risks"),
         "sep",
-        { id: "p6", label: "P6 Import", title: "Import a project from a P6 connection", Icon: DatabaseZap, onClick: a.importP6 },
+        { id: "p6", label: "Importar do P6", title: "Importar um projeto de uma conexão com o P6", Icon: DatabaseZap, onClick: a.importP6 },
       ]}
     />
   );
@@ -229,43 +229,43 @@ function CommandBar({ a }: { a: ClassicActions }) {
     return (
       <Rail
         side="right"
-        label="Commands"
+        label="Comandos"
         items={[
-          { id: "f9", label: "Schedule", title: "Schedule (F9)", Icon: Calculator, onClick: () => useP6.getState().open("scheduleRun"), disabled: none },
-          { id: "save", label: "Commit", title: "Commit changes to the database (Ctrl+S)", Icon: Save, onClick: a.save, disabled: none },
-          { id: "undo", label: "Undo", title: "Undo (Ctrl+Z)", Icon: Undo2, onClick: () => useStore.getState().undo(), disabled: !canUndo },
+          { id: "f9", label: "Calcular cronograma", title: "Calcular cronograma (F9)", Icon: Calculator, onClick: () => useP6.getState().open("scheduleRun"), disabled: none },
+          { id: "save", label: "Salvar", title: "Salvar alterações no banco de dados (Ctrl+S)", Icon: Save, onClick: a.save, disabled: none },
+          { id: "undo", label: "Desfazer", title: "Desfazer (Ctrl+Z)", Icon: Undo2, onClick: () => useStore.getState().undo(), disabled: !canUndo },
           "sep",
-          { id: "acts", label: "Activities", title: "Back to the Activities window", Icon: ListTree, onClick: () => useP6.getState().show("activities"), disabled: none },
+          { id: "acts", label: "Atividades", title: "Voltar à tela de atividades", Icon: ListTree, onClick: () => useP6.getState().show("activities"), disabled: none },
         ]}
       />
     );
   return (
     <Rail
       side="right"
-      label="Commands"
+      label="Comandos"
       items={[
-        { id: "add", label: "Add", title: "Add an activity after the selected one (Ins)", Icon: Plus, onClick: addActivity, disabled: none },
-        { id: "del", label: "Delete", title: "Delete the selected activities (Del)", Icon: Trash2, onClick: () => deleteSelected(), disabled: !n },
-        { id: "cut", label: "Cut", title: "Cut (Ctrl+X)", Icon: Scissors, onClick: cutSelected, disabled: !n },
-        { id: "copy", label: "Copy", title: "Copy (Ctrl+C)", Icon: Copy, onClick: copySelected, disabled: !n },
-        { id: "paste", label: "Paste", title: "Paste (Ctrl+V)", Icon: ClipboardPaste, onClick: paste, disabled: !clip },
-        { id: "dissolve", label: "Dissolve", title: "Delete and link predecessors to successors", Icon: Merge, onClick: dissolveSelected, disabled: !n },
-        { id: "renumber", label: "Renumber", title: "Renumber Activity IDs", Icon: ListOrdered, onClick: () => open("renumber"), disabled: !n },
-        { id: "link", label: "Link", title: "Link the selected activities FS in table order", Icon: Link2, onClick: () => linkSelected("FS"), disabled: n < 2 },
-        { id: "undo", label: "Undo", title: "Undo (Ctrl+Z)", Icon: Undo2, onClick: () => useStore.getState().undo(), disabled: !canUndo },
-        { id: "fill", label: "Fill Down", title: "Copy the top value of the focused column down the selection (Ctrl+E)", Icon: ArrowDownToLine, onClick: fillDownSelected, disabled: n < 2 },
-        { id: "selall", label: "Select All", title: "Select all activities shown (Ctrl+A)", Icon: SquareCheck, onClick: selectAll, disabled: none },
-        { id: "spell", label: "Spelling", title: "Check spelling of activity names", Icon: SpellCheck, onClick: () => open("spelling"), disabled: none },
+        { id: "add", label: "Adicionar", title: "Adicionar atividade após a selecionada (Ins)", Icon: Plus, onClick: addActivity, disabled: none },
+        { id: "del", label: "Excluir", title: "Excluir as atividades selecionadas (Del)", Icon: Trash2, onClick: () => deleteSelected(), disabled: !n },
+        { id: "cut", label: "Recortar", title: "Recortar (Ctrl+X)", Icon: Scissors, onClick: cutSelected, disabled: !n },
+        { id: "copy", label: "Copiar", title: "Copiar (Ctrl+C)", Icon: Copy, onClick: copySelected, disabled: !n },
+        { id: "paste", label: "Colar", title: "Colar (Ctrl+V)", Icon: ClipboardPaste, onClick: paste, disabled: !clip },
+        { id: "dissolve", label: "Excluir e religar", title: "Excluir e vincular predecessoras às sucessoras", Icon: Merge, onClick: dissolveSelected, disabled: !n },
+        { id: "renumber", label: "Renumerar", title: "Renumerar IDs de atividades", Icon: ListOrdered, onClick: () => open("renumber"), disabled: !n },
+        { id: "link", label: "Vincular", title: "Vincular atividades selecionadas com relação término–início, na ordem da tabela", Icon: Link2, onClick: () => linkSelected("FS"), disabled: n < 2 },
+        { id: "undo", label: "Desfazer", title: "Desfazer (Ctrl+Z)", Icon: Undo2, onClick: () => useStore.getState().undo(), disabled: !canUndo },
+        { id: "fill", label: "Preencher para baixo", title: "Copiar o primeiro valor da coluna para as demais células selecionadas (Ctrl+E)", Icon: ArrowDownToLine, onClick: fillDownSelected, disabled: n < 2 },
+        { id: "selall", label: "Selecionar tudo", title: "Selecionar todas as atividades exibidas (Ctrl+A)", Icon: SquareCheck, onClick: selectAll, disabled: none },
+        { id: "spell", label: "Ortografia", title: "Verificar a ortografia dos nomes das atividades", Icon: SpellCheck, onClick: () => open("spelling"), disabled: none },
         "sep",
-        { id: "apred", label: "Predecessors", title: "Assign predecessors", Icon: GitFork, onClick: () => open("assignPred"), disabled: n !== 1 },
-        { id: "asucc", label: "Successors", title: "Assign successors", Icon: GitBranch, onClick: () => open("assignSucc"), disabled: n !== 1 },
-        { id: "ares", label: "Resources", title: "Assign resources", Icon: Users, onClick: () => open("assignRes"), disabled: !n },
-        { id: "acode", label: "Codes", title: "Assign activity codes", Icon: Tags, onClick: () => open("assignCode"), disabled: !n },
+        { id: "apred", label: "Predecessoras", title: "Atribuir predecessoras", Icon: GitFork, onClick: () => open("assignPred"), disabled: n !== 1 },
+        { id: "asucc", label: "Sucessoras", title: "Atribuir sucessoras", Icon: GitBranch, onClick: () => open("assignSucc"), disabled: n !== 1 },
+        { id: "ares", label: "Recursos", title: "Atribuir recursos", Icon: Users, onClick: () => open("assignRes"), disabled: !n },
+        { id: "acode", label: "Códigos", title: "Atribuir códigos de atividade", Icon: Tags, onClick: () => open("assignCode"), disabled: !n },
         "sep",
-        { id: "expand", label: "Expand All", title: "Expand all bands", Icon: ChevronsUpDown, onClick: expandAll, disabled: none },
-        { id: "collapse", label: "Collapse All", title: "Collapse all WBS bands", Icon: ChevronsDownUp, onClick: collapseAll, disabled: none },
-        { id: "f9", label: "Schedule", title: "Schedule (F9)", Icon: Calculator, onClick: () => useP6.getState().open("scheduleRun"), disabled: none },
-        { id: "save", label: "Commit", title: "Commit changes to the database (Ctrl+S)", Icon: Save, onClick: a.save, disabled: none },
+        { id: "expand", label: "Expandir tudo", title: "Expandir todos os grupos", Icon: ChevronsUpDown, onClick: expandAll, disabled: none },
+        { id: "collapse", label: "Recolher tudo", title: "Recolher todos os grupos da EAP", Icon: ChevronsDownUp, onClick: collapseAll, disabled: none },
+        { id: "f9", label: "Calcular cronograma", title: "Calcular cronograma (F9)", Icon: Calculator, onClick: () => useP6.getState().open("scheduleRun"), disabled: none },
+        { id: "save", label: "Salvar", title: "Salvar alterações no banco de dados (Ctrl+S)", Icon: Save, onClick: a.save, disabled: none },
       ]}
     />
   );
@@ -382,7 +382,7 @@ function LowerPane() {
           set({ lower: v as LowerView });
         }
       }}
-      title="Show on Bottom"
+      title="Mostrar na parte inferior"
     >
       {LOWER_VIEWS.map(([v, l]) => (
         <option key={v} value={v}>
@@ -407,26 +407,26 @@ function LowerPane() {
           ))}
         </div>
         <div className="p6-lowerbody">
-          {tab === "wpdocs" ? act ? <ActivityDocs activityId={act.id} /> : <p className="muted">Select an activity.</p> : <ActivityEditor bare only={(LOWER_TABS.find((d) => d[0] === tab) ?? LOWER_TABS[0])[2]} />}
+          {tab === "wpdocs" ? act ? <ActivityDocs activityId={act.id} /> : <p className="muted">Selecione uma atividade.</p> : <ActivityEditor bare only={(LOWER_TABS.find((d) => d[0] === tab) ?? LOWER_TABS[0])[2]} />}
         </div>
       </>
     );
   return (
     <div className="p6-lower" style={{ flex: `0 0 ${h}px` }}>
-      <div className="p6-lowergrip" onMouseDown={grip} title="Drag to resize" />
+      <div className="p6-lowergrip" onMouseDown={grip} title="Arraste para redimensionar" />
       <div className="p6-lowerhead">
         {viewSel}
         {!profile && lower === "details" && (
           <>
             <span>
-              Activity <b>{act?.code ?? "—"}</b>
+              Atividade <b>{act?.code ?? "—"}</b>
             </span>
             <span className="p6-actname">{act?.name ?? "No activity selected"}</span>
           </>
         )}
         <span className="spacer" />
         <span>
-          Project <b>{schedule?.projectCode ?? "—"}</b>
+          Projeto <b>{schedule?.projectCode ?? "—"}</b>
         </span>
       </div>
       {body}
@@ -497,149 +497,149 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
 
   const menus: [string, MenuItem[]][] = [
     [
-      "File",
+      "Arquivo",
       [
-        { label: "Open…", onClick: a.projects, shortcut: "Ctrl+O" },
-        { label: "Commit Changes", onClick: a.save, disabled: none, shortcut: "Ctrl+S" },
-        { label: "Save as New Project", onClick: a.saveAsNew, disabled: none },
+        { label: "Abrir…", onClick: a.projects, shortcut: "Ctrl+O" },
+        { label: "Salvar alterações", onClick: a.save, disabled: none, shortcut: "Ctrl+S" },
+        { label: "Salvar como novo projeto", onClick: a.saveAsNew, disabled: none },
         "sep",
-        { label: "Page Setup…", onClick: () => P.open("pageSetup"), disabled: none },
-        { label: "Print…", onClick: printLayout, disabled: none, shortcut: "Ctrl+P" },
-        { label: "Publish Layout as HTML", onClick: exportHtml, disabled: none },
-        { label: "Publish Project Web Site…", onClick: () => P.open("publishSite"), disabled: none },
+        { label: "Configurar página…", onClick: () => P.open("pageSetup"), disabled: none },
+        { label: "Imprimir…", onClick: printLayout, disabled: none, shortcut: "Ctrl+P" },
+        { label: "Publicar layout em HTML", onClick: exportHtml, disabled: none },
+        { label: "Publicar site do projeto…", onClick: () => P.open("publishSite"), disabled: none },
         "sep",
-        { label: "Import…", onClick: a.importSchedule },
-        { label: "Import from P6 Connection…", onClick: a.importP6 },
-        { label: "Export… (XER)", onClick: a.exportXer, disabled: none },
-        { label: "Export… (Microsoft Project XML)", onClick: a.exportMspdi, disabled: none },
-        { label: "Export to Excel (.xlsx) – current layout", onClick: () => void exportLayoutXlsx(), disabled: none },
-        { label: "Import from Excel…", onClick: () => P.open("excelImport"), disabled: none },
-        { label: "Export to CSV", onClick: a.exportCsv, disabled: none },
+        { label: "Importar…", onClick: a.importSchedule },
+        { label: "Importar de uma conexão com o P6…", onClick: a.importP6 },
+        { label: "Exportar… (XER)", onClick: a.exportXer, disabled: none },
+        { label: "Exportar… (XML do Microsoft Project)", onClick: a.exportMspdi, disabled: none },
+        { label: "Exportar layout atual para Excel (.xlsx)", onClick: () => void exportLayoutXlsx(), disabled: none },
+        { label: "Importar do Excel…", onClick: () => P.open("excelImport"), disabled: none },
+        { label: "Exportar para CSV", onClick: a.exportCsv, disabled: none },
         "sep",
-        { label: "Open Project File…", onClick: a.openFile },
-        { label: "Save Project File", onClick: a.saveFile, disabled: none },
+        { label: "Abrir arquivo de projeto…", onClick: a.openFile },
+        { label: "Salvar arquivo de projeto", onClick: a.saveFile, disabled: none },
         "sep",
-        ...SAMPLE_ORDER.map((k) => ({ label: `Sample: ${SAMPLES[k].label}`, onClick: () => a.sample(k) })),
-        ...(loginEnabled ? ["sep" as const, { label: "Sign Out", onClick: signOut }] : []),
+        ...SAMPLE_ORDER.map((k) => ({ label: `Exemplo: ${SAMPLES[k].label}`, onClick: () => a.sample(k) })),
+        ...(loginEnabled ? ["sep" as const, { label: "Sair", onClick: signOut }] : []),
       ],
     ],
     [
-      "Edit",
+      "Editar",
       [
-        { label: `Undo${undoLabel ? ` ${undoLabel}` : ""}`, onClick: () => useStore.getState().undo(), disabled: !canUndo, shortcut: "Ctrl+Z" },
-        { label: `Redo${redoLabel ? ` ${redoLabel}` : ""}`, onClick: () => useStore.getState().redo(), disabled: !canRedo, shortcut: "Ctrl+Y" },
+        { label: `Desfazer${undoLabel ? ` ${undoLabel}` : ""}`, onClick: () => useStore.getState().undo(), disabled: !canUndo, shortcut: "Ctrl+Z" },
+        { label: `Refazer${redoLabel ? ` ${redoLabel}` : ""}`, onClick: () => useStore.getState().redo(), disabled: !canRedo, shortcut: "Ctrl+Y" },
         "sep",
-        { label: "Cut", onClick: cutSelected, disabled: !n, shortcut: "Ctrl+X" },
-        { label: "Copy", onClick: copySelected, disabled: !n, shortcut: "Ctrl+C" },
-        { label: "Paste", onClick: paste, disabled: !clip, shortcut: "Ctrl+V" },
+        { label: "Recortar", onClick: cutSelected, disabled: !n, shortcut: "Ctrl+X" },
+        { label: "Copiar", onClick: copySelected, disabled: !n, shortcut: "Ctrl+C" },
+        { label: "Colar", onClick: paste, disabled: !clip, shortcut: "Ctrl+V" },
         "sep",
-        { label: "Add", onClick: addActivity, disabled: none, shortcut: "Ins" },
-        { label: "Delete", onClick: () => deleteSelected(), disabled: !n, shortcut: "Del" },
-        { label: "Dissolve", onClick: dissolveSelected, disabled: !n },
-        { label: "Renumber Activity IDs…", onClick: () => P.open("renumber"), disabled: !n },
-        { label: "Link Activities", onClick: () => linkSelected("FS"), disabled: n < 2, shortcut: "Ctrl+L" },
-        { label: "Unlink Activities", onClick: unlinkSelected, disabled: n < 2 },
-        { label: "Fill Down", onClick: fillDownSelected, disabled: n < 2, shortcut: "Ctrl+E" },
-        { label: "Select All", onClick: selectAll, disabled: none, shortcut: "Ctrl+A" },
+        { label: "Adicionar", onClick: addActivity, disabled: none, shortcut: "Ins" },
+        { label: "Excluir", onClick: () => deleteSelected(), disabled: !n, shortcut: "Del" },
+        { label: "Excluir e religar", onClick: dissolveSelected, disabled: !n },
+        { label: "Renumerar IDs de atividades…", onClick: () => P.open("renumber"), disabled: !n },
+        { label: "Vincular atividades", onClick: () => linkSelected("FS"), disabled: n < 2, shortcut: "Ctrl+L" },
+        { label: "Desvincular atividades", onClick: unlinkSelected, disabled: n < 2 },
+        { label: "Preencher para baixo", onClick: fillDownSelected, disabled: n < 2, shortcut: "Ctrl+E" },
+        { label: "Selecionar tudo", onClick: selectAll, disabled: none, shortcut: "Ctrl+A" },
         "sep",
-        { label: "Assign Predecessors…", onClick: () => P.open("assignPred"), disabled: n !== 1 },
-        { label: "Assign Successors…", onClick: () => P.open("assignSucc"), disabled: n !== 1 },
-        { label: "Assign Resources…", onClick: () => P.open("assignRes"), disabled: !n },
-        { label: "Assign Roles…", onClick: () => P.open("assignRole"), disabled: !n },
-        { label: "Assign Activity Codes…", onClick: () => P.open("assignCode"), disabled: !n },
+        { label: "Atribuir predecessoras…", onClick: () => P.open("assignPred"), disabled: n !== 1 },
+        { label: "Atribuir sucessoras…", onClick: () => P.open("assignSucc"), disabled: n !== 1 },
+        { label: "Atribuir recursos…", onClick: () => P.open("assignRes"), disabled: !n },
+        { label: "Atribuir funções…", onClick: () => P.open("assignRole"), disabled: !n },
+        { label: "Atribuir códigos de atividade…", onClick: () => P.open("assignCode"), disabled: !n },
         "sep",
-        { label: "Find…", onClick: find, disabled: none, shortcut: "Ctrl+F" },
-        { label: "Spell Check…", onClick: () => P.open("spelling"), disabled: none },
-        { label: "User Preferences…", onClick: () => P.open("preferences") },
-        { label: "Interface Settings…", onClick: () => a.settings("interface") },
+        { label: "Localizar…", onClick: find, disabled: none, shortcut: "Ctrl+F" },
+        { label: "Verificar ortografia…", onClick: () => P.open("spelling"), disabled: none },
+        { label: "Preferências do usuário…", onClick: () => P.open("preferences") },
+        { label: "Configurações de interface…", onClick: () => a.settings("interface") },
       ],
     ],
     [
-      "View",
+      "Exibir",
       [
-        { label: "Layout: Open…", onClick: () => P.open("layouts") },
-        { label: "Layout: Save As…", onClick: () => P.open("layouts") },
+        { label: "Abrir layout…", onClick: () => P.open("layouts") },
+        { label: "Salvar layout como…", onClick: () => P.open("layouts") },
         "sep",
-        { label: "Show on Top: Activity Table", onClick: () => toggle("showTable"), checked: layout.showTable },
-        { label: "Show on Top: Gantt Chart", onClick: () => setLayout({ showGantt: !layout.showGantt || layout.network || !!layout.tsld, network: false, tsld: false }), checked: layout.showGantt && !layout.network && !layout.tsld },
-        { label: "Show on Top: Activity Network", onClick: () => setLayout({ network: !layout.network, tsld: false }), checked: layout.network && !layout.tsld },
-        { label: "Show on Top: Timescaled Logic Diagram", onClick: () => setLayout({ tsld: !layout.tsld }), checked: !!layout.tsld },
-        ...LOWER_VIEWS.filter(([v]) => v !== "resourceProfile" && v !== "activityProfile").map(([v, l]) => ({ label: `Show on Bottom: ${l}`, onClick: () => setLayout({ lower: v as LowerView }), checked: layout.lower === v })),
+        { label: "Mostrar tabela de atividades na parte superior", onClick: () => toggle("showTable"), checked: layout.showTable },
+        { label: "Mostrar gráfico de Gantt na parte superior", onClick: () => setLayout({ showGantt: !layout.showGantt || layout.network || !!layout.tsld, network: false, tsld: false }), checked: layout.showGantt && !layout.network && !layout.tsld },
+        { label: "Mostrar rede de atividades na parte superior", onClick: () => setLayout({ network: !layout.network, tsld: false }), checked: layout.network && !layout.tsld },
+        { label: "Mostrar diagrama lógico com escala de tempo na parte superior", onClick: () => setLayout({ tsld: !layout.tsld }), checked: !!layout.tsld },
+        ...LOWER_VIEWS.filter(([v]) => v !== "resourceProfile" && v !== "activityProfile").map(([v, l]) => ({ label: `Mostrar na parte inferior: ${l}`, onClick: () => setLayout({ lower: v as LowerView }), checked: layout.lower === v })),
         "sep",
-        { label: "Columns…", onClick: () => P.open("columns") },
-        { label: "Filters…", onClick: () => P.open("filters") },
-        { label: "Group and Sort…", onClick: () => P.open("groupSort") },
-        { label: "Bar Chart Options…", onClick: () => P.open("bars") },
-        { label: "Timescale…", onClick: () => P.open("timescale") },
+        { label: "Colunas…", onClick: () => P.open("columns") },
+        { label: "Filtros…", onClick: () => P.open("filters") },
+        { label: "Agrupar e classificar…", onClick: () => P.open("groupSort") },
+        { label: "Opções das barras do Gantt…", onClick: () => P.open("bars") },
+        { label: "Escala de tempo…", onClick: () => P.open("timescale") },
         "sep",
-        { label: "Expand All", onClick: expandAll, disabled: none },
-        { label: "Collapse All", onClick: collapseAll, disabled: none },
-        { label: "Collapse to WBS Level 1", onClick: () => expandToLevel(1), disabled: none },
-        { label: "Collapse to WBS Level 2", onClick: () => expandToLevel(2), disabled: none },
-        { label: "Collapse to WBS Level 3", onClick: () => expandToLevel(3), disabled: none },
+        { label: "Expandir tudo", onClick: expandAll, disabled: none },
+        { label: "Recolher tudo", onClick: collapseAll, disabled: none },
+        { label: "Recolher até o nível 1 da EAP", onClick: () => expandToLevel(1), disabled: none },
+        { label: "Recolher até o nível 2 da EAP", onClick: () => expandToLevel(2), disabled: none },
+        { label: "Recolher até o nível 3 da EAP", onClick: () => expandToLevel(3), disabled: none },
         "sep",
-        { label: "Zoom In", onClick: () => ganttCommand("zoom-in"), disabled: none },
-        { label: "Zoom Out", onClick: () => ganttCommand("zoom-out"), disabled: none },
-        { label: "Fit Timescale", onClick: () => ganttCommand("fit"), disabled: none },
-        { label: "Go To Selected Activity", onClick: () => ganttCommand("scroll-to-selected"), disabled: !n },
-        { label: "Spotlight", onClick: () => P.setSpotlight(!P.spotlight), checked: P.spotlight, disabled: none },
-        { label: "Show Baseline Bars", onClick: () => setTracking(!tracking), checked: tracking },
-        { label: "Show Progress Line", onClick: () => useLayout.getState().setBars({ progressLine: !layout.bars.progressLine }), checked: !!layout.bars.progressLine },
+        { label: "Aproximar", onClick: () => ganttCommand("zoom-in"), disabled: none },
+        { label: "Afastar", onClick: () => ganttCommand("zoom-out"), disabled: none },
+        { label: "Ajustar escala de tempo", onClick: () => ganttCommand("fit"), disabled: none },
+        { label: "Ir à atividade selecionada", onClick: () => ganttCommand("scroll-to-selected"), disabled: !n },
+        { label: "Destacar período", onClick: () => P.setSpotlight(!P.spotlight), checked: P.spotlight, disabled: none },
+        { label: "Mostrar barras da linha de base", onClick: () => setTracking(!tracking), checked: tracking },
+        { label: "Mostrar linha de progresso", onClick: () => useLayout.getState().setBars({ progressLine: !layout.bars.progressLine }), checked: !!layout.bars.progressLine },
         ...(displays ? (["sep", ...displays.menu] as MenuItem[]) : []),
       ],
     ],
     [
-      "Project",
+      "Projeto",
       [
-        { label: "Schedule…", onClick: () => P.open("scheduleRun"), disabled: none, shortcut: "F9" },
-        { label: "Schedule Options…", onClick: () => P.open("scheduleOptions"), disabled: none },
-        { label: "Level Resources…", onClick: () => P.open("level"), disabled: none, shortcut: "F10" },
-        { label: "Check Schedule…", onClick: () => P.open("checkSchedule"), disabled: none },
+        { label: "Calcular cronograma…", onClick: () => P.open("scheduleRun"), disabled: none, shortcut: "F9" },
+        { label: "Opções de cálculo do cronograma…", onClick: () => P.open("scheduleOptions"), disabled: none },
+        { label: "Nivelar recursos…", onClick: () => P.open("level"), disabled: none, shortcut: "F10" },
+        { label: "Verificar cronograma…", onClick: () => P.open("checkSchedule"), disabled: none },
         "sep",
-        { label: "Maintain Baselines…", onClick: () => P.open("baselines"), disabled: none },
-        { label: "Assign Baselines… (from XER / XML)", onClick: a.assignBaseline, disabled: none },
+        { label: "Gerenciar linhas de base…", onClick: () => P.open("baselines"), disabled: none },
+        { label: "Atribuir linhas de base… (de XER ou XML)", onClick: a.assignBaseline, disabled: none },
         "sep",
-        { label: "Project Details…", onClick: () => P.open("projectInfo"), disabled: none },
-        { label: "Budgets…", onClick: () => openBudgets(null), disabled: none },
-        ...(a.pushP6 ? [{ label: "Send Progress to P6", onClick: a.pushP6 }] : []),
+        { label: "Detalhes do projeto…", onClick: () => P.open("projectInfo"), disabled: none },
+        { label: "Orçamentos…", onClick: () => openBudgets(null), disabled: none },
+        ...(a.pushP6 ? [{ label: "Enviar avanço ao P6", onClick: a.pushP6 }] : []),
         "sep",
         { label: "Reports and Dashboards", onClick: a.dashboards },
       ],
     ],
     [
-      "Enterprise",
+      "Empresa",
       [
-        { label: "Projects", onClick: () => P.show("projects") },
-        { label: "Enterprise Project Structure…", onClick: () => P.open("eps") },
-        { label: "Project Portfolios…", onClick: () => P.open("portfolios") },
-        { label: "Capacity Planning…", onClick: () => P.open("capacity") },
+        { label: "Projetos", onClick: () => P.show("projects") },
+        { label: "Estrutura de projetos da empresa…", onClick: () => P.open("eps") },
+        { label: "Portfólios de projetos…", onClick: () => P.open("portfolios") },
+        { label: "Planejamento de capacidade…", onClick: () => P.open("capacity") },
         "sep",
-        { label: "Resources", onClick: () => P.show("resources"), disabled: none },
-        { label: "Roles…", onClick: () => P.open("roles"), disabled: none },
-        { label: "Resource Rates and Shifts…", onClick: () => P.open("resourceRates"), disabled: none },
-        { label: "Resource Shifts…", onClick: () => P.open("shifts"), disabled: none },
-        { label: "Resource Curves…", onClick: () => P.open("curves"), disabled: none },
-        { label: "Cost Accounts…", onClick: () => P.open("costAccounts"), disabled: none },
+        { label: "Recursos", onClick: () => P.show("resources"), disabled: none },
+        { label: "Funções…", onClick: () => P.open("roles"), disabled: none },
+        { label: "Taxas e turnos de recursos…", onClick: () => P.open("resourceRates"), disabled: none },
+        { label: "Turnos de recursos…", onClick: () => P.open("shifts"), disabled: none },
+        { label: "Curvas de recursos…", onClick: () => P.open("curves"), disabled: none },
+        { label: "Contas de custos…", onClick: () => P.open("costAccounts"), disabled: none },
         { label: "OBS…", onClick: () => P.open("obs"), disabled: none },
-        { label: "Risk Scoring Matrix…", onClick: () => P.open("riskMatrix"), disabled: none },
-        { label: "Calendars…", onClick: () => P.open("calendars"), disabled: none },
-        { label: "Activity Codes…", onClick: () => P.open("activityCodes"), disabled: none },
-        { label: "Project Codes…", onClick: () => P.open("projectCodes") },
-        { label: "Resource Codes…", onClick: () => P.open("resourceCodes"), disabled: none },
-        { label: "Expense Categories…", onClick: () => P.open("expenseCategories"), disabled: none },
-        { label: "User Defined Fields…", onClick: () => P.open("udfs"), disabled: none },
-        { label: "P6 Connections…", onClick: () => a.settings("p6") },
+        { label: "Matriz de pontuação de riscos…", onClick: () => P.open("riskMatrix"), disabled: none },
+        { label: "Calendários…", onClick: () => P.open("calendars"), disabled: none },
+        { label: "Códigos de atividade…", onClick: () => P.open("activityCodes"), disabled: none },
+        { label: "Códigos de projeto…", onClick: () => P.open("projectCodes") },
+        { label: "Códigos de recurso…", onClick: () => P.open("resourceCodes"), disabled: none },
+        { label: "Categorias de despesas…", onClick: () => P.open("expenseCategories"), disabled: none },
+        { label: "Campos definidos pelo usuário…", onClick: () => P.open("udfs"), disabled: none },
+        { label: "Conexões com o P6…", onClick: () => a.settings("p6") },
       ],
     ],
     [
-      "Tools",
+      "Ferramentas",
       [
-        { label: "Global Change…", onClick: () => P.open("globalChange"), disabled: none },
-        { label: "Update Progress…", onClick: () => P.open("updateProgress"), disabled: none },
-        { label: "Publish › Project Web Site…", onClick: () => P.open("publishSite"), disabled: none },
-        { label: "Top-Down Estimation…", onClick: () => P.open("topDown"), disabled: none },
+        { label: "Alteração em massa…", onClick: () => P.open("globalChange"), disabled: none },
+        { label: "Atualizar avanço…", onClick: () => P.open("updateProgress"), disabled: none },
+        { label: "Publicar › Site do projeto…", onClick: () => P.open("publishSite"), disabled: none },
+        { label: "Estimativa de cima para baixo…", onClick: () => P.open("topDown"), disabled: none },
         {
-          label: "Estimate Progress (selected)",
+          label: "Estimar avanço das atividades selecionadas",
           onClick: () => {
             const st = useStore.getState();
             if (!st.schedule) return;
@@ -650,7 +650,7 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
           disabled: none,
         },
         {
-          label: "Remove Progress (selected)",
+          label: "Remover avanço das atividades selecionadas",
           onClick: () => {
             const st = useStore.getState();
             if (!st.schedule || !st.selectedActivities.size || !window.confirm(`Remove all progress from ${st.selectedActivities.size} activities?`)) return;
@@ -660,33 +660,33 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
           },
           disabled: !n,
         },
-        { label: "Store Period Performance…", onClick: () => P.open("periods"), disabled: none },
-        { label: "Recalculate Assignment Costs", onClick: recalc, disabled: none },
-        { label: "Check Schedule…", onClick: () => P.open("checkSchedule"), disabled: none },
-        { label: "Claim Digger (compare schedules)…", onClick: () => P.open("claimDigger"), disabled: none },
-        { label: "Schedule Log…", onClick: () => P.open("scheduleLog"), disabled: none },
-        { label: "Spell Check…", onClick: () => P.open("spelling"), disabled: none },
+        { label: "Registrar desempenho do período…", onClick: () => P.open("periods"), disabled: none },
+        { label: "Recalcular custos das atribuições", onClick: recalc, disabled: none },
+        { label: "Verificar cronograma…", onClick: () => P.open("checkSchedule"), disabled: none },
+        { label: "Comparar cronogramas (Claim Digger)…", onClick: () => P.open("claimDigger"), disabled: none },
+        { label: "Registro de cálculo do cronograma…", onClick: () => P.open("scheduleLog"), disabled: none },
+        { label: "Verificar ortografia…", onClick: () => P.open("spelling"), disabled: none },
         "sep",
-        { label: "Reports", onClick: a.dashboards },
-        { label: "Scheduled Emails", onClick: a.dashboards },
+        { label: "Relatórios", onClick: a.dashboards },
+        { label: "E-mails programados", onClick: a.dashboards },
       ],
     ],
     [
-      "Admin",
+      "Administração",
       [
-        { label: "Users…", onClick: () => a.settings("users") },
-        { label: "Database…", onClick: () => a.settings("data") },
-        { label: "Email (SMTP)…", onClick: () => a.settings("email") },
+        { label: "Usuários…", onClick: () => a.settings("users") },
+        { label: "Banco de dados…", onClick: () => a.settings("data") },
+        { label: "E-mail (SMTP)…", onClick: () => a.settings("email") },
         "sep",
-        { label: "Financial Period Calendar…", onClick: () => P.open("financialPeriods"), disabled: none },
-        { label: "Preferences…", onClick: () => a.settings("interface") },
+        { label: "Calendário de períodos financeiros…", onClick: () => P.open("financialPeriods"), disabled: none },
+        { label: "Preferências…", onClick: () => a.settings("interface") },
       ],
     ],
     [
-      "Help",
+      "Ajuda",
       [
-        { label: "Training Mode…", onClick: () => useTraining.getState().openCatalog(true) },
-        { label: "Getting Started", onClick: a.help, shortcut: "?" },
+        { label: "Modo de treinamento…", onClick: () => useTraining.getState().openCatalog(true) },
+        { label: "Primeiros passos", onClick: a.help, shortcut: "?" },
       ],
     ],
   ];
@@ -703,7 +703,7 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
       case "assignments":
         return <AssignmentsWindow />;
       case "projects":
-        return a.openOne ? <EnterpriseProjectsWindow onOpenOne={a.openOne} onImport={a.projects} onImportToDb={a.importToDb} onSave={a.saveDb} /> : <ProjectsWindow onOpen={a.projects} />;
+        return a.openOne && a.openCombined ? <EnterpriseProjectsWindow onOpenOne={a.openOne} onOpenCombined={a.openCombined} onImport={a.projects} onImportToDb={a.importToDb} onSave={a.saveDb} /> : <ProjectsWindow onOpen={a.projects} />;
       case "tracking":
         return <TrackingWindow onDashboards={a.dashboards} />;
       case "documents":
@@ -716,11 +716,11 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
         return (
           <>
             <div className="p6-layoutbar">
-              <button className="p6-layoutbtn" onClick={() => P.open("layouts")} title="Open or save a layout">
+              <button className="p6-layoutbtn" onClick={() => P.open("layouts")} title="Abrir ou salvar um layout">
                 Layout: {layout.name} <ChevronDown size={12} aria-hidden />
               </button>
               <label className="p6-drop">
-                Filter:
+                Filtro:
                 <select
                   value={filter.kind !== "all" ? filter.kind : layout.filters.length === 1 && custom.some((f) => f.id === layout.filters[0]) ? `custom:${layout.filters[0]}` : "all"}
                   onChange={(e) => {
@@ -741,16 +741,16 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
                   ))}
                 </select>
               </label>
-              <button className="p6-drop p6-blbtn" onClick={() => setTracking(!tracking)} aria-pressed={tracking} title="Show baseline bars under each activity">
-                {tracking ? "✓ " : ""}Baseline bars
+              <button className="p6-drop p6-blbtn" onClick={() => setTracking(!tracking)} aria-pressed={tracking} title="Mostrar barras da linha de base abaixo de cada atividade">
+                {tracking ? "✓ " : ""}Barras da linha de base
               </button>
               {layout.filters.length > 0 && (
-                <button className="p6-drop" onClick={() => P.open("filters")} title="Layout filters in use">
+                <button className="p6-drop" onClick={() => P.open("filters")} title="Filtros do layout em uso">
                   <Filter size={12} aria-hidden /> {layout.filters.length} filter{layout.filters.length > 1 ? "s" : ""}
                 </button>
               )}
               <span className="spacer" />
-              <input ref={findRef} className="p6-find" placeholder="Find activity ID or name" value={filter.text} onChange={(e) => setFilter({ text: e.target.value })} />
+              <input ref={findRef} className="p6-find" placeholder="Localizar atividade por ID ou nome" value={filter.text} onChange={(e) => setFilter({ text: e.target.value })} />
             </div>
             <div className="p6-upper">{layout.tsld ? <TsldView /> : layout.network ? <NetworkView /> : <ActivityTable onSchedule={a.schedule} />}</div>
             <LowerPane />
@@ -768,8 +768,8 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
         <span className="spacer" />
         <ModeSwitch />
         {displays && (
-          <button className="tb cl-train" onClick={() => (displays.menu[0] as { onClick: () => void }).onClick()} title="Displays: open views in their own windows, one per monitor">
-            <MonitorUp size={14} aria-hidden /> Displays
+          <button className="tb cl-train" onClick={() => (displays.menu[0] as { onClick: () => void }).onClick()} title="Monitores: abrir cada vista em uma janela própria">
+            <MonitorUp size={14} aria-hidden /> Monitores
           </button>
         )}
         <TrainingButton className="tb cl-train" />
@@ -777,53 +777,53 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
       </div>
       <MenuBar className="cl-menubar" menus={menus} />
       <div className="cl-toolbar p6-toolbar">
-        <IconBtn Icon={FolderOpen} title="Open project (Ctrl+O)" onClick={a.projects} />
-        <IconBtn Icon={Save} title="Commit changes (Ctrl+S)" onClick={a.save} disabled={none} />
+        <IconBtn Icon={FolderOpen} title="Abrir projeto (Ctrl+O)" onClick={a.projects} />
+        <IconBtn Icon={Save} title="Salvar alterações (Ctrl+S)" onClick={a.save} disabled={none} />
         <span className="tsep" />
-        <IconBtn Icon={Printer} title="Print" onClick={printLayout} disabled={none} />
-        <IconBtn Icon={PencilRuler} title="Page Setup" onClick={() => P.open("pageSetup")} disabled={none} />
-        <IconBtn Icon={FileInput} title="Import XER / XML" onClick={a.importSchedule} />
-        <IconBtn Icon={FileOutput} title="Export XER" onClick={a.exportXer} disabled={none} />
+        <IconBtn Icon={Printer} title="Imprimir" onClick={printLayout} disabled={none} />
+        <IconBtn Icon={PencilRuler} title="Configurar página" onClick={() => P.open("pageSetup")} disabled={none} />
+        <IconBtn Icon={FileInput} title="Importar XER ou XML" onClick={a.importSchedule} />
+        <IconBtn Icon={FileOutput} title="Exportar XER" onClick={a.exportXer} disabled={none} />
         <span className="tsep" />
-        <IconBtn Icon={Undo2} title={`Undo${undoLabel ? `: ${undoLabel}` : ""} (Ctrl+Z)`} onClick={() => useStore.getState().undo()} disabled={!canUndo} />
-        <IconBtn Icon={Redo2} title={`Redo${redoLabel ? `: ${redoLabel}` : ""} (Ctrl+Y)`} onClick={() => useStore.getState().redo()} disabled={!canRedo} />
+        <IconBtn Icon={Undo2} title={`Desfazer${undoLabel ? `: ${undoLabel}` : ""} (Ctrl+Z)`} onClick={() => useStore.getState().undo()} disabled={!canUndo} />
+        <IconBtn Icon={Redo2} title={`Refazer${redoLabel ? `: ${redoLabel}` : ""} (Ctrl+Y)`} onClick={() => useStore.getState().redo()} disabled={!canRedo} />
         <span className="tsep" />
-        <IconBtn Icon={LayoutPanelTop} title="Layout: open or save" onClick={() => P.open("layouts")} />
-        <IconBtn Icon={Table2} title="Show/hide the activity table" onClick={() => toggle("showTable")} disabled={none} />
-        <IconBtn Icon={ChartGantt} title="Show/hide the Gantt chart" onClick={() => toggle("showGantt")} disabled={none} />
-        <IconBtn Icon={PanelBottom} title="Show/hide the bottom pane" onClick={() => setLayout({ lower: layout.lower === "none" ? "details" : "none" })} disabled={none} />
-        <IconBtn Icon={Network} title="Activity Network" onClick={() => setLayout({ network: !layout.network, tsld: false })} disabled={none} />
-        <IconBtn Icon={GitCommitHorizontal} title="Timescaled Logic Diagram" onClick={() => setLayout({ tsld: !layout.tsld })} disabled={none} />
+        <IconBtn Icon={LayoutPanelTop} title="Abrir ou salvar layout" onClick={() => P.open("layouts")} />
+        <IconBtn Icon={Table2} title="Mostrar ou ocultar a tabela de atividades" onClick={() => toggle("showTable")} disabled={none} />
+        <IconBtn Icon={ChartGantt} title="Mostrar ou ocultar o gráfico de Gantt" onClick={() => toggle("showGantt")} disabled={none} />
+        <IconBtn Icon={PanelBottom} title="Mostrar ou ocultar o painel inferior" onClick={() => setLayout({ lower: layout.lower === "none" ? "details" : "none" })} disabled={none} />
+        <IconBtn Icon={Network} title="Rede de atividades" onClick={() => setLayout({ network: !layout.network, tsld: false })} disabled={none} />
+        <IconBtn Icon={GitCommitHorizontal} title="Diagrama lógico com escala de tempo" onClick={() => setLayout({ tsld: !layout.tsld })} disabled={none} />
         <span className="tsep" />
-        <IconBtn Icon={Columns3} title="Columns" onClick={() => P.open("columns")} disabled={none} />
-        <IconBtn Icon={Filter} title="Filters" onClick={() => P.open("filters")} disabled={none} />
-        <IconBtn Icon={Layers} title="Group and Sort" onClick={() => P.open("groupSort")} disabled={none} />
-        <IconBtn Icon={ChartNoAxesGantt} title="Bar Chart Options" onClick={() => P.open("bars")} disabled={none} />
-        <IconBtn Icon={CalendarRange} title="Timescale" onClick={() => P.open("timescale")} disabled={none} />
-        <IconBtn Icon={ZoomIn} title="Zoom in" onClick={() => ganttCommand("zoom-in")} disabled={none} />
-        <IconBtn Icon={ZoomOut} title="Zoom out" onClick={() => ganttCommand("zoom-out")} disabled={none} />
-        <IconBtn Icon={MoveHorizontal} title="Fit timescale" onClick={() => ganttCommand("fit")} disabled={none} />
+        <IconBtn Icon={Columns3} title="Colunas" onClick={() => P.open("columns")} disabled={none} />
+        <IconBtn Icon={Filter} title="Filtros" onClick={() => P.open("filters")} disabled={none} />
+        <IconBtn Icon={Layers} title="Agrupar e classificar" onClick={() => P.open("groupSort")} disabled={none} />
+        <IconBtn Icon={ChartNoAxesGantt} title="Opções das barras do Gantt" onClick={() => P.open("bars")} disabled={none} />
+        <IconBtn Icon={CalendarRange} title="Escala de tempo" onClick={() => P.open("timescale")} disabled={none} />
+        <IconBtn Icon={ZoomIn} title="Aproximar" onClick={() => ganttCommand("zoom-in")} disabled={none} />
+        <IconBtn Icon={ZoomOut} title="Afastar" onClick={() => ganttCommand("zoom-out")} disabled={none} />
+        <IconBtn Icon={MoveHorizontal} title="Ajustar escala de tempo" onClick={() => ganttCommand("fit")} disabled={none} />
         <span className="tsep" />
-        <IconBtn Icon={Calculator} title="Schedule (F9)" onClick={() => P.open("scheduleRun")} disabled={none} />
-        <IconBtn Icon={BarChart3} title="Level Resources (F10)" onClick={() => P.open("level")} disabled={none} />
-        <IconBtn Icon={CalendarClock} title="Update Progress" onClick={() => P.open("updateProgress")} disabled={none} />
-        <IconBtn Icon={Wand2} title="Global Change" onClick={() => P.open("globalChange")} disabled={none} />
-        <IconBtn Icon={Flag} title="Maintain Baselines" onClick={() => P.open("baselines")} disabled={none} />
-        <IconBtn Icon={ClipboardCheck} title="Check Schedule" onClick={() => P.open("checkSchedule")} disabled={none} />
+        <IconBtn Icon={Calculator} title="Calcular cronograma (F9)" onClick={() => P.open("scheduleRun")} disabled={none} />
+        <IconBtn Icon={BarChart3} title="Nivelar recursos (F10)" onClick={() => P.open("level")} disabled={none} />
+        <IconBtn Icon={CalendarClock} title="Atualizar avanço" onClick={() => P.open("updateProgress")} disabled={none} />
+        <IconBtn Icon={Wand2} title="Alteração em massa" onClick={() => P.open("globalChange")} disabled={none} />
+        <IconBtn Icon={Flag} title="Gerenciar linhas de base" onClick={() => P.open("baselines")} disabled={none} />
+        <IconBtn Icon={ClipboardCheck} title="Verificar cronograma" onClick={() => P.open("checkSchedule")} disabled={none} />
         <span className="tsep" />
-        <IconBtn Icon={Highlighter} title="Spotlight the next update period" onClick={() => P.setSpotlight(!P.spotlight)} disabled={none} />
-        <IconBtn Icon={GitBranch} title="Trace Logic" onClick={() => setLayout({ lower: layout.lower === "trace" ? "details" : "trace" })} disabled={none} />
-        <IconBtn Icon={NotebookPen} title="Notebook" onClick={() => setLayout({ lower: "details", lowerTab: "notebook" })} disabled={none} />
-        <IconBtn Icon={SlidersHorizontal} title="Project details" onClick={() => P.open("projectInfo")} disabled={none} />
+        <IconBtn Icon={Highlighter} title="Destacar o próximo período de atualização" onClick={() => P.setSpotlight(!P.spotlight)} disabled={none} />
+        <IconBtn Icon={GitBranch} title="Rastrear dependências" onClick={() => setLayout({ lower: layout.lower === "trace" ? "details" : "trace" })} disabled={none} />
+        <IconBtn Icon={NotebookPen} title="Anotações" onClick={() => setLayout({ lower: "details", lowerTab: "notebook" })} disabled={none} />
+        <IconBtn Icon={SlidersHorizontal} title="Detalhes do projeto" onClick={() => P.open("projectInfo")} disabled={none} />
         <span className="tsep" />
-        {displays && <IconBtn Icon={MonitorUp} title="Displays: open views on other monitors" onClick={() => displays.menu[0] && (displays.menu[0] as { onClick: () => void }).onClick()} />}
-        <IconBtn Icon={LayoutDashboard} title="Reports and dashboards" onClick={a.dashboards} />
-        <IconBtn Icon={ChartLine} title="Resource Usage Spreadsheet" onClick={() => setLayout({ lower: "resourceUsage" })} disabled={none} />
-        <IconBtn Icon={Search} title="Find (Ctrl+F)" onClick={find} disabled={none} />
-        <IconBtn Icon={CircleHelp} title="Help" onClick={a.help} />
+        {displays && <IconBtn Icon={MonitorUp} title="Monitores: abrir vistas em outras telas" onClick={() => displays.menu[0] && (displays.menu[0] as { onClick: () => void }).onClick()} />}
+        <IconBtn Icon={LayoutDashboard} title="Relatórios e painéis" onClick={a.dashboards} />
+        <IconBtn Icon={ChartLine} title="Planilha de uso de recursos" onClick={() => setLayout({ lower: "resourceUsage" })} disabled={none} />
+        <IconBtn Icon={Search} title="Localizar (Ctrl+F)" onClick={find} disabled={none} />
+        <IconBtn Icon={CircleHelp} title="Ajuda" onClick={a.help} />
         <span className="spacer" />
-        <select className="p6-stock" value="" onChange={(e) => e.target.value && useLayout.getState().open(STOCK_LAYOUTS.find((l) => l.name === e.target.value)!)} title="Quick layouts" disabled={none}>
-          <option value="">Quick layout…</option>
+        <select className="p6-stock" value="" onChange={(e) => e.target.value && useLayout.getState().open(STOCK_LAYOUTS.find((l) => l.name === e.target.value)!)} title="Layouts rápidos" disabled={none}>
+          <option value="">Layout rápido…</option>
           {STOCK_LAYOUTS.map((l) => (
             <option key={l.name}>{l.name}</option>
           ))}
@@ -857,13 +857,13 @@ export function P6Screen({ a, banners, status, displays }: { a: ClassicActions; 
         <CommandBar a={a} />
       </div>
       <div className="cl-statusbar p6-status">
-        <span>Portfolio: All Projects</span>
-        <span>Access Mode: Shared</span>
-        <DataDateInput label="Data Date" />
+        <span>Portfólio: todos os projetos</span>
+        <span>Modo de acesso: compartilhado</span>
+        <DataDateInput label="Data de corte" />
         <span title={schedule?.baselineInfo ? `Assigned ${new Date(schedule.baselineInfo.assignedAt).toLocaleString()}: ${schedule.baselineInfo.matched} activities matched` : "Baseline dates as imported"}>
-          Baseline: {schedule?.baselineInfo ? `${schedule.baselineInfo.name} (DD ${fmtDate(schedule.baselineInfo.dataDate)})` : "Project Baseline"}
+          Linha de base: {schedule?.baselineInfo ? `${schedule.baselineInfo.name} (DD ${fmtDate(schedule.baselineInfo.dataDate)})` : "Project Baseline"}
         </span>
-        <span>User: {user?.name ?? "Local user"}</span>
+        <span>Usuário: {user?.name ?? "Local user"}</span>
         <span>DB: {a.dbLabel}</span>
         <span className="spacer" />
         <span className="cl-msg">{status}</span>

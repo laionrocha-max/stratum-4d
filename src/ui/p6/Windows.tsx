@@ -48,7 +48,7 @@ export function WbsWindow() {
     return out;
   }, [schedule]);
   const budgets = useMemo(() => new Map(schedule && schedule.wbs.length <= 2000 ? schedule.wbs.map((w) => [w.id, budgetSummary(schedule, w.id)]) : []), [schedule]);
-  if (!schedule) return <div className="empty">No project open.</div>;
+  if (!schedule) return <div className="empty">Nenhum projeto aberto.</div>;
   const s = schedule;
   const obsRows = obsTree(s);
   const obsName = new Map(obsRows.map((o) => [o.node.id, o.node.name]));
@@ -95,18 +95,18 @@ export function WbsWindow() {
   return (
     <div className="p6-win">
       <div className="p6-win-bar">
-        <button onClick={() => add(false)}>Add</button>
+        <button onClick={() => add(false)}>Adicionar</button>
         <button onClick={() => add(true)} disabled={!cur}>
-          Add Child
+          Adicionar subitem
         </button>
         <button onClick={del} disabled={!cur}>
-          Delete
+          Excluir
         </button>
         <span className="tsep" />
-        <button onClick={() => move(-1)} disabled={!cur} title="Move up">
+        <button onClick={() => move(-1)} disabled={!cur} title="Mover para cima">
           ▲
         </button>
-        <button onClick={() => move(1)} disabled={!cur} title="Move down">
+        <button onClick={() => move(1)} disabled={!cur} title="Mover para baixo">
           ▼
         </button>
         <button onClick={outdent} disabled={!cur?.parentId} title="Move left (outdent)">
@@ -116,21 +116,21 @@ export function WbsWindow() {
           ▶
         </button>
         <span className="tsep" />
-        <button onClick={() => openBudgets(cur?.id ?? null)}>Budgets…</button>
+        <button onClick={() => openBudgets(cur?.id ?? null)}>Orçamentos…</button>
         <span className="spacer" />
-        <span className="muted">{s.wbs.length} WBS elements</span>
+        <span className="muted">{s.wbs.length} Itens da EAP</span>
       </div>
       <div className="p6-win-body">
         <table className="p6-grid sticky">
           <thead>
             <tr>
-              <td>WBS Code</td>
-              <td>WBS Name</td>
-              <td>Responsible Manager</td>
-              <td>Original Budget</td>
-              <td>Current Budget</td>
-              <td>Planned Cost</td>
-              <td>Activities</td>
+              <td>Código da EAP</td>
+              <td>Nome da EAP</td>
+              <td>Responsável</td>
+              <td>Orçamento original</td>
+              <td>Orçamento atual</td>
+              <td>Custo planejado</td>
+              <td>Atividades</td>
             </tr>
           </thead>
           <tbody>
@@ -190,25 +190,25 @@ function WbsDetails({ w }: { w: WbsNode }) {
             "General",
             <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
               <label>
-                WBS Code <input value={node.code} onChange={(e) => put({ code: e.target.value })} />
+                Código da EAP <input value={node.code} onChange={(e) => put({ code: e.target.value })} />
               </label>
               <label style={{ flex: 1, minWidth: 200 }}>
-                WBS Name <input value={node.name} onChange={(e) => put({ name: e.target.value })} />
+                Nome da EAP <input value={node.name} onChange={(e) => put({ name: e.target.value })} />
               </label>
               <label>
-                Status
+                Situação
                 <select value={node.status ?? "active"} onChange={(e) => put({ status: e.target.value as WbsNode["status"] })}>
-                  <option value="planned">Planned</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="what-if">What-If</option>
+                  <option value="planned">Planejado</option>
+                  <option value="active">Ativo</option>
+                  <option value="inactive">Inativo</option>
+                  <option value="what-if">Cenário hipotético</option>
                 </select>
               </label>
               <label>
-                Anticipated Start <input type="date" value={day(node.anticipatedStart)} onChange={(e) => put({ anticipatedStart: parse(e.target.value, 8) })} />
+                Início previsto <input type="date" value={day(node.anticipatedStart)} onChange={(e) => put({ anticipatedStart: parse(e.target.value, 8) })} />
               </label>
               <label>
-                Anticipated Finish <input type="date" value={day(node.anticipatedFinish)} onChange={(e) => put({ anticipatedFinish: parse(e.target.value, 17) })} />
+                Término previsto <input type="date" value={day(node.anticipatedFinish)} onChange={(e) => put({ anticipatedFinish: parse(e.target.value, 17) })} />
               </label>
             </div>,
           ],
@@ -218,9 +218,9 @@ function WbsDetails({ w }: { w: WbsNode }) {
               <table className="p6-grid">
                 <thead>
                   <tr>
-                    <td>Done</td>
-                    <td>WBS Milestone</td>
-                    <td>Weight</td>
+                    <td>Concluído</td>
+                    <td>Marco da EAP</td>
+                    <td>Peso</td>
                     <td />
                   </tr>
                 </thead>
@@ -238,7 +238,7 @@ function WbsDetails({ w }: { w: WbsNode }) {
                       </td>
                       <td>
                         <button className="link" onClick={() => put({ milestones: ms.filter((_, k) => k !== i) })}>
-                          Remove
+                          Remover
                         </button>
                       </td>
                     </tr>
@@ -246,7 +246,7 @@ function WbsDetails({ w }: { w: WbsNode }) {
                 </tbody>
               </table>
               <div className="row">
-                <button onClick={() => put({ milestones: [...ms, { id: uid("wms"), name: `Milestone ${ms.length + 1}`, weight: 1, done: false }] })}>Add</button>
+                <button onClick={() => put({ milestones: [...ms, { id: uid("wms"), name: `Milestone ${ms.length + 1}`, weight: 1, done: false }] })}>Adicionar</button>
                 <span className="muted small">Used when the Earned Value technique is WBS Milestones percent complete: done weight ÷ total weight.</span>
               </div>
             </>,
@@ -292,7 +292,7 @@ function WbsDetails({ w }: { w: WbsNode }) {
 
 export function ResourcesWindow() {
   const schedule = useStore((s) => s.schedule);
-  if (!schedule) return <div className="empty">No project open.</div>;
+  if (!schedule) return <div className="empty">Nenhum projeto aberto.</div>;
   const s = schedule;
   const res = s.resources ?? [];
   const used = new Map<string, number>();
@@ -303,7 +303,7 @@ export function ResourcesWindow() {
   return (
     <div className="p6-win">
       <div className="p6-win-bar">
-        <button onClick={() => (usePrefs.getState().useResourceWizard ? useP6.getState().open("resourceWizard") : commit({ ...s, resources: [...res, { id: uid("rsrc"), code: `R${res.length + 1}`, name: "New Resource", type: "labor", unit: "h", pricePerUnit: 0 }] }, "Add resource"))}>Add</button>
+        <button onClick={() => (usePrefs.getState().useResourceWizard ? useP6.getState().open("resourceWizard") : commit({ ...s, resources: [...res, { id: uid("rsrc"), code: `R${res.length + 1}`, name: "New Resource", type: "labor", unit: "h", pricePerUnit: 0 }] }, "Add resource"))}>Adicionar</button>
         <span className="spacer" />
         <span className="muted">{res.length} resources</span>
       </div>
@@ -311,20 +311,20 @@ export function ResourcesWindow() {
         <table className="p6-grid sticky">
           <thead>
             <tr>
-              <td>Resource ID</td>
-              <td>Resource Name</td>
-              <td>Type</td>
-              <td>Unit</td>
-              <td>Price / Unit</td>
+              <td>ID do recurso</td>
+              <td>Nome do recurso</td>
+              <td>Tipo</td>
+              <td>Unidade</td>
+              <td>Preço por unidade</td>
               <td title="For levelling: how many units can work at once (crew size). Empty = no limit.">Max Units / h</td>
-              <td>Calendar</td>
-              <td>Shift</td>
+              <td>Calendário</td>
+              <td>Turno</td>
               {codeTypes.map((t) => (
                 <td key={t.name}>{t.name}</td>
               ))}
-              <td>Roles</td>
-              <td>Rates</td>
-              <td>Assignments</td>
+              <td>Funções</td>
+              <td>Taxas</td>
+              <td>Atribuições</td>
               <td />
             </tr>
           </thead>
@@ -339,8 +339,8 @@ export function ResourcesWindow() {
                 </td>
                 <td>
                   <select value={r.type} onChange={(e) => set(r.id, { type: e.target.value as ResourceType })}>
-                    <option value="labor">Labor</option>
-                    <option value="equipment">Nonlabor</option>
+                    <option value="labor">Mão de obra</option>
+                    <option value="equipment">Equipamentos</option>
                     <option value="material">Material</option>
                   </select>
                 </td>
@@ -355,7 +355,7 @@ export function ResourcesWindow() {
                 </td>
                 <td>
                   <select value={r.calendarId ?? ""} onChange={(e) => set(r.id, { calendarId: e.target.value || null })} aria-label={`Calendar of ${r.code}`}>
-                    <option value="">Project default</option>
+                    <option value="">Padrão do projeto</option>
                     {(s.calendars ?? []).map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -388,7 +388,7 @@ export function ResourcesWindow() {
                 <td title={(r.roleIds ?? []).map((id) => roleCode.get(id)).join(", ")}>{(r.roleIds ?? []).map((id) => roleCode.get(id)).filter(Boolean).join(", ") || <span className="muted">–</span>}</td>
                 <td>
                   <button className="link" onClick={() => openRates(r.id)}>
-                    {r.rates?.length ? `${r.rates.length} rate${r.rates.length > 1 ? "s" : ""}` : "Add…"}
+                    {r.rates?.length ? `${r.rates.length} rate${r.rates.length > 1 ? "s" : ""}` : "Adicionar…"}
                   </button>
                 </td>
                 <td className="num">{used.get(r.id) ?? 0}</td>
@@ -418,7 +418,7 @@ export function AssignmentsWindow() {
   const schedule = useStore((s) => s.schedule);
   const selectActivity = useStore((s) => s.selectActivity);
   const [q, setQ] = useState("");
-  if (!schedule) return <div className="empty">No project open.</div>;
+  if (!schedule) return <div className="empty">Nenhum projeto aberto.</div>;
   const s = schedule;
   const acts = new Map(s.activities.map((a) => [a.id, a]));
   const res = new Map((s.resources ?? []).map((r) => [r.id, r]));
@@ -449,7 +449,7 @@ export function AssignmentsWindow() {
   return (
     <div className="p6-win">
       <div className="p6-win-bar">
-        <input placeholder="Find activity or resource" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input placeholder="Localizar atividade ou recurso" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className="spacer" />
         <span className="muted">{list.length} assignments</span>
       </div>
@@ -457,23 +457,23 @@ export function AssignmentsWindow() {
         <table className="p6-grid sticky">
           <thead>
             <tr>
-              <td>Activity ID</td>
-              <td>Activity Name</td>
-              <td>Resource ID</td>
-              <td>Role</td>
+              <td>ID da atividade</td>
+              <td>Nome da atividade</td>
+              <td>ID do recurso</td>
+              <td>Função</td>
               <td>Curve</td>
-              <td>Cost Account</td>
+              <td>Conta de custos</td>
               <td>Rate Source</td>
               <td>Rate Type</td>
-              <td>Price / Unit</td>
+              <td>Preço por unidade</td>
               <td title="Resource-dependent activities: this resource's calendar sets the dates">Drive Activity Dates</td>
-              <td>Budgeted Units</td>
-              <td>Actual Units</td>
-              <td>Remaining Units</td>
-              <td>Budgeted Cost</td>
-              <td>Actual Cost</td>
-              <td>Start</td>
-              <td>Finish</td>
+              <td>Unidades orçadas</td>
+              <td>Unidades realizadas</td>
+              <td>Unidades restantes</td>
+              <td>Custo orçado</td>
+              <td>Custo real</td>
+              <td>Início</td>
+              <td>Término</td>
               <td title="Future period bucket planning">Periods</td>
             </tr>
           </thead>
@@ -534,9 +534,9 @@ export function AssignmentsWindow() {
                   </td>
                   <td>
                     <select style={{ minWidth: 92 }} value={x.rateSource ?? "resource"} onChange={(e) => reprice(x.id, { rateSource: e.target.value === "resource" ? undefined : (e.target.value as "role" | "override"), ...(e.target.value === "override" ? { priceOverride: priceOf(x) } : {}) }, `Rate source ${x.id}`)}>
-                      <option value="resource">Resource</option>
+                      <option value="resource">Recurso</option>
                       <option value="role" disabled={!x.roleId}>
-                        Role
+                        Função
                       </option>
                       <option value="override">Override</option>
                     </select>
@@ -592,22 +592,22 @@ export function ProjectsWindow({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="p6-win">
       <div className="p6-win-bar">
-        <button onClick={onOpen}>Open Project…</button>
+        <button onClick={onOpen}>Abrir projeto…</button>
         <button onClick={() => useP6.getState().open("projectInfo")} disabled={!schedule}>
-          Project Details…
+          Detalhes do projeto…
         </button>
       </div>
       <div className="p6-win-body">
         <table className="p6-grid sticky">
           <thead>
             <tr>
-              <td>Project ID</td>
-              <td>Project Name</td>
-              <td>Data Date</td>
-              <td>Start</td>
-              <td>Finish</td>
-              <td>Activities</td>
-              <td>Baseline</td>
+              <td>ID do projeto</td>
+              <td>Nome do projeto</td>
+              <td>Data de corte</td>
+              <td>Início</td>
+              <td>Término</td>
+              <td>Atividades</td>
+              <td>Linha de base</td>
             </tr>
           </thead>
           <tbody>
@@ -624,7 +624,7 @@ export function ProjectsWindow({ onOpen }: { onOpen: () => void }) {
             ) : (
               <tr>
                 <td colSpan={7} className="muted">
-                  No project open.
+                  Nenhum projeto aberto.
                 </td>
               </tr>
             )}
@@ -638,18 +638,18 @@ export function ProjectsWindow({ onOpen }: { onOpen: () => void }) {
 // ---------------------------------------------------------------- registers
 
 export const REGISTER_COLUMNS: Record<RegisterKind, { title: string; cols: string[] }> = {
-  issues: { title: "Issues", cols: ["Issue Name", "Priority", "Status", "Responsible", "Date Identified", "Tracking Layout", "Notes"] },
-  risks: { title: "Risks", cols: ["Risk ID", "Risk Name", "Category", "Probability", "Impact (Schedule)", "Impact (Cost)", "Response", "Owner", "Status"] },
-  documents: { title: "WPs & Docs", cols: DOC_COLUMNS },
-  expenses: { title: "Expenses", cols: ["Expense Item", "Category", "Vendor", "Budgeted Cost", "Actual Cost", "Remaining Cost", "Accrual Type"] },
-  thresholds: { title: "Thresholds", cols: ["Parameter", "Lower Threshold", "Upper Threshold", "WBS", "From Date", "To Date", "Responsible", "Status"] },
+  issues: { title: "Pendências", cols: ["Issue Name", "Priority", "Status", "Responsible", "Date Identified", "Tracking Layout", "Notes"] },
+  risks: { title: "Riscos", cols: ["Risk ID", "Risk Name", "Category", "Probability", "Impact (Schedule)", "Impact (Cost)", "Response", "Owner", "Status"] },
+  documents: { title: "Entregáveis e documentos", cols: DOC_COLUMNS },
+  expenses: { title: "Despesas", cols: ["Expense Item", "Category", "Vendor", "Budgeted Cost", "Actual Cost", "Remaining Cost", "Accrual Type"] },
+  thresholds: { title: "Limites", cols: ["Parameter", "Lower Threshold", "Upper Threshold", "WBS", "From Date", "To Date", "Responsible", "Status"] },
 };
 
 export function RegisterWindow({ kind }: { kind: RegisterKind }) {
   const schedule = useStore((s) => s.schedule);
   const selected = useStore((s) => s.selectedActivity);
   const selectActivity = useStore((s) => s.selectActivity);
-  if (!schedule) return <div className="empty">No project open.</div>;
+  if (!schedule) return <div className="empty">Nenhum projeto aberto.</div>;
   const s = schedule;
   const def = REGISTER_COLUMNS[kind];
   const items = s.registers?.[kind] ?? [];
@@ -660,7 +660,7 @@ export function RegisterWindow({ kind }: { kind: RegisterKind }) {
   return (
     <div className="p6-win">
       <div className="p6-win-bar">
-        <button onClick={() => put([...items, { id: uid(kind), activityId: usesActivity ? selected : null, values: {} }], `Add ${def.title}`)}>Add</button>
+        <button onClick={() => put([...items, { id: uid(kind), activityId: usesActivity ? selected : null, values: {} }], `Add ${def.title}`)}>Adicionar</button>
         {kind === "risks" && <button onClick={() => useP6.getState().open("riskMatrix")}>Risk Matrix…</button>}
         <span className="muted small">{usesActivity ? "New rows link to the selected activity." : `Parameters: ${Object.keys(THRESHOLD_PARAMETERS).join(", ")} (days or %).`}</span>
         {kind === "thresholds" && (
@@ -698,14 +698,14 @@ export function RegisterWindow({ kind }: { kind: RegisterKind }) {
               ))}
               {kind === "risks" && (
                 <>
-                  <td title="Probability × impact from the risk scoring matrix">Score</td>
-                  <td>Level</td>
+                  <td title="Probability × impact from the risk scoring matrix">Pontuação</td>
+                  <td>Nivelar</td>
                 </>
               )}
-              {kind === "issues" && <td>History</td>}
+              {kind === "issues" && <td>Histórico</td>}
               {kind === "documents" && <td>Assignments / Review</td>}
-              {kind === "risks" && <td>Response Plan</td>}
-              {usesActivity && <td>Activity</td>}
+              {kind === "risks" && <td>Plano de resposta</td>}
+              {usesActivity && <td>Atividade</td>}
               <td />
             </tr>
           </thead>
@@ -723,14 +723,14 @@ export function RegisterWindow({ kind }: { kind: RegisterKind }) {
                           ))}
                         </select>
                       ) : c === "Deliverable" ? (
-                        <input type="checkbox" aria-label="Deliverable" checked={/^(y|yes|true|1)$/i.test(it.values.Deliverable ?? "")} onChange={(e) => put(items.map((x) => (x.id === it.id ? { ...x, values: { ...x.values, Deliverable: e.target.checked ? "Yes" : "" } } : x)), "Document deliverable")} />
+                        <input type="checkbox" aria-label="Entregável" checked={/^(y|yes|true|1)$/i.test(it.values.Deliverable ?? "")} onChange={(e) => put(items.map((x) => (x.id === it.id ? { ...x, values: { ...x.values, Deliverable: e.target.checked ? "Yes" : "" } } : x)), "Document deliverable")} />
                       ) : c === "Revision Date" ? (
                         <input type="date" value={it.values["Revision Date"] ?? ""} onChange={(e) => put(items.map((x) => (x.id === it.id ? { ...x, values: { ...x.values, "Revision Date": e.target.value } } : x)), "Document date")} />
                       ) : (
                         <span className="row" style={{ gap: 4, flexWrap: "nowrap" }}>
                           <input className="cell" value={it.values["Public Location"] ?? it.values["Location / URL"] ?? ""} onChange={(e) => put(items.map((x) => (x.id === it.id ? { ...x, values: { ...x.values, "Public Location": e.target.value } } : x)), "Document location")} />
                           {safeUrl(it.values["Public Location"] ?? it.values["Location / URL"]) && (
-                            <a href={safeUrl(it.values["Public Location"] ?? it.values["Location / URL"])!} target="_blank" rel="noopener noreferrer" title="Open">
+                            <a href={safeUrl(it.values["Public Location"] ?? it.values["Location / URL"])!} target="_blank" rel="noopener noreferrer" title="Abrir">
                               ↗
                             </a>
                           )}
@@ -782,7 +782,7 @@ export function RegisterWindow({ kind }: { kind: RegisterKind }) {
                 {kind === "issues" && (
                   <td>
                     <button className="link" onClick={() => openRegisterDetail("issues", it.id)}>
-                      {it.history?.length ? `${it.history.length} entr${it.history.length === 1 ? "y" : "ies"}` : "Open…"}
+                      {it.history?.length ? `${it.history.length} entr${it.history.length === 1 ? "y" : "ies"}` : "Abrir…"}
                     </button>
                   </td>
                 )}
@@ -816,7 +816,7 @@ export function RegisterWindow({ kind }: { kind: RegisterKind }) {
             {!items.length && (
               <tr>
                 <td colSpan={def.cols.length + 2} className="muted">
-                  No {def.title.toLowerCase()} yet.
+                  Não {def.title.toLowerCase()} yet.
                 </td>
               </tr>
             )}
@@ -941,7 +941,7 @@ export function NetworkView({ only }: { only?: Set<string> | null }) {
     }
   }, [layout, schedule, view, size, selected, byId, bw, boxFields, fctx]);
 
-  if (!schedule || !layout) return <div className="empty">No project open.</div>;
+  if (!schedule || !layout) return <div className="empty">Nenhum projeto aberto.</div>;
 
   const hit = (cx: number, cy: number) => {
     const x = (cx - view.x) / view.k;
@@ -1012,7 +1012,7 @@ export function NetworkView({ only }: { only?: Set<string> | null }) {
         </button>
         <button onClick={() => setView({ ...view, k: Math.min(3, view.k * 1.3) })}>+</button>
         <button onClick={() => setView({ ...view, k: Math.max(0.08, view.k / 1.3) })}>−</button>
-        <button onClick={() => setView({ x: 20, y: 20, k: Math.min(1, Math.max(0.08, size.w / Math.max(1, layout.cols * (bw + GAP_X)))) })}>Fit</button>
+        <button onClick={() => setView({ x: 20, y: 20, k: Math.min(1, Math.max(0.08, size.w / Math.max(1, layout.cols * (bw + GAP_X)))) })}>Enquadrar</button>
         <span className="muted small">
           {layout.nodes.size.toLocaleString()} activities · drag to pan, wheel to zoom, click to select
         </span>
@@ -1031,7 +1031,7 @@ export function TraceLogicView() {
   return (
     <div className="p6-trace">
       <div className="p6-win-bar">
-        <span>Trace Logic</span>
+        <span>Rastrear dependências</span>
         <label>
           Levels each side{" "}
           <select value={depth} onChange={(e) => setDepth(Number(e.target.value))}>
@@ -1040,7 +1040,7 @@ export function TraceLogicView() {
             ))}
           </select>
         </label>
-        <span className="muted small">{only?.size ?? 0} activities</span>
+        <span className="muted small">{only?.size ?? 0} atividades</span>
       </div>
       <NetworkView only={only} />
     </div>
@@ -1056,21 +1056,21 @@ export function UsageSpreadsheet({ by }: { by: "resource" | "activity" }) {
   const [measure, setMeasure] = useState<"units" | "cost">("units");
   const [onlySel, setOnlySel] = useState(false);
   const sheet = useMemo(() => (schedule ? usageSheet(schedule, { by, step, measure, activityIds: onlySel && selected.size ? selected : undefined }) : null), [schedule, by, step, measure, onlySel, selected]);
-  if (!schedule || !sheet) return <div className="empty">No project open.</div>;
+  if (!schedule || !sheet) return <div className="empty">Nenhum projeto aberto.</div>;
   if (!sheet.rows.length) return <div className="empty">No resource assignments to spread. Assign resources to activities first.</div>;
   const dd = schedule.dataDate ?? 0;
   return (
     <div className="p6-usage">
       <div className="p6-win-bar">
-        <b>{by === "resource" ? "Resource Usage Spreadsheet" : "Activity Usage Spreadsheet"}</b>
+        <b>{by === "resource" ? "Planilha de uso de recursos" : "Planilha de uso de atividades"}</b>
         <select value={measure} onChange={(e) => setMeasure(e.target.value as "units" | "cost")}>
-          <option value="units">Units</option>
-          <option value="cost">Cost</option>
+          <option value="units">Unidades</option>
+          <option value="cost">Custo</option>
         </select>
         <select value={step} onChange={(e) => setStep(e.target.value as "month" | "week" | "financial")}>
           {!!schedule?.financialPeriods?.length && <option value="financial">Financial Period</option>}
-          <option value="month">Month</option>
-          <option value="week">Week</option>
+          <option value="month">Mês</option>
+          <option value="week">Semana</option>
         </select>
         <label>
           <input type="checkbox" checked={onlySel} onChange={(e) => setOnlySel(e.target.checked)} /> Selected activities only
@@ -1080,7 +1080,7 @@ export function UsageSpreadsheet({ by }: { by: "resource" | "activity" }) {
         <table className="p6-grid sticky usage">
           <thead>
             <tr>
-              <td className="stick">{by === "resource" ? "Resource" : "Activity"}</td>
+              <td className="stick">{by === "resource" ? "Recurso" : "Atividade"}</td>
               <td>Total</td>
               {sheet.periods.map((p) => (
                 <td key={p.start} className={p.start <= dd && dd < p.end ? "ddcol" : ""}>

@@ -115,7 +115,7 @@ export function TrackingWindow({ onDashboards }: { onDashboards?: () => void }) 
             {!all.some((x) => x.name === lay.name) && <option>{lay.name}</option>}
           </select>
         </label>
-        <button onClick={saveAs}>Save As…</button>
+        <button onClick={saveAs}>Salvar como…</button>
         {saved.some((x) => x.name === lay.name) && (
           <button
             onClick={() => {
@@ -125,21 +125,21 @@ export function TrackingWindow({ onDashboards }: { onDashboards?: () => void }) 
               setLay(STOCK[0]);
             }}
           >
-            Delete
+            Excluir
           </button>
         )}
         <span className="p6-sep" />
-        <select aria-label="View" value={lay.view} onChange={(e) => set({ view: e.target.value as View })}>
+        <select aria-label="Exibir" value={lay.view} onChange={(e) => set({ view: e.target.value as View })}>
           <option value="table">Project Table</option>
           <option value="gantt">Project Gantt</option>
           <option value="bars">Project Bar Chart</option>
         </select>
-        <select aria-label="Group by" value={lay.group} onChange={(e) => set({ group: e.target.value as TrackingGroup })}>
+        <select aria-label="Agrupar por" value={lay.group} onChange={(e) => set({ group: e.target.value as TrackingGroup })}>
           <option value="none">No grouping</option>
           <option value="eps">Group by EPS</option>
           {codeTypes.map((c) => (
             <option key={c} value={`pcode:${c}`}>
-              Group by {c}
+              Agrupar por {c}
             </option>
           ))}
         </select>
@@ -162,11 +162,11 @@ export function TrackingWindow({ onDashboards }: { onDashboards?: () => void }) 
         </select>
         <span className="spacer" />
         <span className="muted small">{msg}</span>
-        {onDashboards && <button onClick={onDashboards}>Dashboards…</button>}
+        {onDashboards && <button onClick={onDashboards}>Painéis…</button>}
       </div>
       <div className="p6-win-body">
         {!figs ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">Carregando…</p>
         ) : !figs.length ? (
           <p className="muted">No projects to track. Save projects to the database (File › Commit) or create a portfolio.</p>
         ) : lay.view === "table" ? (
@@ -257,10 +257,10 @@ function ProjectGantt({ bands, grouped }: { bands: ReturnType<typeof trackingBan
       <table className="p6-grid">
         <thead>
           <tr>
-            <td style={{ width: 110 }}>Project ID</td>
-            <td style={{ width: 260 }}>Project Name</td>
+            <td style={{ width: 110 }}>ID do projeto</td>
+            <td style={{ width: 260 }}>Nome do projeto</td>
             <td>
-              <svg width={W} height={18} role="img" aria-label="Timescale">
+              <svg width={W} height={18} role="img" aria-label="Escala de tempo">
                 {years.map((y) => (
                   <g key={y}>
                     <line x1={x(Date.UTC(y, 0, 1))} x2={x(Date.UTC(y, 0, 1))} y1={0} y2={18} stroke="currentColor" opacity={0.3} />
@@ -322,8 +322,8 @@ function ProjectBars({ bands, metric, grouped }: { bands: ReturnType<typeof trac
       <thead>
         <tr>
           {grouped && <td>Group</td>}
-          <td>Project ID</td>
-          <td>Project Name</td>
+          <td>ID do projeto</td>
+          <td>Nome do projeto</td>
           <td>{def[1]}</td>
           <td style={{ width: W + 10 }} />
         </tr>

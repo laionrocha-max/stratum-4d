@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConfig } from "../backend/config";
 import type { P6ProjectInfo, ProjectSummary } from "../backend/types";
 import type { P6Connection } from "../core/reporting";
+import { PROJECT_VERSION, type StratumProject } from "../core/project";
 import type { Schedule } from "../core/types";
 import { fmtDate, useStore } from "./store";
 import { useTerms } from "./terms";
@@ -10,22 +11,32 @@ export function ProjectsDialog({
   onClose,
   onOpen,
   onSave,
+  onNew,
+  onMetadata,
+  onDeleted,
   onImportP6,
   initialTab = "database",
 }: {
   onClose: () => void;
   onOpen: (id: string) => Promise<void>;
   onSave: (asNew: boolean) => Promise<void>;
+  onNew: (name: string) => Promise<void>;
+  onMetadata: (id: string, project: StratumProject, previousVersion: number, version: number) => void;
+  onDeleted: (id: string) => void;
   onImportP6: (schedule: Schedule, connection: P6Connection) => void;
   initialTab?: "database" | "p6";
 }) {
   const { backend } = useConfig();
   const t = useTerms();
-  const { currentProjectId, schedule } = useStore();
+  const { currentProjectId, schedule, projectKey, busy: workspaceBusy } = useStore();
   const [tab, setTab] = useState<"database" | "p6">(initialTab);
   const [list, setList] = useState<ProjectSummary[] | null>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [newName, setNewName] = useState<string | null>(null);
+  const newButton = useRef<HTMLButtonElement>(null);
 
   const load = () =>
     backend
@@ -36,21 +47,64 @@ export function ProjectsDialog({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backend]);
+  const visible = list?.filter((project) => (showArchived || !project.archived) &&
+    `${project.code} ${project.name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    setMsg("");
+    try {
+      await action();
+    } catch (error) {
+      setMsg((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const manage = (p: ProjectSummary, kind: "rename" | "duplicate" | "archive") => void run(async () => {
+    const title = kind === "archive" ? undefined : window.prompt(kind === "rename" ? "Nome da obra" : "Nome da cópia", kind === "rename" ? p.name : `${p.name} (cópia)`)?.trim();
+    if (kind !== "archive" && !title) return;
+    const saved = await backend.getProject(p.id);
+    if (!saved) throw new Error("A obra não está mais na biblioteca.");
+    const duplicate = kind === "duplicate";
+    const id = duplicate ? crypto.randomUUID() : p.id;
+    const project = {
+      ...saved.project,
+      version: Math.max(saved.project.version, PROJECT_VERSION),
+      title: title ?? saved.project.title,
+      savedAt: new Date().toISOString(),
+      projectKey: duplicate ? id : saved.project.projectKey ?? p.id,
+      archived: kind === "archive" ? !saved.project.archived : duplicate ? undefined : saved.project.archived,
+    };
+    const version = await backend.saveProject(id, project, duplicate ? undefined : saved.version);
+    if (!duplicate) onMetadata(id, project, saved.version, version);
+    await load();
+    setMsg(duplicate ? "Cópia criada." : "Biblioteca atualizada.");
+  });
+  const locked = busy || workspaceBusy;
+  const cancelNew = () => {
+    setNewName(null);
+    newButton.current?.focus();
+  };
+  const createNew = () => {
+    const title = newName?.trim();
+    if (title && !locked) void run(() => onNew(title));
+  };
+  const hasError = /conflict|error|cannot|someone else|fail|não foi possível/i.test(msg);
 
   return (
-    <div className="help-backdrop" onClick={onClose}>
-      <div className="help settings" role="dialog" aria-label={t.projects} onClick={(e) => e.stopPropagation()}>
+    <div className="help-backdrop" onClick={busy ? undefined : onClose}>
+      <div className="help settings" role="dialog" aria-label="Projetos" onClick={(e) => e.stopPropagation()}>
         <div className="settings-head">
-          <h2>{t.projects}</h2>
-          <button onClick={onClose}>Close</button>
+          <h2>Projetos</h2>
+          <button disabled={busy} onClick={onClose}>Fechar</button>
         </div>
         <p className="muted">{backend.label}</p>
         <div className="tabs">
-          <button className={tab === "database" ? "active" : ""} onClick={() => setTab("database")}>
-            Database
+          <button className={tab === "database" ? "active" : ""} disabled={busy} onClick={() => setTab("database")}>
+            Biblioteca
           </button>
-          <button className={tab === "p6" ? "active" : ""} onClick={() => setTab("p6")}>
-            Import from P6
+          <button className={tab === "p6" ? "active" : ""} disabled={busy} onClick={() => setTab("p6")}>
+            Importar do P6
           </button>
         </div>
         <div className="settings-body">
@@ -58,95 +112,122 @@ export function ProjectsDialog({
             <div className="stack">
               <div className="row">
                 <button
+                  ref={newButton}
                   className="primary"
-                  disabled={!schedule || busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      await onSave(false);
-                      setMsg("Saved.");
-                      await load();
-                    } catch (e) {
-                      setMsg((e as Error).message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
+                  disabled={locked}
+                  aria-expanded={newName !== null}
+                  aria-controls={newName !== null ? "new-project-form" : undefined}
+                  onClick={() => setNewName((previous) => previous ?? "")}
+                >Nova obra</button>
+                <button
+                  disabled={(!schedule && !projectKey) || locked}
+                  onClick={() => void run(async () => {
+                    await onSave(false);
+                    setMsg("Obra salva.");
+                    await load();
+                  })}
                 >
-                  {currentProjectId ? "Save" : "Save to database"}
+                  Salvar obra atual
                 </button>
                 {currentProjectId && (
                   <button
-                    disabled={!schedule || busy}
-                    onClick={async () => {
+                    disabled={(!schedule && !projectKey) || locked}
+                    onClick={() => void run(async () => {
                       await onSave(true);
-                      setMsg("Saved as a new project.");
+                      setMsg("Obra salva como nova.");
                       await load();
-                    }}
+                    })}
                   >
-                    Save as new
+                    Salvar como nova
                   </button>
                 )}
               </div>
+              {newName !== null && (
+                <div
+                  id="new-project-form"
+                  className="stack"
+                  role="group"
+                  aria-label="Criar nova obra"
+                  aria-busy={busy}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (!busy) cancelNew();
+                    }
+                  }}
+                >
+                  <label>
+                    Nome da nova obra
+                    <input
+                      autoFocus
+                      disabled={busy}
+                      value={newName}
+                      onChange={(event) => setNewName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                          event.preventDefault();
+                          createNew();
+                        }
+                      }}
+                    />
+                  </label>
+                  {projectKey && <p>A obra atual será fechada ao criar outra. Salve antes as alterações que deseja guardar.</p>}
+                  <div className="row">
+                    <button className="primary" type="button" disabled={locked || !newName.trim()} onClick={createNew}>Criar obra</button>
+                    <button type="button" disabled={busy} onClick={cancelNew}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+              <div className="row">
+                <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar obras" placeholder="Buscar por nome ou código" />
+                <label><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Mostrar arquivadas</label>
+              </div>
               {list === null ? (
-                <p className="muted">Loading…</p>
-              ) : list.length === 0 ? (
-                <p className="muted">No projects in the database yet. Open or import a schedule, then Save.</p>
+                <p className="muted">Carregando…</p>
+              ) : visible?.length === 0 ? (
+                <p className="muted">{list.length ? "Nenhuma obra corresponde à busca." : "Crie uma obra ou salve na biblioteca a obra que está aberta."}</p>
               ) : (
                 <table className="data">
                   <thead>
                     <tr>
                       <th>{t.project}</th>
-                      <th>Name</th>
+                      <th>Nome</th>
                       <th>{t.dataDate}</th>
-                      <th>Saved</th>
-                      <th>By</th>
+                      <th>Salva em</th>
+                      <th>Por</th>
                       <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {list.map((p) => (
+                    {visible?.map((p) => (
                       <tr key={p.id} className={p.id === currentProjectId ? "current" : ""}>
                         <td>
                           <b>{p.code}</b>
                         </td>
-                        <td>{p.name}</td>
+                        <td>{p.name}{p.archived ? " (arquivada)" : ""}</td>
                         <td>{fmtDate(p.dataDate)}</td>
                         <td>
                           {new Date(p.updatedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} (v{p.version})
                         </td>
                         <td>{p.updatedBy ?? ""}</td>
                         <td>
-                          <button
-                            className="link"
-                            onClick={async () => {
-                              setBusy(true);
-                              try {
-                                await onOpen(p.id);
-                                onClose();
-                              } catch (e) {
-                                setMsg((e as Error).message);
-                              } finally {
-                                setBusy(false);
-                              }
-                            }}
-                          >
-                            open
-                          </button>
-                          <button
-                            className="link"
-                            onClick={async () => {
-                              if (!window.confirm(`Delete ${p.code} – ${p.name} from the database?`)) return;
-                              try {
-                                await backend.deleteProject(p.id);
-                                await load();
-                              } catch (e) {
-                                setMsg((e as Error).message);
-                              }
-                            }}
-                          >
-                            delete
-                          </button>
+                          <button className="link" disabled={locked} onClick={() => void run(async () => {
+                            await onOpen(p.id);
+                            onClose();
+                          })}>Abrir</button>
+                          <details className="project-row-menu">
+                            <summary>Ações</summary>
+                            <button disabled={locked} onClick={() => manage(p, "rename")}>Renomear</button>
+                            <button disabled={locked} onClick={() => manage(p, "duplicate")}>Duplicar</button>
+                            <button disabled={locked} onClick={() => manage(p, "archive")}>{p.archived ? "Restaurar" : "Arquivar"}</button>
+                            <button disabled={locked} onClick={() => void run(async () => {
+                              if (!window.confirm(`Excluir "${p.name}" da biblioteca? Cronograma, vínculos e vistas desta cópia serão excluídos. Os IFCs originais não serão apagados.`)) return;
+                              await backend.deleteProject(p.id);
+                              onDeleted(p.id);
+                              await load();
+                            })}>Excluir</button>
+                          </details>
                         </td>
                       </tr>
                     ))}
@@ -156,7 +237,7 @@ export function ProjectsDialog({
             </div>
           )}
           {tab === "p6" && <P6Import onImport={onImportP6} onClose={onClose} />}
-          {msg && <p className={/conflict|error|cannot|someone else|fail/i.test(msg) ? "bad" : "muted"}>{msg}</p>}
+          {msg && <p role={hasError ? "alert" : "status"} className={hasError ? "bad" : "muted"}>{msg}</p>}
         </div>
       </div>
     </div>
@@ -182,8 +263,8 @@ function P6Import({ onImport, onClose }: { onImport: (s: Schedule, c: P6Connecti
       .catch((e) => setMsg(e.message));
   }, [backend]);
 
-  if (!backend.caps.p6) return <p className="muted">P6 connections need the desktop app or a Stratum Server. Use Import schedule with an XER file instead.</p>;
-  if (!conns.length) return <p className="muted">No P6 connections yet. Add one in Settings → Primavera P6.</p>;
+  if (!backend.caps.p6) return <p className="muted">A conexão com o P6 requer o aplicativo para computador ou um servidor Stratum. No navegador, importe o cronograma em um arquivo XER.</p>;
+  if (!conns.length) return <p className="muted">Nenhuma conexão com o P6. Adicione uma em Configurações → Primavera P6.</p>;
   const shown = (projects ?? []).filter((p) => `${p.code} ${p.name}`.toLowerCase().includes(filter.toLowerCase()));
 
   return (
@@ -211,17 +292,17 @@ function P6Import({ onImport, onClose }: { onImport: (s: Schedule, c: P6Connecti
             }
           }}
         >
-          List projects
+          Listar projetos
         </button>
-        {projects && <input placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ flex: 1 }} />}
+        {projects && <input placeholder="Filtrar…" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ flex: 1 }} />}
       </div>
       {projects && (
         <table className="data">
           <thead>
             <tr>
-              <th>Project ID</th>
-              <th>Name</th>
-              <th>Data date</th>
+              <th>ID do projeto</th>
+              <th>Nome</th>
+              <th>Data de corte</th>
               <th />
             </tr>
           </thead>
@@ -251,7 +332,7 @@ function P6Import({ onImport, onClose }: { onImport: (s: Schedule, c: P6Connecti
                       }
                     }}
                   >
-                    import
+                    importar
                   </button>
                 </td>
               </tr>

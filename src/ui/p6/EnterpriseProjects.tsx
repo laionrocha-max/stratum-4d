@@ -8,15 +8,16 @@ import type { ProjectSummary } from "../../backend/types";
 import { capacityPlan, type CapacityPlan } from "../../core/capacity";
 import { combineSchedules, epsNode, epsTree, isCombined, mergeReflection, reflect, reflectionChanges, splitSchedule } from "../../core/multiproject";
 import { uid } from "../../core/ops";
-import type { StratumProject } from "../../core/project";
+import { PROJECT_FORMAT, PROJECT_VERSION, type StratumProject } from "../../core/project";
 import type { Schedule } from "../../core/types";
 import { fmtDate, useStore } from "../store";
 import { useP6 } from "./commands";
 import { closeDlg, DetailTabs, ListHead, P6Dlg, SideArrows, SideBtn, SideGap, SideHelp } from "./P6Dlg";
 
 const payload = (schedule: Schedule, old?: StratumProject | null): StratumProject => ({
-  format: "stratum-project",
-  version: 2,
+  ...old,
+  format: PROJECT_FORMAT,
+  version: PROJECT_VERSION,
   savedAt: new Date().toISOString(),
   modelFileName: old?.modelFileName ?? null,
   schedule,
@@ -49,17 +50,6 @@ export async function saveCombined(): Promise<string> {
   return `Saved ${parts.length} projects (${parts.map((p) => p.schedule.projectCode).join(", ")}).`;
 }
 
-function openCombined(schedule: Schedule) {
-  const st = useStore.getState();
-  st.setSchedule(schedule);
-  st.setLinks([]);
-  st.setPaths([]);
-  st.setPresentation({ viewpoints: [], animations: [] });
-  st.setLastUpdate(null);
-  st.setScheduleReport(null);
-  st.setCurrentProject(null, null);
-}
-
 type Row = ProjectSummary & { eps: string[]; reflectionOf: string | null; activities: number; priority: number; baseline: string; baselineDate: number | null };
 
 // EPS nodes with no project yet live on this device (P6 keeps them in the EPS table).
@@ -67,7 +57,7 @@ type Row = ProjectSummary & { eps: string[]; reflectionOf: string | null; activi
 const loadEmptyEps = (): string[][] => sharedGet<string[][]>("stratum.eps.v1", []);
 const saveEmptyEps = (v: string[][]) => sharedSet("stratum.eps.v1", v);
 
-export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { onOpenOne: (id: string) => Promise<void>; onImport?: () => void; onImportToDb?: (eps: string[]) => Promise<void>; onSave?: () => Promise<void> }) {
+export function EnterpriseProjectsWindow({ onOpenOne, onOpenCombined, onImportToDb, onSave }: { onOpenOne: (id: string) => Promise<void>; onOpenCombined: (schedule: Schedule) => void; onImport?: () => void; onImportToDb?: (eps: string[]) => Promise<void>; onSave?: () => Promise<void> }) {
   const backend = useConfig((c) => c.backend);
   const schedule = useStore((s) => s.schedule);
   const currentId = useStore((s) => s.currentProjectId);
@@ -88,7 +78,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
 
   const load = async () => {
     try {
-      const rows = await backend.listProjects();
+      const rows = (await backend.listProjects()).filter((row) => !row.archived);
       // Details live in each project; read them once per saved version.
       const full = await Promise.all(
         rows.map(async (r) => {
@@ -171,7 +161,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
         if (r?.project.schedule) parts.push({ dbId: id, version: r.version, schedule: r.project.schedule });
       }
       const c = combineSchedules(parts);
-      openCombined(c);
+      onOpenCombined(c);
       useStore.getState().setStatus(`Opened ${parts.length} projects together: ${c.projectCode}. Press F9 to schedule them as one network; Commit saves each project back.`);
       useP6.getState().show("activities");
     });
@@ -251,7 +241,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
     <div className="p6-win">
       <div className="p6-win-bar">
         <button className="primary" disabled={!n || busy} onClick={openSelected}>
-          {n > 1 ? `Open ${n} projects together` : "Open"}
+          {n > 1 ? `Open ${n} projects together` : "Abrir"}
         </button>
         {onImportToDb && (
           <button disabled={busy} onClick={() => run(() => onImportToDb(epsPaths.find((e) => e.key === selEps)?.path ?? []).then(load))} title="Import an XER or MS Project XML straight into the database">
@@ -281,7 +271,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
           Merge Reflection
         </button>
         <button disabled={!n || busy} onClick={del}>
-          Delete
+          Excluir
         </button>
         <span className="spacer" />
         <label className="p6-drop">
@@ -301,13 +291,13 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
         <table className="p6-grid sticky p6-projects">
           <thead>
             <tr>
-              <td style={{ width: 220 }}>Project ID</td>
-              <td>Project Name</td>
+              <td style={{ width: 220 }}>ID do projeto</td>
+              <td>Nome do projeto</td>
               <td style={{ width: 110 }}>Total Activities</td>
               <td style={{ width: 120 }}>Strategic Priority</td>
               <td style={{ width: 170 }}>Project Baseline</td>
               <td style={{ width: 130 }}>Baseline Data Date</td>
-              <td style={{ width: 90 }}>Status</td>
+              <td style={{ width: 90 }}>Situação</td>
             </tr>
           </thead>
           <tbody>
@@ -335,7 +325,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
             {list === null ? (
               <tr>
                 <td colSpan={7} className="muted">
-                  Loading…
+                  Carregando…
                 </td>
               </tr>
             ) : !rows.length && !unsaved ? (
@@ -389,7 +379,7 @@ export function EnterpriseProjectsWindow({ onOpenOne, onImportToDb, onSave }: { 
                       </td>
                       <td>{p.baseline}</td>
                       <td>{fmtDate(p.baselineDate)}</td>
-                      <td>{openIds.has(p.id) ? "Open" : ""}</td>
+                      <td>{openIds.has(p.id) ? "Abrir" : ""}</td>
                     </tr>
                   );
                 })
@@ -529,15 +519,15 @@ export function EpsDialog() {
       onClose={closeDlg}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={closeDlg} />
+          <SideBtn kind="close" label="Fechar" primary onClick={closeDlg} />
           <SideGap />
-          <SideBtn kind="add" label="Add" disabled={busy} onClick={add} />
-          <SideBtn kind="delete" label="Delete" disabled={!cur || busy} onClick={del} />
-          <SideBtn kind="cut" label="Cut" disabled={!cur} onClick={() => cur && (epsClip = { path: cur.path, cut: true })} />
-          <SideBtn kind="copy" label="Copy" disabled={!cur} onClick={() => cur && (epsClip = { path: cur.path, cut: false })} />
+          <SideBtn kind="add" label="Adicionar" disabled={busy} onClick={add} />
+          <SideBtn kind="delete" label="Excluir" disabled={!cur || busy} onClick={del} />
+          <SideBtn kind="cut" label="Recortar" disabled={!cur} onClick={() => cur && (epsClip = { path: cur.path, cut: true })} />
+          <SideBtn kind="copy" label="Copiar" disabled={!cur} onClick={() => cur && (epsClip = { path: cur.path, cut: false })} />
           <SideBtn
             kind="paste"
-            label="Paste"
+            label="Colar"
             disabled={busy}
             onClick={() => {
               if (!epsClip) return;
@@ -576,14 +566,14 @@ export function EpsDialog() {
               <tr>
                 <td style={{ width: "40%" }}>EPS ID</td>
                 <td>EPS Name</td>
-                <td style={{ width: 70 }}>Projects</td>
+                <td style={{ width: 70 }}>Projetos</td>
               </tr>
             </thead>
             <tbody>
               {data === null ? (
                 <tr>
                   <td colSpan={3} className="muted">
-                    Loading…
+                    Carregando…
                   </td>
                 </tr>
               ) : !data.entries.length ? (
@@ -624,7 +614,7 @@ export function EpsDialog() {
               </label>
             </div>
             <label>
-              Responsible Manager
+              Responsável
               <select
                 value={obs[cur.key] ?? ""}
                 onChange={(e) => {
@@ -633,7 +623,7 @@ export function EpsDialog() {
                   sharedSet("stratum.epsobs.v1", next);
                 }}
               >
-                <option value="">Enterprise</option>
+                <option value="">Empresa</option>
                 {obsOptions.map((o) => (
                   <option key={o} value={o}>
                     {o}
@@ -688,13 +678,13 @@ export function PortfoliosDialog() {
       onClose={closeDlg}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={closeDlg} />
+          <SideBtn kind="close" label="Fechar" primary onClick={closeDlg} />
           <SideGap />
-          <SideBtn kind="add" label="Add" onClick={() => add()} />
-          <SideBtn kind="delete" label="Delete" disabled={!cur} onClick={() => cur && window.confirm(`Delete portfolio ${cur.name}? Its projects stay in the database.`) && (set(list.filter((x) => x.id !== cur.id)), setSel(null))} />
-          <SideBtn kind="cut" label="Cut" disabled={!cur} onClick={() => cur && ((pfClip = cur), set(list.filter((x) => x.id !== cur.id)), setSel(null))} />
-          <SideBtn kind="copy" label="Copy" disabled={!cur} onClick={() => (pfClip = cur)} />
-          <SideBtn kind="paste" label="Paste" onClick={() => pfClip && add(pfClip)} />
+          <SideBtn kind="add" label="Adicionar" onClick={() => add()} />
+          <SideBtn kind="delete" label="Excluir" disabled={!cur} onClick={() => cur && window.confirm(`Delete portfolio ${cur.name}? Its projects stay in the database.`) && (set(list.filter((x) => x.id !== cur.id)), setSel(null))} />
+          <SideBtn kind="cut" label="Recortar" disabled={!cur} onClick={() => cur && ((pfClip = cur), set(list.filter((x) => x.id !== cur.id)), setSel(null))} />
+          <SideBtn kind="copy" label="Copiar" disabled={!cur} onClick={() => (pfClip = cur)} />
+          <SideBtn kind="paste" label="Colar" onClick={() => pfClip && add(pfClip)} />
           <SideGap />
           <SideHelp topic="portfolios" />
         </>
@@ -707,7 +697,7 @@ export function PortfoliosDialog() {
             <thead>
               <tr>
                 <td>Portfolio Name</td>
-                <td style={{ width: 80 }}>Projects</td>
+                <td style={{ width: 80 }}>Projetos</td>
               </tr>
             </thead>
             <tbody>
@@ -737,7 +727,7 @@ export function PortfoliosDialog() {
               "General",
               <>
                 <label>
-                  Name <input value={cur.name} onChange={(e) => put({ ...cur, name: e.target.value })} />
+                  Nome <input value={cur.name} onChange={(e) => put({ ...cur, name: e.target.value })} />
                 </label>
                 <label>
                   Description
@@ -752,8 +742,8 @@ export function PortfoliosDialog() {
                   <thead>
                     <tr>
                       <td style={{ width: 50 }}>In</td>
-                      <td>Project ID</td>
-                      <td>Project Name</td>
+                      <td>ID do projeto</td>
+                      <td>Nome do projeto</td>
                     </tr>
                   </thead>
                   <tbody>
@@ -832,7 +822,7 @@ export function CapacityDialog() {
       onClose={closeDlg}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={closeDlg} />
+          <SideBtn kind="close" label="Fechar" primary onClick={closeDlg} />
           <SideGap />
           <SideHelp topic="capacity" />
         </>
@@ -851,10 +841,10 @@ export function CapacityDialog() {
           </select>
         </label>
         <label>
-          Show
+          Mostrar
           <select value={by} onChange={(e) => setBy(e.target.value as "resource" | "role")}>
-            <option value="resource">Resources</option>
-            <option value="role">Roles</option>
+            <option value="resource">Recursos</option>
+            <option value="role">Funções</option>
           </select>
         </label>
         <span className="muted small">{msg}</span>
@@ -863,7 +853,7 @@ export function CapacityDialog() {
         <table className="cap-table">
           <thead>
             <tr>
-              <td style={{ position: "sticky", left: 0, zIndex: 2, minWidth: 200 }}>{by === "role" ? "Role" : "Resource"}</td>
+              <td style={{ position: "sticky", left: 0, zIndex: 2, minWidth: 200 }}>{by === "role" ? "Função" : "Recurso"}</td>
               <td />
               {(plan?.months ?? []).map((m) => (
                 <td key={m.start} className="num">

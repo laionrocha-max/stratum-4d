@@ -55,10 +55,10 @@ export function ScheduleOptionsDialog({ onSchedule }: { onSchedule: () => void }
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={() => (save(), close())} />
-          <SideBtn kind="cancel" label="Cancel" onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={() => (save(), close())} />
+          <SideBtn kind="cancel" label="Cancelar" onClick={close} />
           <SideGap />
-          <SideBtn kind="default" label="Default" onClick={() => (setO(DEFAULT_SCHEDULE_OPTIONS), setEndCode(""))} />
+          <SideBtn kind="default" label="Padrão" onClick={() => (setO(DEFAULT_SCHEDULE_OPTIONS), setEndCode(""))} />
           <SideGap />
           <SideHelp topic="schedule-options" />
         </>
@@ -143,7 +143,7 @@ export function ScheduleOptionsDialog({ onSchedule }: { onSchedule: () => void }
               <div className="row" style={{ gap: 12 }}>
                 <label>
                   Display multiple float paths ending with activity
-                  <input list="p6-end-acts" disabled={!o.floatPaths} value={endCode} onChange={(e) => setEndCode(e.target.value)} placeholder="Activity ID" />
+                  <input list="p6-end-acts" disabled={!o.floatPaths} value={endCode} onChange={(e) => setEndCode(e.target.value)} placeholder="ID da atividade" />
                   <datalist id="p6-end-acts">
                     {schedule.activities
                       .filter((a) => a.type === "finish-milestone" || a.longestPath)
@@ -198,13 +198,13 @@ export function ScheduleRunDialog({ onSchedule }: { onSchedule: () => void }) {
   };
   return (
     <P6Dlg
-      title="Schedule"
+      title="Cronograma"
       width={620}
       onClose={close}
       side={
         <>
-          <SideBtn kind="cancel" label="Cancel" onClick={close} />
-          <SideBtn kind="run" label="Schedule" primary onClick={run} />
+          <SideBtn kind="cancel" label="Cancelar" onClick={close} />
+          <SideBtn kind="run" label="Cronograma" primary onClick={run} />
           <SideBtn kind="modify" label="View Log" disabled={!report?.log} onClick={() => useP6.getState().open("scheduleLog")} />
           <SideHelp topic="schedule" />
           <SideBtn kind="apply" label="Options..." onClick={() => useP6.getState().open("scheduleOptions")} />
@@ -222,7 +222,7 @@ export function ScheduleRunDialog({ onSchedule }: { onSchedule: () => void }) {
         <label className="p6-check">
           <input type="radio" checked={!own || !combined} onChange={() => setOwn(false)} /> {combined ? "Apply selected data date to all open projects" : "Current Data Date"}
         </label>
-        <input type="date" value={dd} onChange={(e) => (setDd(e.target.value), setOwn(false))} aria-label="Data date" />
+        <input type="date" value={dd} onChange={(e) => (setDd(e.target.value), setOwn(false))} aria-label="Data de corte" />
       </div>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <span>Project Forecast Start Date</span>
@@ -270,9 +270,9 @@ export function LevelDialog({ onSchedule }: { onSchedule: () => void }) {
               close();
             }}
           >
-            Level
+            Nivelar
           </button>
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>Cancelar</button>
         </>
       }
     >
@@ -302,16 +302,16 @@ export function LevelDialog({ onSchedule }: { onSchedule: () => void }) {
                   </td>
                   <td>
                     <select style={{ minWidth: 100 }} value={p.desc ? "desc" : "asc"} onChange={(e) => setPri(pri.map((x, k) => (k === i ? { ...x, desc: e.target.value === "desc" || undefined } : x)))}>
-                      <option value="asc">Ascending</option>
-                      <option value="desc">Descending</option>
+                      <option value="asc">Crescente</option>
+                      <option value="desc">Decrescente</option>
                     </select>
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="link" aria-label="Move up" disabled={i === 0} onClick={() => setPri(pri.map((x, k) => (k === i - 1 ? pri[i] : k === i ? pri[i - 1] : x)))}>
+                    <button className="link" aria-label="Mover para cima" disabled={i === 0} onClick={() => setPri(pri.map((x, k) => (k === i - 1 ? pri[i] : k === i ? pri[i - 1] : x)))}>
                       ↑
                     </button>{" "}
                     <button className="link" disabled={pri.length === 1} onClick={() => setPri(pri.filter((_, k) => k !== i))}>
-                      Delete
+                      Excluir
                     </button>
                   </td>
                 </tr>
@@ -319,7 +319,7 @@ export function LevelDialog({ onSchedule }: { onSchedule: () => void }) {
             </tbody>
           </table>
           <button className="link" onClick={() => setPri([...pri, { field: priFields.find(([v]) => !pri.some((p) => p.field === v))?.[0] ?? "activity-id" }])}>
-            Add
+            Adicionar
           </button>
           <div className="muted small">Activities that can start on the same day are placed in this order; the first field decides, the next breaks ties.</div>
         </div>
@@ -338,7 +338,7 @@ export function LevelDialog({ onSchedule }: { onSchedule: () => void }) {
           <table className="p6-grid">
             <thead>
               <tr>
-                <td>Resource</td>
+                <td>Recurso</td>
                 <td>Max units / hour</td>
                 <td>Peak use / day</td>
                 <td>Capacity / day</td>
@@ -455,7 +455,7 @@ export function CalendarsDialog() {
                 setSel(def ?? null);
               }}
             >
-              Delete
+              Excluir
             </button>
           </div>
         </div>
@@ -500,7 +500,7 @@ export function CalendarsDialog() {
                       setNewDate("");
                     }}
                   >
-                    Add
+                    Adicionar
                   </button>
                 </div>
                 <div className="p6-scroll short">
@@ -528,7 +528,7 @@ export function CalendarsDialog() {
                       put({ ...cal, workdays: [...(cal.workdays ?? []).filter((w) => w.date !== t), { date: t, spans }].sort((x, y) => x.date - y.date), holidays: cal.holidays.filter((h) => h !== t) }, "Add work exception");
                     }}
                   >
-                    Add
+                    Adicionar
                   </button>
                 </div>
                 <div className="p6-scroll short">
@@ -617,14 +617,14 @@ export function ActivityCodesDialog() {
       </div>
       <div className="p6-cal">
         <div className="p6-list">
-          <div className="p6-list-head">{scope === "global" ? "Global" : scope === "eps" ? "EPS" : "Project"} activity codes</div>
+          <div className="p6-list-head">{scope === "global" ? "Global" : scope === "eps" ? "EPS" : "Projeto"} activity codes</div>
           <div className="p6-list-body">
             {shown.map((x) => (
               <button key={x.name} className={t?.name === x.name ? "on" : ""} onClick={() => setSel(x.name)}>
                 {x.name} <span className="muted small">{scope === "eps" && x.epsNode ? `${x.epsNode} · ` : ""}{x.values.length} values</span>
               </button>
             ))}
-            {!shown.length && <div className="muted small" style={{ padding: 6 }}>None yet.</div>}
+            {!shown.length && <div className="muted small" style={{ padding: 6 }}>Nenhum item ainda.</div>}
           </div>
           <div className="row" style={{ padding: 6, flexWrap: "wrap" }}>
             <input placeholder="New code type" value={newType} onChange={(e) => setNewType(e.target.value)} style={{ width: 130 }} />
@@ -646,7 +646,7 @@ export function ActivityCodesDialog() {
                 setNewType("");
               }}
             >
-              Add
+              Adicionar
             </button>
           </div>
         </div>
@@ -663,7 +663,7 @@ export function ActivityCodesDialog() {
                   <option value="eps" disabled={!epsIds.length}>
                     EPS
                   </option>
-                  <option value="project">Project</option>
+                  <option value="project">Projeto</option>
                 </select>
               </label>
               <span className="spacer" />
@@ -688,10 +688,10 @@ export function ActivityCodesDialog() {
             <table className="p6-grid">
               <thead>
                 <tr>
-                  <td>Code value</td>
+                  <td>Valor do código</td>
                   <td>Description</td>
                   <td>Color</td>
-                  <td>Activities</td>
+                  <td>Atividades</td>
                   <td />
                 </tr>
               </thead>
@@ -732,7 +732,7 @@ export function ActivityCodesDialog() {
               </tbody>
             </table>
             <div className="row">
-              <input placeholder="Code value" value={newVal.value} onChange={(e) => setNewVal({ ...newVal, value: e.target.value })} style={{ width: 120 }} />
+              <input placeholder="Valor do código" value={newVal.value} onChange={(e) => setNewVal({ ...newVal, value: e.target.value })} style={{ width: 120 }} />
               <input placeholder="Description" value={newVal.description} onChange={(e) => setNewVal({ ...newVal, description: e.target.value })} />
               <button
                 disabled={!newVal.value.trim() || t.values.some((v) => v.value === newVal.value.trim())}
@@ -747,7 +747,7 @@ export function ActivityCodesDialog() {
             <p className="muted small">Assign codes from Edit → Assign Activity Codes, the Codes tab, or a code column in the table. Group by a code in Group and Sort.</p>
           </div>
         ) : (
-          <p className="muted">No {scope} activity codes yet. Add a code type such as Area, Discipline or Phase.</p>
+          <p className="muted">Não {scope} activity codes yet. Add a code type such as Area, Discipline or Phase.</p>
         )}
       </div>
     </Shell>
@@ -785,7 +785,7 @@ export function UdfDialog() {
       <table className="p6-grid">
         <thead>
           <tr>
-            <td>Title</td>
+            <td>Título</td>
             <td>Data type</td>
             <td>Formula / condition</td>
             <td>Activities with a value</td>
@@ -868,7 +868,7 @@ export function UdfDialog() {
             setName("");
           }}
         >
-          Add
+          Adicionar
         </button>
       </div>
       {cur?.type === "indicator" && (
@@ -893,8 +893,8 @@ export function UdfDialog() {
                 <thead>
                   <tr>
                     <td>If {rule.field} is</td>
-                    <td>Value</td>
-                    <td>Show</td>
+                    <td>Valor</td>
+                    <td>Mostrar</td>
                     <td />
                   </tr>
                 </thead>
@@ -1011,7 +1011,7 @@ export function ClaimDiggerDialog() {
             Export CSV (Excel)
           </button>
           <span className="spacer" />
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -1025,7 +1025,7 @@ export function ClaimDiggerDialog() {
           <label>
             or a stored baseline{" "}
             <select value="" onChange={(e) => e.target.value && fromStored(e.target.value)}>
-              <option value="">Choose…</option>
+              <option value="">Escolher…</option>
               {schedule.baselines!.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -1045,18 +1045,18 @@ export function ClaimDiggerDialog() {
                 <td>Base</td>
                 <td>{report.base.code}</td>
                 <td>DD {fmtDate(report.base.dataDate)}</td>
-                <td>Finish {fmtDate(report.base.finish)}</td>
-                <td>{report.base.activities} activities</td>
+                <td>Término {fmtDate(report.base.finish)}</td>
+                <td>{report.base.activities} atividades</td>
               </tr>
               <tr>
-                <td>Current</td>
+                <td>Atual</td>
                 <td>{report.current.code}</td>
                 <td>DD {fmtDate(report.current.dataDate)}</td>
                 <td>
-                  Finish {fmtDate(report.current.finish)}{" "}
+                  Término {fmtDate(report.current.finish)}{" "}
                   {report.finishShiftDays ? <b className={report.finishShiftDays > 0 ? "bad" : "good"}>({report.finishShiftDays > 0 ? "+" : ""}{report.finishShiftDays}d)</b> : null}
                 </td>
-                <td>{report.current.activities} activities</td>
+                <td>{report.current.activities} atividades</td>
               </tr>
             </tbody>
           </table>

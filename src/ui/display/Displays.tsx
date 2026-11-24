@@ -15,21 +15,21 @@ export interface ViewDef {
 
 export const DISPLAY_VIEWS: ViewDef[] = [
   { id: "activities", label: "Activities (table + Gantt)", hint: "The P6 activity table with its Gantt chart" },
-  { id: "table", label: "Activity table", hint: "Columns only: good for a portrait monitor" },
-  { id: "gantt", label: "Gantt chart", hint: "Bars, relationships and the data date line" },
-  { id: "progress", label: "Update progress sheet", hint: "Status, actual dates, % complete and remaining duration, editable" },
-  { id: "details", label: "Activity details", hint: "All detail tabs for the activity selected in any window" },
-  { id: "network", label: "Activity Network", hint: "Logic diagram; click a box to select it everywhere" },
-  { id: "trace", label: "Trace Logic", hint: "Predecessors and successors of the selected activity" },
-  { id: "resourceUsage", label: "Resource Usage Spreadsheet", hint: "Units or cost per month or week" },
-  { id: "activityUsage", label: "Activity Usage Spreadsheet", hint: "Units or cost per activity and period" },
-  { id: "resourceProfile", label: "Resource Usage Profile", hint: "Resource histogram" },
+  { id: "table", label: "Tabela de atividades", hint: "Columns only: good for a portrait monitor" },
+  { id: "gantt", label: "Gráfico de Gantt", hint: "Bars, relationships and the data date line" },
+  { id: "progress", label: "Planilha de atualização de avanço", hint: "Status, actual dates, % complete and remaining duration, editable" },
+  { id: "details", label: "Detalhes da atividade", hint: "All detail tabs for the activity selected in any window" },
+  { id: "network", label: "Rede de atividades", hint: "Logic diagram; click a box to select it everywhere" },
+  { id: "trace", label: "Rastrear dependências", hint: "Predecessors and successors of the selected activity" },
+  { id: "resourceUsage", label: "Planilha de uso de recursos", hint: "Units or cost per month or week" },
+  { id: "activityUsage", label: "Planilha de uso de atividades", hint: "Units or cost per activity and period" },
+  { id: "resourceProfile", label: "Perfil de uso de recursos", hint: "Histograma de recursos" },
   { id: "earnedValue", label: "Earned value and S-curves", hint: "PV, EV, AC, SPI, CPI" },
-  { id: "dashboard", label: "Dashboards", hint: "Any dashboard, updating as the schedule changes" },
-  { id: "wbs", label: "WBS", hint: "Work breakdown structure editor" },
-  { id: "assignments", label: "Assignments", hint: "Every resource assignment" },
-  { id: "issues", label: "Issues", hint: "Issue register" },
-  { id: "risks", label: "Risks", hint: "Risk register" },
+  { id: "dashboard", label: "Painéis", hint: "Any dashboard, updating as the schedule changes" },
+  { id: "wbs", label: "EAP", hint: "Editor da EAP" },
+  { id: "assignments", label: "Atribuições", hint: "Every resource assignment" },
+  { id: "issues", label: "Pendências", hint: "Issue register" },
+  { id: "risks", label: "Riscos", hint: "Risk register" },
 ];
 
 export const viewLabel = (id: string) => DISPLAY_VIEWS.find((v) => v.id === id)?.label ?? id;
@@ -163,8 +163,8 @@ async function screens(): Promise<ScreenInfo[] | null> {
 export function DisplaysButton({ className = "tb" }: { className?: string }) {
   const show = useDisplays((s) => s.show);
   return (
-    <button className={className} onClick={() => show(true)} title="Displays: open views in their own windows, one per monitor">
-      <MonitorUp size={15} aria-hidden /> <span className="tb-label">Displays</span>
+    <button className={className} onClick={() => show(true)} title="Monitores: abrir cada vista em uma janela própria">
+      <MonitorUp size={15} aria-hidden /> <span className="tb-label">Monitores</span>
     </button>
   );
 }
@@ -198,10 +198,10 @@ export function DisplaysDialog() {
             setQueue(rest);
           }}
         >
-          Open {viewLabel(queue[0].view)}
+          Abrir {viewLabel(queue[0].view)}
         </button>
         <button className="link" onClick={() => setQueue([])}>
-          Dismiss
+          Dispensar
         </button>
       </div>
     );
@@ -215,10 +215,10 @@ export function DisplaysDialog() {
 
   return (
     <div className="help-backdrop p6-dlg-back" onMouseDown={(e) => e.target === e.currentTarget && show(false)}>
-      <div className="p6-dlg wide displays" role="dialog" aria-label="Displays">
+      <div className="p6-dlg wide displays" role="dialog" aria-label="Monitores">
         <div className="p6-dlg-title">
-          <span>Displays</span>
-          <button className="icon-btn" onClick={() => show(false)} aria-label="Close">
+          <span>Monitores</span>
+          <button className="icon-btn" onClick={() => show(false)} aria-label="Fechar">
             <X size={14} aria-hidden />
           </button>
         </div>
@@ -253,7 +253,7 @@ export function DisplaysDialog() {
                   else setMsg("This browser does not report monitors. Open the window, then drag it to the monitor you want; Save setup remembers where it is.");
                 }}
               >
-                Detect monitors
+                Detectar monitores
               </button>
             )}
             <span className="spacer" />
@@ -264,11 +264,11 @@ export function DisplaysDialog() {
                 else setMsg(`Opened ${viewLabel(view)}.`);
               }}
             >
-              Open {viewLabel(view)}
+              Abrir {viewLabel(view)}
             </button>
           </div>
           {msg && <p className="muted small">{msg}</p>}
-          <h4>Display setups</h4>
+          <h4>Configurações de monitores</h4>
           <p className="muted small">
             {count ? `${count} display window${count > 1 ? "s" : ""} open.` : "No display windows open."} Arrange them on your monitors, then save the arrangement to reopen it in one click.
           </p>
@@ -284,10 +284,10 @@ export function DisplaysDialog() {
                 setMsg(`Saved “${s.name}” with ${s.windows.length} window${s.windows.length > 1 ? "s" : ""}.`);
               }}
             >
-              Save current setup
+              Salvar configuração atual
             </button>
             <button disabled={!count} onClick={() => syncHandle()?.post({ t: "close", from: "main" })}>
-              Close all display windows
+              Fechar todas as janelas de exibição
             </button>
           </div>
           <table className="p6-grid">
@@ -300,11 +300,11 @@ export function DisplaysDialog() {
                   <td className="muted small">{s.windows.map((w) => viewLabel(w.view)).join(" · ")}</td>
                   <td className="nowrap">
                     <button className="link" onClick={() => openSetup(s)}>
-                      Open
+                      Abrir
                     </button>
                     {mine && (
                       <button className="link" onClick={() => remove(s.name)}>
-                        Delete
+                        Excluir
                       </button>
                     )}
                   </td>
@@ -316,7 +316,7 @@ export function DisplaysDialog() {
         <div className="p6-dlg-foot">
           <span className="muted small">Tip: in the desktop app and in Chrome or Edge, Detect monitors places windows on a chosen screen.</span>
           <span className="spacer" />
-          <button onClick={() => show(false)}>Close</button>
+          <button onClick={() => show(false)}>Fechar</button>
         </div>
       </div>
     </div>

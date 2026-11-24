@@ -15,23 +15,23 @@ export function SettingsDialog({ initialTab = "interface", onClose }: { initialT
   const [tab, setTab] = useState<Tab>(initialTab);
   const tabs: [Tab, string][] = [
     ["interface", "Interface"],
-    ["data", "Data & sign-in"],
+    ["data", "Dados e login"],
     ["p6", "Primavera P6"],
-    ["email", "Email"],
+    ["email", "E-mail"],
     ...(backend.kind === "server" && backend.user?.role === "admin"
       ? ([
-          ["users", "Users"],
-          ["security", "Security"],
+          ["users", "Usuários"],
+          ["security", "Segurança"],
           ["aisoc", "AiSOC"],
         ] as [Tab, string][])
       : []),
   ];
   return (
     <div className="help-backdrop" onClick={onClose}>
-      <div className="help settings" role="dialog" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
+      <div className="help settings" role="dialog" aria-label="Configurações" onClick={(e) => e.stopPropagation()}>
         <div className="settings-head">
-          <h2>Settings</h2>
-          <button className="tb icon-only" onClick={onClose} title="Close" aria-label="Close">
+          <h2>Configurações</h2>
+          <button className="tb icon-only" onClick={onClose} title="Fechar" aria-label="Fechar">
             <X size={16} aria-hidden />
           </button>
         </div>
@@ -70,7 +70,7 @@ function InterfaceTab() {
   return (
     <div className="stack">
       <h4>Layout</h4>
-      <p className="muted">Same data and engine in every layout; only the arrangement, wording and default columns change. You can also switch from the top bar or with Ctrl+Alt+1/2/3.</p>
+      <p className="muted">Os layouts compartilham os mesmos dados. Você também pode trocar de layout na barra superior ou com Ctrl+Alt+1/2/3.</p>
       <div className="mode-cards">
         {(Object.keys(MODE_INFO) as InterfaceMode[]).map((m) => (
           <button key={m} className={`mode-card ${config.mode === m ? "active" : ""}`} onClick={() => update({ mode: m })}>
@@ -80,8 +80,8 @@ function InterfaceTab() {
         ))}
       </div>
 
-      <h4>Font</h4>
-      <div className="font-list" role="radiogroup" aria-label="Font">
+      <h4>Fonte</h4>
+      <div className="font-list" role="radiogroup" aria-label="Fonte">
         {FONTS.map((f) => (
           <button
             key={f.id}
@@ -92,28 +92,27 @@ function InterfaceTab() {
             onClick={() => update({ font: f.id })}
           >
             <span className="font-name">{f.label}</span>
-            <span className="font-sample">ST-210 Level 1 Slab · 15d · 70.0% · 24-Apr-26</span>
+            <span className="font-sample">ST-210 Laje do 1º pavimento · 15 d · 70,0% · 24-abr-26</span>
             <span className="font-note">{f.note}</span>
           </button>
         ))}
       </div>
       <div className="row wrap appearance-row">
         <label className="inline">
-          Text size
-          {seg(String(config.fontSize), [["12", "Small"], ["13", "Normal"], ["14", "Large"], ["15", "Larger"]], (v) => update({ fontSize: Number(v) }))}
+          Tamanho do texto
+          {seg(String(config.fontSize), [["12", "Pequeno"], ["13", "Normal"], ["14", "Grande"], ["15", "Maior"]], (v) => update({ fontSize: Number(v) }))}
         </label>
         <label className="inline">
-          Theme
-          {seg(config.theme, [["mode", "Match layout"], ["light", "Light"], ["dark", "Dark"]], (v) => update({ theme: v }))}
+          Tema
+          {seg(config.theme, [["mode", "Seguir o layout"], ["light", "Claro"], ["dark", "Escuro"]], (v) => update({ theme: v }))}
         </label>
         <label className="inline">
-          Density
-          {seg(config.density, [["compact", "Compact"], ["comfortable", "Comfortable"]], (v) => update({ density: v }))}
+          Densidade
+          {seg(config.density, [["compact", "Compacta"], ["comfortable", "Confortável"]], (v) => update({ density: v }))}
         </label>
       </div>
       <p className="muted">
-        All fonts are installed with Stratum and work offline. Stratum Sans is Inter (SIL Open Font License) set with its own stylistic alternates; the others are IBM Plex Sans,
-        Source Sans 3, Nunito Sans and JetBrains Mono, also under the Open Font License.
+        O Stratum inclui as fontes e elas funcionam sem internet. Stratum Sans usa a fonte Inter com variantes estilísticas. IBM Plex Sans, Source Sans 3, Nunito Sans e JetBrains Mono também são distribuídas sob a Open Font License.
       </p>
     </div>
   );
@@ -132,13 +131,13 @@ function DataTab() {
   return (
     <div className="stack">
       <section>
-        <h4>Current</h4>
+        <h4>Atual</h4>
         <p>
           <b>{backend.label}</b>
           {backend.user ? ` · signed in as ${backend.user.email} (${backend.user.role})` : ""}
         </p>
-        {backend.kind === "desktop" && dbFile && <p className="muted">Database file: {dbFile}</p>}
-        {backend.kind === "browser" && !(config.storage === "gdrive" || config.storage === "onedrive") && <p className="muted">Data is kept in this browser. Use a cloud folder to share it, or the desktop app or a Stratum Server for P6 and emailed reports.</p>}
+        {backend.kind === "desktop" && dbFile && <p className="muted">Arquivo do banco de dados: {dbFile}</p>}
+        {backend.kind === "browser" && !(config.storage === "gdrive" || config.storage === "onedrive") && <p className="muted">Os dados ficam neste navegador. Use uma pasta na nuvem para compartilhá-los. Para conexões P6 e relatórios por e-mail, use o aplicativo para computador ou um servidor Stratum.</p>}
       </section>
       {backend.kind !== "server" && <CloudSettings />}
       {backend.kind === "server" ? (
@@ -149,22 +148,22 @@ function DataTab() {
               setMsg("Signed out. Now using local storage.");
             }}
           >
-            Sign out and use local storage
+            Sair e usar armazenamento local
           </button>
         </section>
       ) : (
         <section className="stack">
-          <h4>Connect to a Stratum Server</h4>
+          <h4>Conectar a um servidor Stratum</h4>
           <label>
-            Server address
+            Endereço do servidor
             <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://stratum.yourcompany.com" />
           </label>
           <label>
-            Email
+            E-mail
             <input value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
           </label>
           <label>
-            Password
+            Senha
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
           </label>
           <div className="row">
@@ -183,7 +182,7 @@ function DataTab() {
                 }
               }}
             >
-              Sign in
+              Entrar
             </button>
           </div>
           <p className="muted">Projects in your local {isDesktop() ? "database" : "browser"} stay there; open them and Save to copy them to the server.</p>
@@ -223,7 +222,7 @@ function P6Tab() {
   useEffect(() => {
     backend.getP6().then(setList).catch((e) => setMsg(e.message));
   }, [backend]);
-  if (!backend.caps.p6) return <p className="muted">Connecting to P6 needs the Stratum desktop app or a Stratum Server. In the browser, exchange data with P6 through XER files (Import schedule / Export → P6 XER).</p>;
+  if (!backend.caps.p6) return <p className="muted">Para conectar diretamente ao P6, use o aplicativo para computador ou um servidor Stratum. No navegador, troque dados com o P6 em arquivos XER pelo menu Arquivo.</p>;
   const canEdit = backend.kind !== "server" || backend.user?.role === "admin";
 
   const save = async (next: P6Connection[]) => {
@@ -243,31 +242,31 @@ function P6Tab() {
             {canEdit && (
               <>
                 <button className="link" onClick={() => setEdit(c)}>
-                  edit
+                  editar
                 </button>
                 <button className="link" onClick={() => save(list.filter((x) => x.id !== c.id))}>
-                  remove
+                  remover
                 </button>
               </>
             )}
             <button className="link" disabled={testing} onClick={() => runTest(c)}>
-              test
+              testar
             </button>
           </li>
         ))}
       </ul>
-      {list.length === 0 && <p className="muted">No connections yet.</p>}
+      {list.length === 0 && <p className="muted">Nenhuma conexão cadastrada.</p>}
       {canEdit && !edit && (
-        <button onClick={() => setEdit({ id: uid("p6"), name: "Company P6", kind: "eppm", auth: "session", url: "", database: "", user: "", password: "" })}>+ Add connection</button>
+        <button onClick={() => setEdit({ id: uid("p6"), name: "Company P6", kind: "eppm", auth: "session", url: "", database: "", user: "", password: "" })}>+ Adicionar conexão</button>
       )}
       {edit && (
         <section className="stack form">
           <label>
-            Name
+            Nome
             <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
           </label>
           <label>
-            Type
+            Tipo
             <select value={edit.kind} onChange={(e) => setEdit({ ...edit, kind: e.target.value as P6ConnectionKind, schema: e.target.value === "p6-sqlserver" ? "dbo" : e.target.value === "p6-oracle" ? "ADMUSER" : undefined })}>
               {(Object.keys(KIND_LABEL) as P6ConnectionKind[]).map((k) => (
                 <option key={k} value={k}>
@@ -279,11 +278,11 @@ function P6Tab() {
           {edit.kind === "eppm" && (
             <>
               <label>
-                REST API address
+                Endereço da API REST
                 <input value={edit.url ?? ""} onChange={(e) => setEdit({ ...edit, url: e.target.value })} placeholder="https://p6.company.com/p6ws/restapi" />
               </label>
               <label>
-                Database name (as on the P6 login page)
+                Nome do banco de dados (igual ao da tela de login do P6)
                 <input value={edit.database ?? ""} onChange={(e) => setEdit({ ...edit, database: e.target.value })} placeholder="PMDB" />
               </label>
               <label>
@@ -302,7 +301,7 @@ function P6Tab() {
                 <UserPass edit={edit} setEdit={setEdit} />
               )}
               <details className="cert-box" open={!!edit.caCert}>
-                <summary>Company certificate (optional)</summary>
+                <summary>Certificado da empresa (opcional)</summary>
                 <p className="muted">
                   Only needed if the P6 server uses a certificate from your company's own authority and it isn't installed on {backend.kind === "desktop" ? "this PC" : "the Stratum Server"}. Paste the root certificate (PEM text starting with -----BEGIN CERTIFICATE-----). IT can export it from the browser's padlock → certificate → root → export as Base-64.
                 </p>
@@ -319,17 +318,17 @@ function P6Tab() {
                   <input value={edit.host ?? ""} onChange={(e) => setEdit({ ...edit, host: e.target.value })} placeholder="p6db.company.local" />
                 </label>
                 <label style={{ flex: 1 }}>
-                  Port
+                  Porta
                   <input type="number" value={edit.port ?? (edit.kind === "p6-oracle" ? 1521 : 1433)} onChange={(e) => setEdit({ ...edit, port: Number(e.target.value) })} />
                 </label>
               </div>
               <div className="row">
                 <label style={{ flex: 2 }}>
-                  {edit.kind === "p6-oracle" ? "Service name" : "Database"}
+                  {edit.kind === "p6-oracle" ? "Service name" : "Banco de dados"}
                   <input value={edit.service ?? ""} onChange={(e) => setEdit({ ...edit, service: e.target.value })} placeholder={edit.kind === "p6-oracle" ? "PMDB" : "PMDB"} />
                 </label>
                 <label style={{ flex: 1 }}>
-                  Schema / owner
+                  Esquema / proprietário
                   <input value={edit.schema ?? ""} onChange={(e) => setEdit({ ...edit, schema: e.target.value })} />
                 </label>
               </div>
@@ -339,7 +338,7 @@ function P6Tab() {
           )}
           {edit.kind === "p6-sqlite" && (
             <label>
-              Path to the P6 Professional database file
+              Caminho do arquivo do banco de dados do P6 Professional
               <input value={edit.file ?? ""} onChange={(e) => setEdit({ ...edit, file: e.target.value })} placeholder="C:\\Users\\you\\Documents\\Oracle\\Primavera P6\\P6 Professional\\PPMDBSQLite.db" />
             </label>
           )}
@@ -352,16 +351,16 @@ function P6Tab() {
                 setEdit(null);
               }}
             >
-              Save
+              Salvar
             </button>
             <button disabled={testing} onClick={() => runTest(edit)}>
               {testing ? "Checking…" : "Test connection"}
             </button>
-            <button onClick={() => setEdit(null)}>Cancel</button>
+            <button onClick={() => setEdit(null)}>Cancelar</button>
           </div>
         </section>
       )}
-      {testing && <p className="muted">Checking the connection step by step…</p>}
+      {testing && <p className="muted">Verificando as etapas da conexão…</p>}
       {diag && <DiagnosisView name={diag.name} d={diag.d} />}
       {msg && <p className={/fail|error|cannot|refused|not found|denied|401|403/i.test(msg) ? "bad" : "good"}>{msg}</p>}
     </div>
@@ -411,11 +410,11 @@ function UserPass({ edit, setEdit }: { edit: P6Connection; setEdit: (c: P6Connec
   return (
     <div className="row">
       <label style={{ flex: 1 }}>
-        Username
+        Usuário
         <input value={edit.user ?? ""} onChange={(e) => setEdit({ ...edit, user: e.target.value })} autoComplete="off" />
       </label>
       <label style={{ flex: 1 }}>
-        Password
+        Senha
         <input type="password" value={edit.password ?? ""} onChange={(e) => setEdit({ ...edit, password: e.target.value })} autoComplete="new-password" />
       </label>
     </div>
@@ -439,12 +438,12 @@ function EmailTab() {
       .then((x) => x && setS(x))
       .catch(() => {});
   }, [backend]);
-  if (!backend.caps.email) return <p className="muted">Email needs the Stratum desktop app or a Stratum Server.</p>;
+  if (!backend.caps.email) return <p className="muted">O envio por e-mail requer o aplicativo para computador ou um servidor Stratum.</p>;
   const canEdit = backend.kind !== "server" || backend.user?.role === "admin";
   return (
     <div className="stack">
       <p className="muted">
-        Scheduled reports are sent through your mail server.{" "}
+        Os relatórios programados são enviados pelo seu servidor de e-mail.{" "}
         {backend.caps.alwaysOn ? "The server sends them on schedule around the clock." : "The desktop app sends them while it is open; anything missed goes out when you next start it."}
       </p>
       <div className="row wrap">
@@ -456,11 +455,11 @@ function EmailTab() {
       </div>
       <div className="row">
         <label style={{ flex: 2 }}>
-          SMTP server
+          Servidor SMTP
           <input value={s.host} onChange={(e) => setS({ ...s, host: e.target.value })} disabled={!canEdit} />
         </label>
         <label style={{ flex: 1 }}>
-          Port
+          Porta
           <input type="number" value={s.port} onChange={(e) => setS({ ...s, port: Number(e.target.value) })} disabled={!canEdit} />
         </label>
       </div>
@@ -469,16 +468,16 @@ function EmailTab() {
       </label>
       <div className="row">
         <label style={{ flex: 1 }}>
-          Username
+          Usuário
           <input value={s.user} onChange={(e) => setS({ ...s, user: e.target.value })} disabled={!canEdit} autoComplete="off" />
         </label>
         <label style={{ flex: 1 }}>
-          Password / app password
+          Senha ou senha de aplicativo
           <input type="password" value={s.password} onChange={(e) => setS({ ...s, password: e.target.value })} disabled={!canEdit} autoComplete="new-password" />
         </label>
       </div>
       <label>
-        Send as (From)
+        Remetente
         <input value={s.from} onChange={(e) => setS({ ...s, from: e.target.value })} placeholder="planning@yourcompany.com" disabled={!canEdit} />
       </label>
       <div className="row">
@@ -494,9 +493,9 @@ function EmailTab() {
             }
           }}
         >
-          Save
+          Salvar
         </button>
-        <input placeholder="Send a test to…" value={to} onChange={(e) => setTo(e.target.value)} style={{ flex: 1 }} />
+        <input placeholder="Enviar teste para…" value={to} onChange={(e) => setTo(e.target.value)} style={{ flex: 1 }} />
         <button
           onClick={async () => {
             setMsg("Testing…");
@@ -507,7 +506,7 @@ function EmailTab() {
             }
           }}
         >
-          Test
+          Testar
         </button>
       </div>
       {msg && <p className={/fail|error|invalid|refused|timeout|auth/i.test(msg) ? "bad" : "good"}>{msg}</p>}
@@ -534,9 +533,9 @@ function UsersTab() {
       <table className="data">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Função</th>
             <th />
           </tr>
         </thead>
@@ -548,7 +547,7 @@ function UsersTab() {
               <td>{u.role}</td>
               <td>
                 <button className="link" onClick={() => setEdit({ id: u.id, email: u.email, name: u.name, role: u.role, password: "" })}>
-                  edit
+                  editar
                 </button>
                 <button
                   className="link"
@@ -561,7 +560,7 @@ function UsersTab() {
                     }
                   }}
                 >
-                  delete
+                  excluir
                 </button>
               </td>
             </tr>
@@ -574,25 +573,25 @@ function UsersTab() {
         <section className="stack form">
           <div className="row">
             <label style={{ flex: 1 }}>
-              Name
+              Nome
               <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
             </label>
             <label style={{ flex: 1 }}>
-              Email
+              E-mail
               <input value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} />
             </label>
           </div>
           <div className="row">
             <label style={{ flex: 1 }}>
-              Role
+              Função
               <select value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>
-                <option value="admin">Admin</option>
-                <option value="planner">Planner</option>
-                <option value="viewer">Viewer</option>
+                <option value="admin">Administração</option>
+                <option value="planner">Planejador</option>
+                <option value="viewer">Visualizador</option>
               </select>
             </label>
             <label style={{ flex: 1 }}>
-              Password {users.some((u) => u.id === edit.id) ? "(leave blank to keep)" : ""}
+              Senha {users.some((u) => u.id === edit.id) ? "(leave blank to keep)" : ""}
               <input type="password" value={edit.password} onChange={(e) => setEdit({ ...edit, password: e.target.value })} autoComplete="new-password" />
             </label>
           </div>
@@ -613,9 +612,9 @@ function UsersTab() {
                 }
               }}
             >
-              Save
+              Salvar
             </button>
-            <button onClick={() => setEdit(null)}>Cancel</button>
+            <button onClick={() => setEdit(null)}>Cancelar</button>
           </div>
         </section>
       )}
@@ -642,7 +641,7 @@ const ACTION_LABEL: Record<string, string> = {
   "settings.smtp": "Email settings",
   "settings.p6": "P6 connections",
   "settings.general": "Setting changed",
-  "security.policy": "Security policy",
+  "security.policy": "Política de segurança",
   "p6.import": "Pulled from P6",
   "p6.push": "Sent to P6",
   "approval.request": "Approval asked",
@@ -786,7 +785,7 @@ function SecurityTab() {
               <button onClick={() => void decide(false)} disabled={!reason.trim() && open.requestedBy.toLowerCase() !== me.toLowerCase()}>
                 Reject
               </button>
-              <button onClick={() => setOpen(null)}>Close</button>
+              <button onClick={() => setOpen(null)}>Fechar</button>
             </div>
           </section>
         )}
@@ -813,7 +812,7 @@ function SecurityTab() {
       </section>
 
       <section className="stack">
-        <h3>Audit log</h3>
+        <h3>Registro de auditoria</h3>
         <p className="muted">Every sign-in and every change on this server, in order. Each entry is chained to the one before it with a keyed hash, so a changed or removed entry shows when the log is verified.</p>
         <div className="row">
           <button
@@ -824,7 +823,7 @@ function SecurityTab() {
                 .catch(fail)
             }
           >
-            Verify the log
+            Verificar registro
           </button>
           <button
             onClick={async () => {
@@ -843,16 +842,16 @@ function SecurityTab() {
             Export CSV
           </button>
           <label style={{ marginLeft: "auto" }}>
-            Show{" "}
+            Mostrar{" "}
             <select value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="">Everything</option>
               <option value="login">Sign-ins</option>
               <option value="user">Users</option>
-              <option value="project">Projects</option>
+              <option value="project">Projetos</option>
               <option value="p6">P6</option>
-              <option value="approval">Approvals</option>
-              <option value="settings">Settings</option>
-              <option value="security">Security policy</option>
+              <option value="approval">Aprovações</option>
+              <option value="settings">Configurações</option>
+              <option value="security">Política de segurança</option>
               <option value="aisoc">AiSOC</option>
             </select>
           </label>
@@ -871,8 +870,8 @@ function SecurityTab() {
               <th>When</th>
               <th>Who</th>
               <th>What</th>
-              <th>On</th>
-              <th>Details</th>
+              <th>Em</th>
+              <th>Detalhes</th>
             </tr>
           </thead>
           <tbody>
@@ -893,7 +892,7 @@ function SecurityTab() {
           <label>
             Keep audit entries
             <select value={pol.auditDays} onChange={(e) => void save({ auditDays: Number(e.target.value) })}>
-              <option value={0}>Always</option>
+              <option value={0}>Sempre</option>
               <option value={365}>1 year</option>
               <option value={730}>2 years</option>
               <option value={1825}>5 years</option>
@@ -1010,7 +1009,7 @@ function AisocTab() {
               })
             }
           >
-            Save
+            Salvar
           </button>
           <button
             disabled={busy || !c.ingestUrl}

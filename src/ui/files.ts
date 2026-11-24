@@ -13,20 +13,25 @@ export const isMobileDevice = () =>
   (typeof navigator !== "undefined" &&
     (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1)));
 
-export function pickFile(accept: string): Promise<File | null> {
+export async function pickFile(accept: string): Promise<File | null> {
+  return (await pickFiles(accept, false))[0] ?? null;
+}
+
+export function pickFiles(accept: string, multiple = true): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
+    input.multiple = multiple;
     if (!isMobileDevice()) input.accept = accept;
     // Some mobile browsers fire "change" only for an input that is in the page.
     input.style.display = "none";
     document.body.appendChild(input);
     input.onchange = () => {
-      resolve(input.files?.[0] ?? null);
+      resolve(Array.from(input.files ?? []));
       input.remove();
     };
     input.addEventListener("cancel", () => {
-      resolve(null);
+      resolve([]);
       input.remove();
     });
     input.click();

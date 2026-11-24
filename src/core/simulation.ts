@@ -2,6 +2,7 @@
 
 import { growthClip, type Clip } from "./motion";
 import { STATUS_COLORS } from "./profiles";
+import type { SolarSettings } from "./solar";
 import type { Activity, AppearanceProfile, ColorMode, DateSource, Link, PhaseAppearance, Schedule } from "./types";
 
 export type Phase = "before" | "active" | "after";
@@ -21,6 +22,10 @@ export interface SimulationOptions {
   unlinked: "show" | "ghost" | "hide";
   /** Draw equipment paths in the 3D view. */
   showPaths?: boolean;
+  showGrid?: boolean;
+  presentationLook?: boolean;
+  naturalSky?: boolean;
+  solar?: SolarSettings;
 }
 
 export const DEFAULT_SIM_OPTIONS: SimulationOptions = { dateSource: "current", colorMode: "profile", unlinked: "ghost", showPaths: true };

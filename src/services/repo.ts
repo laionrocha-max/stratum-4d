@@ -14,6 +14,7 @@ export interface ProjectSummary {
   version: number;
   updatedAt: string;
   updatedBy: string | null;
+  archived?: boolean;
 }
 
 export interface UserRecord {
@@ -82,6 +83,11 @@ export class Repository {
       const cols = await this.db.query<{ name: string }>("pragma table_info(users)");
       if (!cols.some((c) => c.name === "token_version")) await this.db.exec("alter table users add column token_version integer not null default 0");
     }
+    if (this.db.dialect === "postgres") await this.db.exec("alter table projects add column if not exists archived integer not null default 0");
+    else {
+      const cols = await this.db.query<{ name: string }>("pragma table_info(projects)");
+      if (!cols.some((c) => c.name === "archived")) await this.db.exec("alter table projects add column archived integer not null default 0");
+    }
   }
 
   /** The driver, for modules that keep their own tables (the audit log). */
@@ -96,7 +102,7 @@ export class Repository {
   // ---- projects
 
   async listProjects(): Promise<ProjectSummary[]> {
-    const rows = await this.db.query<Record<string, unknown>>("select id, code, name, data_date, version, updated_at, updated_by from projects order by code");
+    const rows = await this.db.query<Record<string, unknown>>("select id, code, name, data_date, version, updated_at, updated_by, archived from projects order by code");
     return rows.map((r) => ({
       id: String(r.id),
       code: String(r.code),
@@ -105,6 +111,7 @@ export class Repository {
       version: Number(r.version),
       updatedAt: String(r.updated_at),
       updatedBy: (r.updated_by as string) ?? null,
+      archived: Number(r.archived) === 1 || undefined,
     }));
   }
 
@@ -123,30 +130,38 @@ export class Repository {
     const now = new Date().toISOString();
     const body = JSON.stringify(project);
     if (!existing.length) {
-      await this.db.exec("insert into projects (id, code, name, data_date, body, version, updated_at, updated_by) values (?, ?, ?, ?, ?, 1, ?, ?)", [
+      if (opts.expectedVersion !== undefined) throw new VersionConflictError(0);
+      await this.db.exec("insert into projects (id, code, name, data_date, body, version, updated_at, updated_by, archived) values (?, ?, ?, ?, ?, 1, ?, ?, ?)", [
         id,
         s?.projectCode ?? "PROJECT",
-        s?.projectName ?? "Untitled",
+        project.title ?? s?.projectName ?? "Sem nome",
         s?.dataDate ?? null,
         body,
         now,
         opts.user ?? null,
+        project.archived ? 1 : 0,
       ]);
       return 1;
     }
     const current = Number(existing[0].version);
     if (opts.expectedVersion !== undefined && opts.expectedVersion !== current) throw new VersionConflictError(current);
     const next = current + 1;
-    await this.db.exec("update projects set code = ?, name = ?, data_date = ?, body = ?, version = ?, updated_at = ?, updated_by = ? where id = ?", [
+    const written = await this.db.exec("update projects set code = ?, name = ?, data_date = ?, body = ?, version = ?, updated_at = ?, updated_by = ?, archived = ? where id = ? and version = ?", [
       s?.projectCode ?? "PROJECT",
-      s?.projectName ?? "Untitled",
+      project.title ?? s?.projectName ?? "Sem nome",
       s?.dataDate ?? null,
       body,
       next,
       now,
       opts.user ?? null,
+      project.archived ? 1 : 0,
       id,
+      current,
     ]);
+    if (written === 0) {
+      const [latest] = await this.db.query<{ version: number }>("select version from projects where id = ?", [id]);
+      throw new VersionConflictError(Number(latest?.version ?? 0));
+    }
     return next;
   }
 

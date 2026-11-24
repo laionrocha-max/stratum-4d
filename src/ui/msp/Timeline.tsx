@@ -11,7 +11,7 @@ export function MspTimeline() {
   const schedule = useStore((s) => s.schedule);
   const selectActivity = useStore((s) => s.selectActivity);
   const range = useMemo(() => (schedule ? scheduleRange(schedule) : null), [schedule]);
-  if (!schedule || !range) return <div className="msp-tl empty-tl">Add tasks with dates to the timeline</div>;
+  if (!schedule || !range) return <div className="msp-tl empty-tl">Adicione tarefas com datas à linha do tempo</div>;
   const span = range.finish - range.start || 1;
   const pos = (t: number) => Math.min(100, Math.max(0, ((t - range.start) / span) * 100));
   const months: number[] = [];
@@ -25,7 +25,7 @@ export function MspTimeline() {
     <div className="msp-tl" onDoubleClick={() => useMsp.getState().open("taskInfo")}>
       <div className="tl-ends">
         <span>
-          Start
+          Início
           <br />
           <b>{fmtDate(range.start)}</b>
         </span>
@@ -65,7 +65,7 @@ export function MspTimeline() {
       </div>
       <div className="tl-ends right">
         <span>
-          Finish
+          Término
           <br />
           <b>{fmtDate(range.finish)}</b>
         </span>

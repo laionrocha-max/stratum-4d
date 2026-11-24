@@ -93,7 +93,7 @@ export function ActivityEditor({ only, bare }: { only?: EditorSection[]; bare?: 
   }, [schedule, act]);
   const hpd = cal.hoursPerDay || 8;
 
-  if (!schedule) return <div className="empty">Load or create a schedule first.</div>;
+  if (!schedule) return <div className="empty">Carregue ou crie um cronograma primeiro.</div>;
 
   const newActivity = () => addActivityAfterSelected();
 
@@ -101,17 +101,17 @@ export function ActivityEditor({ only, bare }: { only?: EditorSection[]; bare?: 
     <div className={`editor ${bare ? "bare" : ""}`}>
       {!bare && (
       <div className="editor-bar">
-        <button onClick={newActivity}>+ New activity{act ? " after this" : ""}</button>
+        <button onClick={newActivity}>+ Nova atividade{act ? " after this" : ""}</button>
         <button
           disabled={!act}
           onClick={deleteSelectedActivity}
         >
-          Delete
+          Excluir
         </button>
         <span className="muted">{act ? `${act.code} · ${act.status.replace("-", " ")}` : "Pick an activity in the Gantt"}</span>
       </div>
       )}
-      {act ? <Fields act={act} hpd={hpd} only={only} /> : bare ? <div className="empty">Select an activity.</div> : null}
+      {act ? <Fields act={act} hpd={hpd} only={only} /> : bare ? <div className="empty">Selecione uma atividade.</div> : null}
     </div>
   );
 }
@@ -170,7 +170,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           <input value={act.code} onChange={(e) => up({ code: e.target.value })} />
         </label>
         <label>
-          Type
+          Tipo
           <select value={act.type} onChange={(e) => up({ type: e.target.value as ActivityType })}>
             {TYPES.map(([v, l]) => (
               <option key={v} value={v}>
@@ -180,13 +180,13 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           </select>
         </label>
         <label className="span2">
-          Name
+          Nome
           <input value={act.name} onChange={(e) => up({ name: e.target.value })} />
         </label>
         <label>
-          WBS
+          EAP
           <select value={act.wbsId ?? ""} onChange={(e) => up({ wbsId: e.target.value || null })}>
-            <option value="">(project)</option>
+            <option value="">(projeto)</option>
             {schedule.wbs.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.code} {w.name}
@@ -195,9 +195,9 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           </select>
         </label>
         <label>
-          Calendar
+          Calendário
           <select value={act.calendarId ?? ""} onChange={(e) => up({ calendarId: e.target.value || null })}>
-            <option value="">Project default</option>
+            <option value="">Padrão do projeto</option>
             {(schedule.calendars ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -210,9 +210,9 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
 
       {show("status") && (
       <section className="grid2">
-        <h4 className="span2">Duration and progress</h4>
+        <h4 className="span2">Duração e avanço</h4>
         <label>
-          Original duration (days)
+          Duração original (dias)
           <input
             type="number"
             min={0}
@@ -225,7 +225,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           />
         </label>
         <label>
-          Remaining (days)
+          Duração restante (dias)
           <input
             type="number"
             min={0}
@@ -236,15 +236,15 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           />
         </label>
         <label>
-          Status
+          Situação
           <select value={act.status} onChange={(e) => setStatus(e.target.value as ActivityStatus)}>
-            <option value="not-started">Not started</option>
-            <option value="in-progress">In progress</option>
-            <option value="complete">Complete</option>
+            <option value="not-started">Não iniciado</option>
+            <option value="in-progress">Em andamento</option>
+            <option value="complete">Concluído</option>
           </select>
         </label>
         <label>
-          % complete
+          % concluído
           <input
             type="number"
             min={0}
@@ -255,15 +255,15 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           />
         </label>
         <label>
-          Actual start
+          Início real
           <input type="datetime-local" value={toInputDate(act.actualStart)} disabled={act.status === "not-started"} onChange={(e) => up({ actualStart: fromInputDate(e.target.value) })} />
         </label>
         <label>
-          Actual finish
+          Término real
           <input type="datetime-local" value={toInputDate(act.actualFinish)} disabled={act.status !== "complete"} onChange={(e) => up({ actualFinish: fromInputDate(e.target.value) })} />
         </label>
         <label>
-          Constraint
+          Restrição
           <select
             value={act.constraint?.type ?? ""}
             onChange={(e) => up({ constraint: e.target.value ? { type: e.target.value as ConstraintType, date: act.constraint?.date ?? act.start } : null })}
@@ -276,7 +276,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           </select>
         </label>
         <label>
-          Constraint date
+          Data da restrição
           <input
             type="datetime-local"
             value={toInputDate(act.constraint?.date ?? null)}
@@ -289,25 +289,25 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
 
       {show("dates") && (
       <section>
-        <h4>Dates</h4>
+        <h4>Datas</h4>
         <table className="props">
           <tbody>
             <tr>
-              <td>Start / Finish</td>
+              <td>Início / término</td>
               <td>
                 {fmtDate(act.start)} → {fmtDate(act.finish)}
               </td>
             </tr>
             <tr>
-              <td>Late start / finish</td>
+              <td>Início / término tardios</td>
               <td>{act.lateStart != null ? `${fmtDate(act.lateStart)} → ${fmtDate(act.lateFinish)}` : "run Schedule (F9)"}</td>
             </tr>
             <tr>
-              <td>Baseline</td>
+              <td>Linha de base</td>
               <td>{act.baselineStart != null ? `${fmtDate(act.baselineStart)} → ${fmtDate(act.baselineFinish)}` : "none"}</td>
             </tr>
             <tr>
-              <td>Total / free float</td>
+              <td>Folga total / livre</td>
               <td className={act.critical ? "bad" : ""}>
                 {act.totalFloatHours != null ? `${days(act.totalFloatHours)}d` : "–"} / {act.freeFloatHours != null ? `${days(act.freeFloatHours)}d` : "–"}
                 {act.critical ? " · critical" : ""}
@@ -320,7 +320,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
 
       {show("predecessors") && (
       <section>
-        <h4>Predecessors ({preds.length})</h4>
+        <h4>Predecessoras ({preds.length})</h4>
         <RelTable rels={preds} other={(r) => byId.get(r.predecessorId)} hpd={hpd} />
         <div className="row">
           <input placeholder={terms.activityId} value={newPred.code} onChange={(e) => setNewPred({ ...newPred, code: e.target.value })} list="activity-codes" style={{ width: 110 }} />
@@ -329,9 +329,9 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
               <option key={t}>{t}</option>
             ))}
           </select>
-          <input type="number" step={0.5} value={newPred.lag} onChange={(e) => setNewPred({ ...newPred, lag: e.target.value })} style={{ width: 64 }} title="Lag (days)" />
+          <input type="number" step={0.5} value={newPred.lag} onChange={(e) => setNewPred({ ...newPred, lag: e.target.value })} style={{ width: 64 }} title="Defasagem (dias)" />
           <button onClick={addPred} disabled={!newPred.code.trim()}>
-            Add
+            Adicionar
           </button>
         </div>
         <datalist id="activity-codes">
@@ -346,7 +346,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
 
       {show("successors") && (
       <section>
-        <h4>Successors ({succs.length})</h4>
+        <h4>Sucessoras ({succs.length})</h4>
         <RelTable rels={succs} other={(r) => byId.get(r.successorId)} hpd={hpd} />
         <div className="row">
           <input placeholder={terms.activityId} value={newSucc.code} onChange={(e) => setNewSucc({ ...newSucc, code: e.target.value })} list="activity-codes-s" style={{ width: 110 }} />
@@ -355,9 +355,9 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
               <option key={t}>{t}</option>
             ))}
           </select>
-          <input type="number" step={0.5} value={newSucc.lag} onChange={(e) => setNewSucc({ ...newSucc, lag: e.target.value })} style={{ width: 64 }} title="Lag (days)" />
+          <input type="number" step={0.5} value={newSucc.lag} onChange={(e) => setNewSucc({ ...newSucc, lag: e.target.value })} style={{ width: 64 }} title="Defasagem (dias)" />
           <button onClick={addSucc} disabled={!newSucc.code.trim()}>
-            Add
+            Adicionar
           </button>
         </div>
         {!show("predecessors") && (
@@ -374,16 +374,16 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
 
       {show("resources") && (
       <section>
-        <h4>Resources and cost</h4>
+        <h4>Recursos e custos</h4>
         {assignments.length > 0 && (
           <table className="props compact">
             <thead>
               <tr>
-                <td>Resource</td>
-                <td>Budget</td>
-                <td>Actual</td>
-                <td>Remain</td>
-                <td>Budget cost</td>
+                <td>Recurso</td>
+                <td>Orçamento</td>
+                <td>Realizado</td>
+                <td>Restante</td>
+                <td>Custo orçado</td>
                 <td />
               </tr>
             </thead>
@@ -435,7 +435,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
               });
             }}
           >
-            <option value="">+ Assign resource…</option>
+            <option value="">+ Atribuir recurso…</option>
             {resources.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.code} – {r.name} ({r.pricePerUnit}/{r.unit})
@@ -443,14 +443,14 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
             ))}
           </select>
         ) : (
-          <p className="muted">No resources in this schedule. Import a P6 or MS Project file that has them.</p>
+          <p className="muted">Este cronograma não contém recursos. Para adicioná-los, importe um arquivo do P6 ou do Microsoft Project que inclua recursos.</p>
         )}
       </section>
       )}
 
       {show("codes") && (
       <section>
-        <h4>Activity codes</h4>
+        <h4>Códigos de atividade</h4>
         <table className="props compact">
           <tbody>
             {[...codeTypes.keys()].sort().map((k) => (
@@ -478,8 +478,8 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           </tbody>
         </table>
         <div className="row">
-          <input placeholder="Code type" value={newCode.key} onChange={(e) => setNewCode({ ...newCode, key: e.target.value })} style={{ width: 130 }} />
-          <input placeholder="Code value" value={newCode.value} onChange={(e) => setNewCode({ ...newCode, value: e.target.value })} />
+          <input placeholder="Tipo de código" value={newCode.key} onChange={(e) => setNewCode({ ...newCode, key: e.target.value })} style={{ width: 130 }} />
+          <input placeholder="Valor do código" value={newCode.value} onChange={(e) => setNewCode({ ...newCode, value: e.target.value })} />
           <button
             disabled={!newCode.key.trim() || !newCode.value.trim()}
             onClick={() => {
@@ -487,7 +487,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
               setNewCode({ key: "", value: "" });
             }}
           >
-            Assign
+            Atribuir
           </button>
         </div>
       </section>
@@ -496,15 +496,15 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
       {show("steps") && (
       <section className="stack">
         <h4>
-          Steps{act.steps?.length ? ` · physical ${stepsPercent(act.steps)}% complete` : ""}
+          Etapas{act.steps?.length ? ` · physical ${stepsPercent(act.steps)}% complete` : ""}
         </h4>
         {(act.steps ?? []).length > 0 && (
           <table className="props compact">
             <thead>
               <tr>
-                <td>Step name</td>
-                <td>Weight</td>
-                <td>% complete</td>
+                <td>Nome da etapa</td>
+                <td>Peso</td>
+                <td>% concluído</td>
                 <td />
               </tr>
             </thead>
@@ -537,13 +537,13 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           </table>
         )}
         <div className="row">
-          <button onClick={() => up({ steps: [...(act.steps ?? []), { id: uid("step"), name: `Step ${(act.steps?.length ?? 0) + 1}`, weight: 1, pct: 0 }] })}>Add step</button>
+          <button onClick={() => up({ steps: [...(act.steps ?? []), { id: uid("step"), name: `Step ${(act.steps?.length ?? 0) + 1}`, weight: 1, pct: 0 }] })}>Adicionar etapa</button>
           <label>
-            Percent complete type{" "}
+            Tipo de percentual concluído{" "}
             <select value={act.pctType ?? "duration"} onChange={(e) => up({ pctType: e.target.value as Activity["pctType"], ...(e.target.value === "physical" && act.steps?.length && act.status !== "not-started" ? { percentComplete: stepsPercent(act.steps) } : {}) })}>
-              <option value="duration">Duration</option>
-              <option value="physical">Physical</option>
-              <option value="units">Units</option>
+              <option value="duration">Duração</option>
+              <option value="physical">Físico</option>
+              <option value="units">Unidades</option>
             </select>
           </label>
         </div>
@@ -559,10 +559,10 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
                 st.setStatus(`Added the ${t.name} steps to ${ids.length} activit${ids.length === 1 ? "y" : "ies"}.`);
               }}
             >
-              <option value="">Add steps from template…</option>
+              <option value="">Adicionar etapas de um modelo…</option>
               {schedule.stepTemplates!.map((t) => (
                 <option key={t.name} value={t.name}>
-                  {t.name} ({t.steps.length} steps)
+                  {t.name} ({t.steps.length} etapas)
                 </option>
               ))}
             </select>
@@ -576,17 +576,17 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
               st.commit({ ...schedule, stepTemplates: [...(schedule.stepTemplates ?? []).filter((x) => x.name !== tpl.name), tpl] }, "Save step template");
             }}
           >
-            Save as template
+            Salvar como modelo
           </button>
         </div>
-        <p className="muted">With the Physical type, the weighted step progress becomes the activity's % complete. Templates apply to every selected activity.</p>
+        <p className="muted">No tipo Físico, o avanço ponderado das etapas determina o percentual concluído da atividade. O modelo se aplica a todas as atividades selecionadas.</p>
       </section>
       )}
 
       {show("notebook") && (
       <section className="stack">
-        <h4>Notebook</h4>
-        <textarea rows={4} value={act.notes ?? ""} placeholder="General notes for this activity: assumptions, delays, instructions…" onChange={(e) => up({ notes: e.target.value || undefined })} />
+        <h4>Anotações</h4>
+        <textarea rows={4} value={act.notes ?? ""} placeholder="Anotações da atividade: premissas, atrasos, instruções…" onChange={(e) => up({ notes: e.target.value || undefined })} />
         {(schedule.notebookTopics ?? []).map((t) => (
           <label key={t}>
             {t}
@@ -609,7 +609,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
               if (t?.trim() && !(schedule.notebookTopics ?? []).includes(t.trim())) st.commit({ ...schedule, notebookTopics: [...(schedule.notebookTopics ?? []), t.trim()] }, "Add notebook topic");
             }}
           >
-            Add notebook topic
+            Adicionar assunto à anotação
           </button>
         </div>
       </section>
@@ -617,7 +617,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
 
       {show("udf") && (
       <section>
-        <h4>User fields</h4>
+        <h4>Campos do usuário</h4>
         {Object.entries(act.userFields ?? {}).map(([k, v]) => (
           <div className="row" key={k}>
             <span style={{ width: 110 }} className="muted">
@@ -637,8 +637,8 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
           </div>
         ))}
         <div className="row">
-          <input placeholder="Field" value={newField.key} onChange={(e) => setNewField({ ...newField, key: e.target.value })} style={{ width: 110 }} />
-          <input placeholder="Value" value={newField.value} onChange={(e) => setNewField({ ...newField, value: e.target.value })} />
+          <input placeholder="Campo" value={newField.key} onChange={(e) => setNewField({ ...newField, key: e.target.value })} style={{ width: 110 }} />
+          <input placeholder="Valor" value={newField.value} onChange={(e) => setNewField({ ...newField, value: e.target.value })} />
           <button
             disabled={!newField.key.trim()}
             onClick={() => {
@@ -646,10 +646,10 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
               setNewField({ key: "", value: "" });
             }}
           >
-            Add
+            Adicionar
           </button>
         </div>
-        <p className="muted">User fields can drive link rules (Rules tab → activity field).</p>
+        <p className="muted">Use campos do usuário nas regras de vínculo em Regras → Campo da atividade.</p>
       </section>
       )}
     </div>
@@ -658,7 +658,7 @@ function Fields({ act, hpd, only }: { act: Activity; hpd: number; only?: EditorS
 
 function RelTable({ rels, other, hpd }: { rels: import("../core/types").Relationship[]; other: (r: import("../core/types").Relationship) => Activity | undefined; hpd: number }) {
   const st = useStore();
-  if (!rels.length) return <p className="muted">None.</p>;
+  if (!rels.length) return <p className="muted">Nenhum.</p>;
   return (
     <table className="props compact">
       <tbody>
@@ -672,8 +672,8 @@ function RelTable({ rels, other, hpd }: { rels: import("../core/types").Relation
                 </button>{" "}
                 <span className="muted">{a?.name}</span>
               </td>
-              <td title="Driving: this link sets the successor's early date (relationship free float 0). Run Schedule (F9) to update.">
-                {r.driving ? <b className="bad">Driving</b> : r.freeFloatHours != null ? <span className="muted">{Math.round((r.freeFloatHours / hpd) * 10) / 10}d float</span> : ""}
+              <td title="Determinante: este vínculo define a data mais cedo da sucessora, com folga livre igual a zero. Pressione F9 para recalcular.">
+                {r.driving ? <b className="bad">Determinante</b> : r.freeFloatHours != null ? <span className="muted">{Math.round((r.freeFloatHours / hpd) * 10) / 10}d de folga</span> : ""}
               </td>
               <td>
                 <select value={r.type} onChange={(e) => st.updateRelationship(r.id, { type: e.target.value as RelationshipType })}>
@@ -688,7 +688,7 @@ function RelTable({ rels, other, hpd }: { rels: import("../core/types").Relation
                   step={0.5}
                   value={Math.round((r.lagHours / hpd) * 100) / 100}
                   onChange={(e) => st.updateRelationship(r.id, { lagHours: (Number(e.target.value) || 0) * hpd })}
-                  title="Lag (days)"
+                  title="Defasagem (dias)"
                   style={{ width: 56 }}
                 />
               </td>

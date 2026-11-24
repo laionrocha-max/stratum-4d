@@ -159,19 +159,19 @@ const Check = ({ label, checked, onChange, disabled }: { label: string; checked:
 );
 
 const VIEW_LABEL: Record<MspView, string> = {
-  gantt: "GANTT CHART",
-  tracking: "TRACKING GANTT",
-  "task-sheet": "TASK SHEET",
-  "task-usage": "TASK USAGE",
-  network: "NETWORK DIAGRAM",
-  calendar: "CALENDAR",
-  "team-planner": "TEAM PLANNER",
-  "resource-sheet": "RESOURCE SHEET",
-  "resource-usage": "RESOURCE USAGE",
-  "resource-graph": "RESOURCE GRAPH",
+  gantt: "Gráfico de Gantt",
+  tracking: "Gantt de acompanhamento",
+  "task-sheet": "Planilha de tarefas",
+  "task-usage": "Uso de tarefas",
+  network: "Diagrama de rede",
+  calendar: "Calendário",
+  "team-planner": "Planejador de equipe",
+  "resource-sheet": "Planilha de recursos",
+  "resource-usage": "Uso de recursos",
+  "resource-graph": "Gráfico de recursos",
 };
 const TASK_VIEWS: MspView[] = ["gantt", "tracking", "task-sheet", "task-usage", "network", "calendar"];
-const viewName = (v: MspView) => VIEW_LABEL[v].toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+const viewName = (v: MspView) => VIEW_LABEL[v];
 
 export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: ReactNode; status: ReactNode }) {
   const schedule = useStore((s) => s.schedule);
@@ -227,7 +227,7 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
     const depth = new Map<string, number>();
     for (const r of buildGanttRows(s, "current")) if (r.kind === "wbs") depth.set(r.id, r.depth);
     const show = (lvl: number | null) => useStore.getState().setCollapsedWbs(new Set(lvl === null ? [] : [...depth].filter(([, d]) => d >= lvl - 1).map(([id]) => id)));
-    return [{ label: "All Subtasks", onClick: () => show(null) }, ...[1, 2, 3, 4, 5].map((n) => ({ label: `Level ${n}`, onClick: () => show(n) }))];
+    return [{ label: "Todas as subtarefas", onClick: () => show(null) }, ...[1, 2, 3, 4, 5].map((n) => ({ label: `Level ${n}`, onClick: () => show(n) }))];
   };
   const tablesMenu = (): CtxItem[] => (Object.keys(TABLES) as MspTable[]).map((k) => ({ label: TABLES[k].label, checked: m.table === k, onClick: () => m.set({ table: k }) }));
   const sortMenu = (): CtxItem[] => [
@@ -239,7 +239,7 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
       ["id", "by ID"],
     ].map(([k, l]) => ({ label: l, checked: m.sort.by === k, onClick: () => m.set({ sort: { by: k as never, desc: k === "priority" || k === "cost" } }) })),
     "sep",
-    { label: "Sort By…", onClick: () => m.open("sort") },
+    { label: "Classificar por…", onClick: () => m.open("sort") },
   ];
   const timescaleMenu = (): CtxItem[] =>
     [
@@ -257,8 +257,8 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
     { label: "1 Week", onClick: () => moveTasks(7) },
     { label: "4 Weeks", onClick: () => moveTasks(28) },
     "sep",
-    { label: "Back 1 Day", onClick: () => moveTasks(-1) },
-    { label: "Back 1 Week", onClick: () => moveTasks(-7) },
+    { label: "Voltar um dia", onClick: () => moveTasks(-1) },
+    { label: "Voltar uma semana", onClick: () => moveTasks(-7) },
   ];
   const inspect = () => {
     const s = useStore.getState().schedule;
@@ -276,167 +276,167 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
     if (on) m.set({ showTimeline: true });
   };
   const baselineMenu = (): CtxItem[] => [
-    { label: "Set Baseline…", onClick: () => m.open("setBaseline") },
-    { label: "Clear Baseline…", onClick: () => m.open("clearBaseline") },
+    { label: "Definir linha de base…", onClick: () => m.open("setBaseline") },
+    { label: "Limpar linha de base…", onClick: () => m.open("clearBaseline") },
   ];
 
   const Body: Record<RibbonTab, ReactNode> = {
     task: (
       <>
-        <Group_ label="View">
-          <Big Icon={ChartGantt} label="Gantt Chart" menu={() => viewsMenu([...TASK_VIEWS, "team-planner", "resource-sheet", "resource-usage"])} active={ganttLike} />
+        <Group_ label="Exibir">
+          <Big Icon={ChartGantt} label="Gráfico de Gantt" menu={() => viewsMenu([...TASK_VIEWS, "team-planner", "resource-sheet", "resource-usage"])} active={ganttLike} />
         </Group_>
-        <Group_ label="Clipboard">
-          <Big Icon={ClipboardPaste} label="Paste" onClick={paste} disabled={none} />
-          <Small label="Cut" Icon={Scissors} onClick={cutSelected} disabled={!act} />
-          <Small label="Copy" Icon={Copy} onClick={copySelected} disabled={!act} />
+        <Group_ label="Área de transferência">
+          <Big Icon={ClipboardPaste} label="Colar" onClick={paste} disabled={none} />
+          <Small label="Recortar" Icon={Scissors} onClick={cutSelected} disabled={!act} />
+          <Small label="Copiar" Icon={Copy} onClick={copySelected} disabled={!act} />
         </Group_>
-        <Group_ label="Schedule">
+        <Group_ label="Cronograma">
           <div className="rb-sched">
             <div className="rb-grid">
               {[0, 25, 50, 75, 100].map((p) => (
-                <button key={p} className="rb-pct" title={`${p}% Complete`} disabled={!act} onClick={() => setPercent(p)}>
+                <button key={p} className="rb-pct" title={`${p}% concluído`} disabled={!act} onClick={() => setPercent(p)}>
                   {p}%
                 </button>
               ))}
             </div>
             <div className="rb-sched-row">
-              <button className="rb-icon" title="Outdent Task (Alt+Shift+Left)" onClick={outdent} disabled={none}>
+              <button className="rb-icon" title="Diminuir recuo da tarefa (Alt+Shift+←)" onClick={outdent} disabled={none}>
                 <IndentDecrease size={15} aria-hidden />
               </button>
-              <button className="rb-icon" title="Indent Task (Alt+Shift+Right)" onClick={indent} disabled={none}>
+              <button className="rb-icon" title="Aumentar recuo da tarefa (Alt+Shift+→)" onClick={indent} disabled={none}>
                 <IndentIncrease size={15} aria-hidden />
               </button>
-              <button className="rb-icon" title="Link the Selected Tasks (Ctrl+F2)" onClick={linkSelected} disabled={none}>
+              <button className="rb-icon" title="Vincular as tarefas selecionadas (Ctrl+F2)" onClick={linkSelected} disabled={none}>
                 <Link2 size={15} aria-hidden />
               </button>
-              <button className="rb-icon" title="Unlink Tasks (Ctrl+Shift+F2)" onClick={unlinkSelected} disabled={!act}>
+              <button className="rb-icon" title="Desvincular tarefas (Ctrl+Shift+F2)" onClick={unlinkSelected} disabled={!act}>
                 <Unlink size={15} aria-hidden />
               </button>
             </div>
           </div>
-          <Small label="Mark on Track" Icon={CheckCheck} onClick={markOnTrack} disabled={!act} />
-          <Small label="Respect Links" Icon={Link2} onClick={respectLinks} disabled={!act} />
-          <Small label={act?.inactive ? "Activate" : "Inactivate"} Icon={Ban} onClick={toggleInactive} disabled={!act} />
-          <Small label="Split Task" Icon={Scissors} onClick={() => (m.set({ splitMode: !m.splitMode }), m.splitMode || useStore.getState().setStatus("Split Task: click a bar where the work should stop. A one-day split is added; repeat to make it longer."))} active={m.splitMode} disabled={none} />
+          <Small label="Marcar conforme o plano" Icon={CheckCheck} onClick={markOnTrack} disabled={!act} />
+          <Small label="Respeitar dependências" Icon={Link2} onClick={respectLinks} disabled={!act} />
+          <Small label={act?.inactive ? "Activate" : "Desativar"} Icon={Ban} onClick={toggleInactive} disabled={!act} />
+          <Small label="Dividir tarefa" Icon={Scissors} onClick={() => (m.set({ splitMode: !m.splitMode }), m.splitMode || useStore.getState().setStatus("Split Task: click a bar where the work should stop. A one-day split is added; repeat to make it longer."))} active={m.splitMode} disabled={none} />
         </Group_>
-        <Group_ label="Tasks">
-          <Big Icon={Pin} label="Manually Schedule" onClick={() => setMode("manual")} disabled={!act} active={act?.taskMode === "manual"} />
-          <Big Icon={CalendarClock} label="Auto Schedule" onClick={() => setMode("auto")} disabled={!act} active={!!act && act.taskMode !== "manual"} />
-          <Small label="Inspect" Icon={ScanSearch} onClick={inspect} disabled={!act} />
-          <Small label="Move" Icon={MoveRight} menu={moveMenu} disabled={!act} />
-          <Small label="Mode" Icon={CalendarClock} menu={() => [{ label: "Manually Schedule", onClick: () => setMode("manual") }, { label: "Auto Schedule", onClick: () => setMode("auto") }]} disabled={!act} />
+        <Group_ label="Tarefas">
+          <Big Icon={Pin} label="Agendar manualmente" onClick={() => setMode("manual")} disabled={!act} active={act?.taskMode === "manual"} />
+          <Big Icon={CalendarClock} label="Agendar automaticamente" onClick={() => setMode("auto")} disabled={!act} active={!!act && act.taskMode !== "manual"} />
+          <Small label="Inspecionar" Icon={ScanSearch} onClick={inspect} disabled={!act} />
+          <Small label="Mover" Icon={MoveRight} menu={moveMenu} disabled={!act} />
+          <Small label="Modo" Icon={CalendarClock} menu={() => [{ label: "Agendar manualmente", onClick: () => setMode("manual") }, { label: "Agendar automaticamente", onClick: () => setMode("auto") }]} disabled={!act} />
         </Group_>
-        <Group_ label="Insert">
-          <Big Icon={ListPlus} label="Task" onClick={() => insertTask()} disabled={none} />
-          <Small label="Summary" Icon={ListTree} onClick={insertSummaryTask} disabled={none} />
-          <Small label="Milestone" Icon={Diamond} onClick={() => insertTask("<New Milestone>", true)} disabled={none} />
-          <Small label="Recurring Task" Icon={Repeat} onClick={() => m.open("recurring")} disabled={none} />
+        <Group_ label="Inserir">
+          <Big Icon={ListPlus} label="Tarefa" onClick={() => insertTask()} disabled={none} />
+          <Small label="Resumo" Icon={ListTree} onClick={insertSummaryTask} disabled={none} />
+          <Small label="Marco" Icon={Diamond} onClick={() => insertTask("<New Milestone>", true)} disabled={none} />
+          <Small label="Tarefa recorrente" Icon={Repeat} onClick={() => m.open("recurring")} disabled={none} />
         </Group_>
-        <Group_ label="Properties">
-          <Big Icon={Info} label="Information" onClick={() => m.open("taskInfo")} disabled={!act} />
-          <Small label="Notes" Icon={StickyNote} onClick={() => m.open("taskInfo", "notes")} disabled={!act} />
-          <Small label="Details" Icon={TableProperties} onClick={() => m.set({ details: !m.details })} active={m.details} />
-          <Small label="Add to Timeline" Icon={GalleryHorizontal} onClick={addToTimeline} disabled={!act} active={!!act?.onTimeline} />
+        <Group_ label="Propriedades">
+          <Big Icon={Info} label="Informações" onClick={() => m.open("taskInfo")} disabled={!act} />
+          <Small label="Anotações" Icon={StickyNote} onClick={() => m.open("taskInfo", "notes")} disabled={!act} />
+          <Small label="Detalhes" Icon={TableProperties} onClick={() => m.set({ details: !m.details })} active={m.details} />
+          <Small label="Adicionar à linha do tempo" Icon={GalleryHorizontal} onClick={addToTimeline} disabled={!act} active={!!act?.onTimeline} />
         </Group_>
-        <Group_ label="Editing">
-          <Small label="Scroll to Task" Icon={ScrollText} onClick={() => ganttCommand("scroll-to-selected")} disabled={!act} />
-          <Small label="Find" Icon={Search} onClick={() => findRef.current?.focus()} disabled={none} />
-          <Small label="Clear" Icon={Eraser} menu={() => [{ label: "Clear Filter", onClick: () => (m.set({ filter: "all", highlight: "all", customFilter: null }), setFilterText({ text: "" })) }, { label: "Clear Sort and Group", onClick: () => m.set({ sort: { by: "id", desc: false }, group: "none" }) }]} disabled={none} />
+        <Group_ label="Edição">
+          <Small label="Ir à tarefa" Icon={ScrollText} onClick={() => ganttCommand("scroll-to-selected")} disabled={!act} />
+          <Small label="Localizar" Icon={Search} onClick={() => findRef.current?.focus()} disabled={none} />
+          <Small label="Limpar" Icon={Eraser} menu={() => [{ label: "Limpar filtro", onClick: () => (m.set({ filter: "all", highlight: "all", customFilter: null }), setFilterText({ text: "" })) }, { label: "Limpar classificação e agrupamento", onClick: () => m.set({ sort: { by: "id", desc: false }, group: "none" }) }]} disabled={none} />
         </Group_>
       </>
     ),
     resource: (
       <>
-        <Group_ label="View">
-          <Big Icon={UsersRound} label="Team Planner" onClick={() => setView("team-planner")} active={view === "team-planner"} disabled={none} />
+        <Group_ label="Exibir">
+          <Big Icon={UsersRound} label="Planejador de equipe" onClick={() => setView("team-planner")} active={view === "team-planner"} disabled={none} />
         </Group_>
-        <Group_ label="Assignments">
-          <Big Icon={Users} label="Assign Resources" onClick={() => m.open("assignResources")} disabled={!act} />
+        <Group_ label="Atribuições">
+          <Big Icon={Users} label="Atribuir recursos" onClick={() => m.open("assignResources")} disabled={!act} />
         </Group_>
-        <Group_ label="Insert">
-          <Big Icon={UserPlus} label="Add Resources" onClick={() => setView("resource-sheet")} disabled={none} />
+        <Group_ label="Inserir">
+          <Big Icon={UserPlus} label="Adicionar recursos" onClick={() => setView("resource-sheet")} disabled={none} />
         </Group_>
-        <Group_ label="Properties">
-          <Big Icon={Info} label="Information" onClick={() => (view === "resource-sheet" ? m.open("resourceInfo") : m.open("taskInfo", "resources"))} disabled={none} />
-          <Small label="Details" Icon={TableProperties} onClick={() => m.set({ details: !m.details })} active={m.details} />
+        <Group_ label="Propriedades">
+          <Big Icon={Info} label="Informações" onClick={() => (view === "resource-sheet" ? m.open("resourceInfo") : m.open("taskInfo", "resources"))} disabled={none} />
+          <Small label="Detalhes" Icon={TableProperties} onClick={() => m.set({ details: !m.details })} active={m.details} />
         </Group_>
-        <Group_ label="Level">
-          <Big Icon={Scale} label="Level All" onClick={levelAll} disabled={none} />
-          <Small label="Leveling Options" Icon={Scale} onClick={() => m.open("levelOptions")} disabled={none} />
-          <Small label="Clear Leveling" Icon={Eraser} onClick={clearLeveling} disabled={none} />
-          <Small label="Next Overallocation" Icon={MoveRight} onClick={nextOverallocation} disabled={none} />
+        <Group_ label="Nivelar">
+          <Big Icon={Scale} label="Nivelar todos" onClick={levelAll} disabled={none} />
+          <Small label="Opções de nivelamento" Icon={Scale} onClick={() => m.open("levelOptions")} disabled={none} />
+          <Small label="Limpar nivelamento" Icon={Eraser} onClick={clearLeveling} disabled={none} />
+          <Small label="Próxima superalocação" Icon={MoveRight} onClick={nextOverallocation} disabled={none} />
         </Group_>
       </>
     ),
     report: (
       <>
-        <Group_ label="View Reports">
-          <Big Icon={LayoutDashboard} label="Dashboards" onClick={a.dashboards} />
-          <Big Icon={Users} label="Resources" onClick={a.dashboards} />
-          <Big Icon={CalendarRange} label="Costs" onClick={a.dashboards} />
-          <Big Icon={ChartGantt} label="In Progress" onClick={() => (m.set({ filter: "incomplete" }), setView("gantt"))} disabled={none} />
+        <Group_ label="Ver relatórios">
+          <Big Icon={LayoutDashboard} label="Painéis" onClick={a.dashboards} />
+          <Big Icon={Users} label="Recursos" onClick={a.dashboards} />
+          <Big Icon={CalendarRange} label="Custos" onClick={a.dashboards} />
+          <Big Icon={ChartGantt} label="Em andamento" onClick={() => (m.set({ filter: "incomplete" }), setView("gantt"))} disabled={none} />
         </Group_>
-        <Group_ label="Project">
-          <Big Icon={Info} label="Project Statistics" onClick={() => m.open("statistics")} disabled={none} />
+        <Group_ label="Projeto">
+          <Big Icon={Info} label="Estatísticas do projeto" onClick={() => m.open("statistics")} disabled={none} />
         </Group_>
-        <Group_ label="Export">
-          <Big Icon={Download} label="Visual Reports (CSV)" onClick={a.exportCsv} disabled={none} />
-          <Small label="Print" Icon={Printer} onClick={() => void printPage(`${schedule?.projectCode ?? "Project"} – ${viewName(view)}`)} disabled={none} />
+        <Group_ label="Exportar">
+          <Big Icon={Download} label="Relatórios visuais (CSV)" onClick={a.exportCsv} disabled={none} />
+          <Small label="Imprimir" Icon={Printer} onClick={() => void printPage(`${schedule?.projectCode ?? "Project"} – ${viewName(view)}`)} disabled={none} />
         </Group_>
       </>
     ),
     project: (
       <>
-        <Group_ label="Properties">
-          <Big Icon={Info} label="Project Information" onClick={() => m.open("projectInfo")} disabled={none} />
-          <Big Icon={CalendarDays} label="Change Working Time" onClick={() => m.open("workingTime")} disabled={none} />
-          <Small label="Custom Fields" Icon={Table} onClick={() => m.open("customFields")} disabled={none} />
-          <Small label="Options" Icon={TableProperties} onClick={() => m.open("options")} />
+        <Group_ label="Propriedades">
+          <Big Icon={Info} label="Informações do projeto" onClick={() => m.open("projectInfo")} disabled={none} />
+          <Big Icon={CalendarDays} label="Alterar período de trabalho" onClick={() => m.open("workingTime")} disabled={none} />
+          <Small label="Campos personalizados" Icon={Table} onClick={() => m.open("customFields")} disabled={none} />
+          <Small label="Opções" Icon={TableProperties} onClick={() => m.open("options")} />
         </Group_>
-        <Group_ label="Schedule">
-          <Big Icon={CalendarCheck} label="Calculate Project" onClick={a.schedule} disabled={none} />
-          <Big Icon={Flag} label="Set Baseline" menu={baselineMenu} disabled={none} />
-          <Small label="Move Project" Icon={MoveRight} onClick={() => m.open("moveProject")} disabled={none} />
-          <Small label="Assign Baseline from File" Icon={FileInput} onClick={a.assignBaseline} disabled={none} />
+        <Group_ label="Cronograma">
+          <Big Icon={CalendarCheck} label="Calcular projeto" onClick={a.schedule} disabled={none} />
+          <Big Icon={Flag} label="Definir linha de base" menu={baselineMenu} disabled={none} />
+          <Small label="Mover projeto" Icon={MoveRight} onClick={() => m.open("moveProject")} disabled={none} />
+          <Small label="Atribuir linha de base a partir de arquivo" Icon={FileInput} onClick={a.assignBaseline} disabled={none} />
         </Group_>
-        <Group_ label="Status">
+        <Group_ label="Situação">
           <div className="rb-field">
-            <DataDateInput label="Status Date" />
+            <DataDateInput label="Data de status" />
           </div>
-          <Big Icon={CalendarRange} label="Update Project" onClick={() => m.open("updateProject")} disabled={none} />
+          <Big Icon={CalendarRange} label="Atualizar projeto" onClick={() => m.open("updateProject")} disabled={none} />
         </Group_>
-        <Group_ label="Data">
-          <Big Icon={FileInput} label="Import from P6" onClick={a.importP6} />
-          {a.pushP6 && <Big Icon={Upload} label="Update P6" onClick={a.pushP6} />}
-          <Small label="Save as MS Project XML" Icon={Download} onClick={a.exportMspdi} disabled={none} />
+        <Group_ label="Dados">
+          <Big Icon={FileInput} label="Importar do P6" onClick={a.importP6} />
+          {a.pushP6 && <Big Icon={Upload} label="Atualizar P6" onClick={a.pushP6} />}
+          <Small label="Salvar como XML do Microsoft Project" Icon={Download} onClick={a.exportMspdi} disabled={none} />
         </Group_>
       </>
     ),
     view: (
       <>
-        <Group_ label="Task Views">
-          <Big Icon={ChartGantt} label="Gantt Chart" onClick={() => setView("gantt")} active={view === "gantt"} />
-          <Big Icon={TableProperties} label="Task Usage" onClick={() => setView("task-usage")} active={view === "task-usage"} disabled={none} />
-          <Small label="Network Diagram" Icon={Network} onClick={() => setView("network")} active={view === "network"} disabled={none} />
-          <Small label="Calendar" Icon={CalendarDays} onClick={() => setView("calendar")} active={view === "calendar"} disabled={none} />
-          <Small label="Other Views" Icon={Table} menu={() => viewsMenu(["tracking", "task-sheet"])} />
+        <Group_ label="Modos de exibição de tarefas">
+          <Big Icon={ChartGantt} label="Gráfico de Gantt" onClick={() => setView("gantt")} active={view === "gantt"} />
+          <Big Icon={TableProperties} label="Uso de tarefas" onClick={() => setView("task-usage")} active={view === "task-usage"} disabled={none} />
+          <Small label="Diagrama de rede" Icon={Network} onClick={() => setView("network")} active={view === "network"} disabled={none} />
+          <Small label="Calendário" Icon={CalendarDays} onClick={() => setView("calendar")} active={view === "calendar"} disabled={none} />
+          <Small label="Outras exibições" Icon={Table} menu={() => viewsMenu(["tracking", "task-sheet"])} />
         </Group_>
-        <Group_ label="Resource Views">
-          <Big Icon={UsersRound} label="Team Planner" onClick={() => setView("team-planner")} active={view === "team-planner"} disabled={none} />
-          <Small label="Resource Usage" Icon={Users} onClick={() => setView("resource-usage")} active={view === "resource-usage"} disabled={none} />
-          <Small label="Resource Sheet" Icon={Sheet} onClick={() => setView("resource-sheet")} active={view === "resource-sheet"} disabled={none} />
-          <Small label="Resource Graph" Icon={ChartColumn} onClick={() => setView("resource-graph")} active={view === "resource-graph"} disabled={none} />
+        <Group_ label="Modos de exibição de recursos">
+          <Big Icon={UsersRound} label="Planejador de equipe" onClick={() => setView("team-planner")} active={view === "team-planner"} disabled={none} />
+          <Small label="Uso de recursos" Icon={Users} onClick={() => setView("resource-usage")} active={view === "resource-usage"} disabled={none} />
+          <Small label="Planilha de recursos" Icon={Sheet} onClick={() => setView("resource-sheet")} active={view === "resource-sheet"} disabled={none} />
+          <Small label="Gráfico de recursos" Icon={ChartColumn} onClick={() => setView("resource-graph")} active={view === "resource-graph"} disabled={none} />
         </Group_>
-        <Group_ label="Data">
-          <Small label="Sort" Icon={ArrowDownAZ} menu={sortMenu} disabled={!ganttLike} />
-          <Small label="Outline" Icon={ListTree} menu={outlineMenu} disabled={!ganttLike} />
-          <Small label="Tables" Icon={Table} menu={tablesMenu} disabled={!ganttLike} />
+        <Group_ label="Dados">
+          <Small label="Classificar" Icon={ArrowDownAZ} menu={sortMenu} disabled={!ganttLike} />
+          <Small label="Estrutura de tópicos" Icon={ListTree} menu={outlineMenu} disabled={!ganttLike} />
+          <Small label="Tabelas" Icon={Table} menu={tablesMenu} disabled={!ganttLike} />
           <div className="rb-dd">
             <span>
-              <Highlighter size={13} aria-hidden /> Highlight:
+              <Highlighter size={13} aria-hidden /> Realce:
             </span>
-            <select value={m.highlight} onChange={(e) => m.set({ highlight: e.target.value as MspFilter })} disabled={!ganttLike} aria-label="Highlight">
+            <select value={m.highlight} onChange={(e) => m.set({ highlight: e.target.value as MspFilter })} disabled={!ganttLike} aria-label="Realçar">
               {FILTER_NAMES.filter(([k]) => k !== "date-range" && k !== "summary").map(([k, l]) => (
                 <option key={k} value={k}>
                   {k === "all" ? "[No Highlight]" : l}
@@ -446,7 +446,7 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
           </div>
           <div className="rb-dd">
             <span>
-              <ListFilter size={13} aria-hidden /> Filter:
+              <ListFilter size={13} aria-hidden /> Filtro:
             </span>
             <select
               value={m.customFilter ? `custom:${m.customFilter}` : m.filter}
@@ -459,7 +459,7 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
                 m.set({ filter: v as MspFilter, customFilter: null });
               }}
               disabled={!ganttLike}
-              aria-label="Filter"
+              aria-label="Filtro"
             >
               {FILTER_NAMES.map(([k, l]) => (
                 <option key={k} value={k}>
@@ -467,7 +467,7 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
                 </option>
               ))}
               {m.customFilters.length > 0 && (
-                <optgroup label="Custom">
+                <optgroup label="Personalizado">
                   {m.customFilters.map((f) => (
                     <option key={f.name} value={`custom:${f.name}`}>
                       {f.name}
@@ -475,15 +475,15 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
                   ))}
                 </optgroup>
               )}
-              <option value="__new">New Filter…</option>
+              <option value="__new">Novo filtro…</option>
               {m.customFilter && <option value="__edit">Edit '{m.customFilter}'…</option>}
             </select>
           </div>
           <div className="rb-dd">
             <span>
-              <Group size={13} aria-hidden /> Group by:
+              <Group size={13} aria-hidden /> Agrupar por:
             </span>
-            <select value={m.group} onChange={(e) => m.set({ group: e.target.value as typeof m.group })} disabled={!ganttLike} aria-label="Group by">
+            <select value={m.group} onChange={(e) => m.set({ group: e.target.value as typeof m.group })} disabled={!ganttLike} aria-label="Agrupar por">
               {GROUP_NAMES.map(([k, l]) => (
                 <option key={k} value={k}>
                   {l}
@@ -493,39 +493,39 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
           </div>
         </Group_>
         <Group_ label="Zoom">
-          <Small label="Timescale" Icon={Ruler} menu={timescaleMenu} disabled={none} />
-          <Small label="Zoom" Icon={Search} menu={() => [{ label: "Zoom In", onClick: zoomIn }, { label: "Zoom Out", onClick: zoomOut }, { label: "Zoom…", onClick: () => m.open("timescale") }]} disabled={none} />
-          <Big Icon={Maximize2} label="Entire Project" onClick={() => ganttCommand("fit")} disabled={none} />
-          <Big Icon={ScrollText} label="Selected Tasks" onClick={() => ganttCommand("scroll-to-selected")} disabled={!act} />
+          <Small label="Escala de tempo" Icon={Ruler} menu={timescaleMenu} disabled={none} />
+          <Small label="Zoom" Icon={Search} menu={() => [{ label: "Aproximar", onClick: zoomIn }, { label: "Afastar", onClick: zoomOut }, { label: "Zoom…", onClick: () => m.open("timescale") }]} disabled={none} />
+          <Big Icon={Maximize2} label="Projeto inteiro" onClick={() => ganttCommand("fit")} disabled={none} />
+          <Big Icon={ScrollText} label="Tarefas selecionadas" onClick={() => ganttCommand("scroll-to-selected")} disabled={!act} />
         </Group_>
-        <Group_ label="Split View">
-          <Check label="Timeline" checked={m.showTimeline} onChange={(v) => m.set({ showTimeline: v })} />
-          <Check label="Details" checked={m.details} onChange={(v) => m.set({ details: v })} />
+        <Group_ label="Dividir exibição">
+          <Check label="Linha do tempo" checked={m.showTimeline} onChange={(v) => m.set({ showTimeline: v })} />
+          <Check label="Detalhes" checked={m.details} onChange={(v) => m.set({ details: v })} />
         </Group_>
       </>
     ),
     format: (
       <>
-        <Group_ label="Columns">
-          <Big Icon={Plus} label="Insert Column" onClick={() => (document.querySelector(".mspg-hcell.add") as HTMLElement | null)?.click()} disabled={!ganttLike || none} />
-          <Small label="Tables" Icon={Table} menu={tablesMenu} disabled={!ganttLike} />
+        <Group_ label="Colunas">
+          <Big Icon={Plus} label="Inserir coluna" onClick={() => (document.querySelector(".mspg-hcell.add") as HTMLElement | null)?.click()} disabled={!ganttLike || none} />
+          <Small label="Tabelas" Icon={Table} menu={tablesMenu} disabled={!ganttLike} />
         </Group_>
-        <Group_ label="Format">
-          <Big Icon={Palette} label="Bar Styles" onClick={() => m.open("barStyles", "bars")} disabled={none} />
-          <Small label="Text Styles" Icon={Type} onClick={() => m.open("barStyles", "text")} disabled={none} />
+        <Group_ label="Formato">
+          <Big Icon={Palette} label="Estilos de barra" onClick={() => m.open("barStyles", "bars")} disabled={none} />
+          <Small label="Estilos de texto" Icon={Type} onClick={() => m.open("barStyles", "text")} disabled={none} />
         </Group_>
-        <Group_ label="Bar Styles">
-          <Check label="Critical Tasks" checked={format.criticalTasks} onChange={(v) => m.setFormat({ criticalTasks: v })} />
-          <Check label="Slack" checked={format.slack} onChange={(v) => m.setFormat({ slack: v })} />
-          <Check label="Late Tasks" checked={format.lateTasks} onChange={(v) => m.setFormat({ lateTasks: v })} />
-          <Check label="Baseline" checked={format.baseline} onChange={(v) => m.setFormat({ baseline: v })} />
-          <Check label="Link Lines" checked={format.linkLines} onChange={(v) => m.setFormat({ linkLines: v })} />
-          <Check label="Gridlines" checked={format.gridlines} onChange={(v) => m.setFormat({ gridlines: v })} />
+        <Group_ label="Estilos de barra">
+          <Check label="Tarefas críticas" checked={format.criticalTasks} onChange={(v) => m.setFormat({ criticalTasks: v })} />
+          <Check label="Folga" checked={format.slack} onChange={(v) => m.setFormat({ slack: v })} />
+          <Check label="Tarefas atrasadas" checked={format.lateTasks} onChange={(v) => m.setFormat({ lateTasks: v })} />
+          <Check label="Linha de base" checked={format.baseline} onChange={(v) => m.setFormat({ baseline: v })} />
+          <Check label="Linhas de dependência" checked={format.linkLines} onChange={(v) => m.setFormat({ linkLines: v })} />
+          <Check label="Linhas de grade" checked={format.gridlines} onChange={(v) => m.setFormat({ gridlines: v })} />
         </Group_>
-        <Group_ label="Task Path">
+        <Group_ label="Caminho da tarefa">
           <Big
             Icon={Route}
-            label="Task Path"
+            label="Caminho da tarefa"
             active={format.taskPath !== "none"}
             menu={() =>
               (
@@ -539,31 +539,31 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
             }
           />
         </Group_>
-        <Group_ label="Bar Text">
+        <Group_ label="Texto da barra">
           <div className="rb-dd">
-            <span>Right of bars:</span>
+            <span>À direita das barras:</span>
             <select value={format.barText} onChange={(e) => m.setFormat({ barText: e.target.value as typeof format.barText })} aria-label="Bar text">
-              <option value="resources">Resource Names</option>
-              <option value="name">Task Name</option>
-              <option value="none">None</option>
+              <option value="resources">Nomes dos recursos</option>
+              <option value="name">Nome da tarefa</option>
+              <option value="none">Nenhum</option>
             </select>
           </div>
         </Group_>
-        <Group_ label="Show/Hide">
-          <Check label="Outline Number" checked={format.outlineNumber} onChange={(v) => m.setFormat({ outlineNumber: v })} />
-          <Check label="Project Summary Task" checked={format.projectSummary} onChange={(v) => m.setFormat({ projectSummary: v })} />
-          <Check label="Summary Tasks" checked={format.summaryTasks} onChange={(v) => m.setFormat({ summaryTasks: v })} />
+        <Group_ label="Mostrar ou ocultar">
+          <Check label="Número da estrutura de tópicos" checked={format.outlineNumber} onChange={(v) => m.setFormat({ outlineNumber: v })} />
+          <Check label="Tarefa-resumo do projeto" checked={format.projectSummary} onChange={(v) => m.setFormat({ projectSummary: v })} />
+          <Check label="Tarefas-resumo" checked={format.summaryTasks} onChange={(v) => m.setFormat({ summaryTasks: v })} />
         </Group_>
       </>
     ),
   };
 
   const tabs: [RibbonTab, string][] = [
-    ["task", "Task"],
-    ["resource", "Resource"],
-    ["report", "Report"],
-    ["project", "Project"],
-    ["view", "View"],
+    ["task", "Tarefa"],
+    ["resource", "Recurso"],
+    ["report", "Relatório"],
+    ["project", "Projeto"],
+    ["view", "Exibir"],
   ];
   const close = () => m.set({ dialog: null, dialogTab: undefined });
   const dialogs: Record<NonNullable<typeof m.dialog>, ReactNode> = {
@@ -626,21 +626,21 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
     <div className="classic msp-app">
       <div className="cl-titlebar msp-titlebar">
         <span className="qat">
-          <button title="Save (Ctrl+S)" onClick={a.save} disabled={none}>
+          <button title="Salvar (Ctrl+S)" onClick={a.save} disabled={none}>
             <Save size={14} aria-hidden />
           </button>
-          <button title="Undo (Ctrl+Z)" onClick={() => useStore.getState().undo()} disabled={!canUndo}>
+          <button title="Desfazer (Ctrl+Z)" onClick={() => useStore.getState().undo()} disabled={!canUndo}>
             <Undo2 size={14} aria-hidden />
           </button>
-          <button title="Redo (Ctrl+Y)" onClick={() => useStore.getState().redo()} disabled={!canRedo}>
+          <button title="Refazer (Ctrl+Y)" onClick={() => useStore.getState().redo()} disabled={!canRedo}>
             <Redo2 size={14} aria-hidden />
           </button>
-          <button title="Calculate project (F9)" onClick={a.schedule} disabled={none}>
+          <button title="Calcular projeto (F9)" onClick={a.schedule} disabled={none}>
             <CalendarCheck size={14} aria-hidden />
           </button>
         </span>
         <span className="cl-title center">{schedule ? `${schedule.projectCode}  -  Stratum 4D` : "Stratum 4D"}</span>
-        {ganttLike && <span className="msp-context">Gantt Chart Tools</span>}
+        {ganttLike && <span className="msp-context">Ferramentas do gráfico de Gantt</span>}
         <ModeSwitch />
         <DisplaysButton className="tb cl-train" />
         <TrainingButton className="tb cl-train" />
@@ -648,30 +648,30 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
       </div>
       <div className="msp-tabrow" role="tablist">
         <button className="msp-filetab" onClick={() => setFileOpen(true)}>
-          File
+          Arquivo
         </button>
         {tabs.map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>
             {l}
           </button>
         ))}
-        <button onClick={a.help}>Help</button>
+        <button onClick={a.help}>Ajuda</button>
         {ganttLike && (
           <button role="tab" aria-selected={tab === "format"} className={`msp-format ${tab === "format" ? "active" : ""}`} onClick={() => setTab("format")}>
-            Format
+            Formato
           </button>
         )}
         <span className="spacer" />
         <div className="msp-tell">
           <Search size={13} aria-hidden />
-          <input ref={findRef} placeholder="Tell me what you want to do" value={filterText} onChange={(e) => setFilterText({ text: e.target.value })} aria-label="Find tasks" />
+          <input ref={findRef} placeholder="Diga o que você quer fazer" value={filterText} onChange={(e) => setFilterText({ text: e.target.value })} aria-label="Localizar tarefas" />
         </div>
       </div>
       <div className="msp-ribbon">{Body[tab === "format" && !ganttLike ? "task" : tab]}</div>
       {banners}
       {m.showTimeline && TASK_VIEWS.includes(view) && (
         <div className="msp-tlwrap">
-          <div className="msp-vlabel">TIMELINE</div>
+          <div className="msp-vlabel">LINHA DO TEMPO</div>
           <MspTimeline />
         </div>
       )}
@@ -681,14 +681,14 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
       </div>
       {m.details && schedule && TASK_VIEWS.includes(view) && (
         <div className="msp-taskform">
-          <div className="msp-vlabel">TASK FORM</div>
+          <div className="msp-vlabel">FORMULÁRIO DE TAREFA</div>
           <div className="msp-formbody">
             <TaskForm />
           </div>
         </div>
       )}
       <div className="cl-statusbar msp-status">
-        <span>Ready</span>
+        <span>Pronto</span>
         <button
           className="msp-newmode"
           disabled={none}
@@ -697,37 +697,37 @@ export function MspScreen({ a, banners, status }: { a: ClassicActions; banners: 
             const s = useStore.getState().schedule;
             if (!s) return;
             useCtx.getState().show(r.left, r.top - 60, [
-              { label: "Auto Scheduled – Task dates are calculated by Project", checked: s.newTaskMode !== "manual", onClick: () => commitEdit({ ...s, newTaskMode: "auto" }, "New tasks: auto scheduled") },
-              { label: "Manually Scheduled – Task dates are not automatically updated", checked: s.newTaskMode === "manual", onClick: () => commitEdit({ ...s, newTaskMode: "manual" }, "New tasks: manually scheduled") },
+              { label: "Agendamento automático – o programa calcula as datas da tarefa", checked: s.newTaskMode !== "manual", onClick: () => commitEdit({ ...s, newTaskMode: "auto" }, "New tasks: auto scheduled") },
+              { label: "Agendamento manual – as datas da tarefa não são atualizadas automaticamente", checked: s.newTaskMode === "manual", onClick: () => commitEdit({ ...s, newTaskMode: "manual" }, "New tasks: manually scheduled") },
             ]);
           }}
         >
-          New Tasks : {schedule?.newTaskMode === "manual" ? "Manually Scheduled" : "Auto Scheduled"}
+          Novas tarefas: {schedule?.newTaskMode === "manual" ? "Agendamento manual" : "Agendamento automático"}
         </button>
-        {(m.filter !== "all" || m.customFilter || filterText) && <span className="msp-flag">Filter Applied</span>}
-        {!m.autoCalc && dirty && <span className="msp-flag">Calculate</span>}
+        {(m.filter !== "all" || m.customFilter || filterText) && <span className="msp-flag">Filtro aplicado</span>}
+        {!m.autoCalc && dirty && <span className="msp-flag">Calcular</span>}
         <span className="cl-msg">{status}</span>
         <span className="spacer" />
         {(
           [
-            ["gantt", ChartGantt, "Gantt Chart"],
-            ["task-usage", TableProperties, "Task Usage"],
-            ["team-planner", UsersRound, "Team Planner"],
-            ["resource-sheet", Sheet, "Resource Sheet"],
+            ["gantt", ChartGantt, "Gráfico de Gantt"],
+            ["task-usage", TableProperties, "Uso de tarefas"],
+            ["team-planner", UsersRound, "Planejador de equipe"],
+            ["resource-sheet", Sheet, "Planilha de recursos"],
           ] as [MspView, LucideIcon, string][]
         ).map(([v, Icon, title]) => (
           <button key={v} title={title} className={view === v ? "on" : ""} onClick={() => setView(v)} disabled={none && v !== "gantt"}>
             <Icon size={14} aria-hidden />
           </button>
         ))}
-        <button title="Reports" onClick={a.dashboards}>
+        <button title="Relatórios" onClick={a.dashboards}>
           <LayoutDashboard size={14} aria-hidden />
         </button>
-        <button title="Zoom out" onClick={zoomOut}>
+        <button title="Afastar" onClick={zoomOut}>
           <Minus size={12} aria-hidden />
         </button>
         <input type="range" min={0} max={ZOOM_STEPS.length - 1} value={zoomIdx < 0 ? 5 : zoomIdx} aria-label="Zoom" onChange={(e) => m.set({ pxPerDay: ZOOM_STEPS[Number(e.target.value)] })} />
-        <button title="Zoom in" onClick={zoomIn}>
+        <button title="Aproximar" onClick={zoomIn}>
           <Plus size={12} aria-hidden />
         </button>
       </div>

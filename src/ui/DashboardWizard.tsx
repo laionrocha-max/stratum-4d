@@ -53,7 +53,7 @@ export function DashboardWizard({ dash, projects, templates, onDone, onClose }: 
     <div className="help-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dash-wizard" role="dialog" aria-label="Dashboard wizard">
         <header>
-          <b>{dash ? `Dashboard setup – ${dash.name}` : "New dashboard"}</b>
+          <b>{dash ? `Dashboard setup – ${dash.name}` : "Novo painel"}</b>
           <ol>
             {steps.map((t, k) => (
               <li key={t} className={k === i ? "on" : k < i ? "done" : ""}>
@@ -69,7 +69,7 @@ export function DashboardWizard({ dash, projects, templates, onDone, onClose }: 
             <div className="stack">
               <p className="muted">Which project should the widgets show? Widgets can still point at other projects later.</p>
               <label>
-                Project
+                Projeto
                 <select value={projectId ?? ""} onChange={(e) => (setProjectId(e.target.value || null), setBaselineId(null))}>
                   <option value="">The open project{open ? ` (${open.projectCode})` : ""}</option>
                   {projects.map((p) => (
@@ -111,11 +111,11 @@ export function DashboardWizard({ dash, projects, templates, onDone, onClose }: 
           {step === "Template" && (
             <div className="stack">
               <label>
-                Dashboard name
+                Nome do painel
                 <input value={name} placeholder="e.g. Monthly progress report" onChange={(e) => setName(e.target.value)} />
               </label>
               <div className="dash-tpls">
-                {[...BUILTIN_TEMPLATES.map((t) => ({ id: t.id, name: t.name, hint: t.hint })), ...templates.map((t) => ({ id: t.id, name: t.name, hint: `${t.widgets.length} widgets (my template)` })), { id: "blank", name: "Blank dashboard", hint: "Build it from the widget gallery" }].map((t) => (
+                {[...BUILTIN_TEMPLATES.map((t) => ({ id: t.id, name: t.name, hint: t.hint })), ...templates.map((t) => ({ id: t.id, name: t.name, hint: `${t.widgets.length} widgets (my template)` })), { id: "blank", name: "Blank dashboard", hint: "Montar a partir da galeria de componentes" }].map((t) => (
                   <label key={t.id} className={`dash-bl ${template === t.id ? "on" : ""}`}>
                     <input type="radio" name="dash-tpl" checked={template === t.id} onChange={() => setTemplate(t.id)} />
                     <span>
@@ -145,14 +145,14 @@ export function DashboardWizard({ dash, projects, templates, onDone, onClose }: 
           )}
         </div>
         <footer>
-          <button onClick={onClose}>Cancel</button>
+          <button onClick={onClose}>Cancelar</button>
           <span className="spacer" />
           <button disabled={i === 0} onClick={() => setI(i - 1)}>
-            Back
+            Voltar
           </button>
           {i < steps.length - 1 ? (
             <button className="primary" onClick={() => setI(i + 1)}>
-              Next
+              Avançar
             </button>
           ) : (
             <button className="primary" onClick={finish}>

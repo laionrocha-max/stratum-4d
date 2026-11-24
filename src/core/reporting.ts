@@ -397,7 +397,7 @@ export function defaultDashboard(projectId: string | null): Dashboard {
   const w = (kind: WidgetKind, title: string, extra: Partial<Widget>): Widget => ({ id: uid("w"), kind, title, w: 3, h: 1, ...extra });
   return {
     id: uid("dash"),
-    name: "Project status",
+    name: "Situação do projeto",
     projectId,
     updatedAt: new Date().toISOString(),
     widgets: [
@@ -424,7 +424,7 @@ export function scheduleHealthDashboard(projectId: string | null): Dashboard {
   const w = (kind: WidgetKind, title: string, extra: Partial<Widget>): Widget => ({ id: uid("w"), kind, title, w: 3, h: 1, ...extra });
   return {
     id: uid("dash"),
-    name: "Schedule health and execution",
+    name: "Qualidade e execução do cronograma",
     projectId,
     updatedAt: new Date().toISOString(),
     page: { header: "{project}", subtitle: "Schedule health – data date {datadate}" },
@@ -462,7 +462,7 @@ export function planningDashboard(projectId: string | null): Dashboard {
   const w = (kind: WidgetKind, title: string, extra: Partial<Widget>): Widget => ({ id: uid("w"), kind, title, w: 3, h: 1, ...extra });
   return {
     id: uid("dash"),
-    name: "Planning dashboard",
+    name: "Painel de planejamento",
     projectId,
     theme: "classic",
     page: { header: "{project}", subtitle: "Weekly schedule update · data date {datadate}", accent: "#0b4f8a", showDataDate: true },
@@ -478,7 +478,7 @@ export function planningDashboard(projectId: string | null): Dashboard {
       w("donut", "Activity status", { w: 3, h: 2, split: "status" }),
       w("donut", "Float health", { w: 3, h: 2, split: "float" }),
       w("phasecurves", "Progress by phase", { w: 12, h: 2, dimension: "wbs1", basis: "cost", step: "month" }),
-      w("milestones", "Milestone tracker", { w: 6, h: 2.5, limit: 12 }),
+      w("milestones", "Acompanhamento de marcos", { w: 6, h: 2.5, limit: 12 }),
       w("lookahead", "3-week look-ahead", { w: 6, h: 2.5, weeks: 3, limit: 30 }),
     ],
   };
@@ -493,7 +493,7 @@ export function eppmSummaryDashboard(projectId: string | null): Dashboard {
   const w = (kind: WidgetKind, title: string, extra: Partial<Widget>): Widget => ({ id: uid("w"), kind, title, w: 3, h: 1, basis: "hours", ...extra });
   return {
     id: uid("dash"),
-    name: "Project control – summary",
+    name: "Controle do projeto – resumo",
     projectId,
     theme: "classic",
     page: { header: "{project}", subtitle: "Selected baseline: {baseline} · data date {baselinedate}", accent: "#1f3c88", showDataDate: true, dense: true, gap: 10 },
@@ -555,7 +555,7 @@ export function eppmCurveDashboard(projectId: string | null): Dashboard {
   const w = (kind: WidgetKind, title: string, extra: Partial<Widget>): Widget => ({ id: uid("w"), kind, title, w: 2, h: 1, basis: "hours", ...extra });
   return {
     id: uid("dash"),
-    name: "Project control – S-curve",
+    name: "Controle do projeto – curva S",
     projectId,
     theme: "classic",
     page: { header: "{project}", subtitle: "Selected baseline: {baseline} · data date {baselinedate}", accent: "#1f3c88", dense: true, gap: 10 },
@@ -611,12 +611,12 @@ export function adaptToFields(d: Dashboard, fields: string[]): Dashboard {
 
 /** Built-in starting points shown under "New". */
 export const BUILTIN_TEMPLATES: { id: string; name: string; hint: string; make: (projectId: string | null) => Dashboard }[] = [
-  { id: "eppm-summary", name: "Project control – summary", hint: "EPPM style: key dates, weighted %, FTM/UTM, durations, discipline table", make: eppmSummaryDashboard },
-  { id: "eppm-curve", name: "Project control – S-curve", hint: "Weight % curves with monthly histograms, slicers, date slider", make: eppmCurveDashboard },
-  { id: "planning", name: "Planning dashboard", hint: "Gauges, milestones, look-ahead, E/P/C curves", make: planningDashboard },
-  { id: "progress", name: "Progress report (EPC style)", hint: "Key figures, weighted progress, S-curve", make: progressReportDashboard },
-  { id: "status", name: "Project status", hint: "KPIs, S-curve, critical and late work", make: defaultDashboard },
-  { id: "health", name: "Schedule health and execution", hint: "BEI, CPLI, SPI(t), PPC, on-time starts/finishes and the DCMA 14-point checks", make: scheduleHealthDashboard },
+  { id: "eppm-summary", name: "Controle do projeto – resumo", hint: "Datas principais, avanço ponderado, indicadores do período, durações e tabela por disciplina", make: eppmSummaryDashboard },
+  { id: "eppm-curve", name: "Controle do projeto – curva S", hint: "Curvas ponderadas, histogramas mensais e filtros por data", make: eppmCurveDashboard },
+  { id: "planning", name: "Painel de planejamento", hint: "Indicadores, marcos, próximas semanas e curvas de engenharia, suprimentos e construção", make: planningDashboard },
+  { id: "progress", name: "Relatório de avanço (EPC)", hint: "Indicadores principais, avanço ponderado e curva S", make: progressReportDashboard },
+  { id: "status", name: "Situação do projeto", hint: "Indicadores, curva S e atividades críticas e atrasadas", make: defaultDashboard },
+  { id: "health", name: "Qualidade e execução do cronograma", hint: "BEI, CPLI, SPI(t), PPC, início e término no prazo e verificação dos 14 critérios da DCMA", make: scheduleHealthDashboard },
 ];
 
 /** Copy a dashboard (or template) with fresh ids. */

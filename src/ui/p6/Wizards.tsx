@@ -21,10 +21,10 @@ function Wizard({ title, pages, onFinish, canFinish = true }: { title: string; p
       onClose={closeDlg}
       side={
         <>
-          <SideBtn kind="ok" label={last ? "Finish" : "Next >"} primary disabled={last && !canFinish} onClick={() => (last ? onFinish() : setI(i + 1))} />
+          <SideBtn kind="ok" label={last ? "Término" : "Next >"} primary disabled={last && !canFinish} onClick={() => (last ? onFinish() : setI(i + 1))} />
           <SideBtn label="< Back" disabled={i === 0} onClick={() => setI(i - 1)} />
-          {!last && <SideBtn kind="run" label="Finish" disabled={!canFinish} onClick={onFinish} />}
-          <SideBtn kind="cancel" label="Cancel" onClick={closeDlg} />
+          {!last && <SideBtn kind="run" label="Término" disabled={!canFinish} onClick={onFinish} />}
+          <SideBtn kind="cancel" label="Cancelar" onClick={closeDlg} />
           <SideGap />
           <SideHelp topic="wizards" />
         </>
@@ -68,7 +68,7 @@ function LinkPicker({ acts, list, set, exclude }: { acts: Activity[]; list: Link
   const byId = new Map(acts.map((a) => [a.id, a]));
   return (
     <div className="stack">
-      <input placeholder="Find activity ID or name" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input placeholder="Localizar atividade por ID ou nome" value={q} onChange={(e) => setQ(e.target.value)} />
       {hits.map((a) => (
         <button key={a.id} className="link" style={{ textAlign: "left" }} onClick={() => (set([...list, { id: a.id, type: "FS", lagDays: 0 }]), setQ(""))}>
           + {a.code} {a.name}
@@ -78,8 +78,8 @@ function LinkPicker({ acts, list, set, exclude }: { acts: Activity[]; list: Link
         <table className="p6-grid">
           <thead>
             <tr>
-              <td>Activity ID</td>
-              <td>Activity Name</td>
+              <td>ID da atividade</td>
+              <td>Nome da atividade</td>
               <td>Relationship Type</td>
               <td>Lag (d)</td>
               <td />
@@ -194,12 +194,12 @@ export function NewActivityWizard() {
           "Activity ID and Name",
           <div className="grid2" key="id">
             <label>
-              Activity ID
+              ID da atividade
               <input autoFocus value={code} onChange={(e) => setCode(e.target.value)} />
               {dup && <span className="bad small">{code} is already used.</span>}
             </label>
             <label>
-              Activity Name
+              Nome da atividade
               <input value={name} placeholder="New Activity" onChange={(e) => setName(e.target.value)} />
             </label>
           </div>,
@@ -236,7 +236,7 @@ export function NewActivityWizard() {
               <input type="number" min={0} disabled={ms} value={ms ? 0 : days} onChange={(e) => setDays(Math.max(0, Number(e.target.value) || 0))} />
             </label>
             <label>
-              Calendar
+              Calendário
               <select value={calId ?? ""} onChange={(e) => setCalId(e.target.value || null)}>
                 {cals.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -269,8 +269,8 @@ export function NewActivityWizard() {
               <table className="p6-grid">
                 <thead>
                   <tr>
-                    <td>Resource</td>
-                    <td>Budgeted Units</td>
+                    <td>Recurso</td>
+                    <td>Unidades orçadas</td>
                     <td />
                   </tr>
                 </thead>
@@ -337,7 +337,7 @@ export function NewResourceWizard() {
   };
   return (
     <Wizard
-      title="New Resource"
+      title="Novo recurso"
       canFinish={!!r.code.trim() && !dup}
       onFinish={finish}
       pages={[
@@ -345,13 +345,13 @@ export function NewResourceWizard() {
           "Resource ID and Name",
           <div className="grid2" key="id">
             <label>
-              Resource ID
+              ID do recurso
               <input autoFocus value={r.code} onChange={(e) => put({ code: e.target.value })} />
               {dup && <span className="bad small">{r.code} is already used.</span>}
             </label>
             <label>
-              Resource Name
-              <input value={r.name} placeholder="New Resource" onChange={(e) => put({ name: e.target.value })} />
+              Nome do recurso
+              <input value={r.name} placeholder="Novo recurso" onChange={(e) => put({ name: e.target.value })} />
             </label>
           </div>,
         ],
@@ -386,9 +386,9 @@ export function NewResourceWizard() {
         [
           "Calendar",
           <label key="c">
-            Calendar
+            Calendário
             <select value={r.calendarId ?? ""} onChange={(e) => put({ calendarId: e.target.value || null })}>
-              <option value="">Project default</option>
+              <option value="">Padrão do projeto</option>
               {(s.calendars ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

@@ -13,7 +13,7 @@ export type Row = Record<string, unknown>;
 export interface SqlDriver {
   dialect: "sqlite" | "postgres";
   query<T = Row>(sql: string, params?: unknown[]): Promise<T[]>;
-  exec(sql: string, params?: unknown[]): Promise<void>;
+  exec(sql: string, params?: unknown[]): Promise<number | void>;
   close(): Promise<void>;
 }
 
@@ -65,7 +65,9 @@ export async function openSqlite(file: string | null, opts: { wasmDir?: string; 
       if (opts.readOnly) throw new Error("Database is open read-only");
       if (params?.length) run(sql, params);
       else db.exec(sql);
+      const affected = db.getRowsModified();
       flush();
+      return affected;
     },
     async close() {
       db.close();
@@ -91,7 +93,8 @@ export async function openPostgres(connectionString: string): Promise<SqlDriver>
       return r.rows as T[];
     },
     async exec(sql: string, params?: unknown[]) {
-      await pool.query(toDollar(sql), params as unknown[]);
+      const result = await pool.query(toDollar(sql), params as unknown[]);
+      return result.rowCount ?? 0;
     },
     async close() {
       await pool.end();

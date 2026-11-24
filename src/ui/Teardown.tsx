@@ -299,23 +299,23 @@ export function Teardown({ getViewer, gen, onRecord, recording }: { getViewer: (
   return (
     <>
       <div className={`td-panel ${open ? "open" : ""}`}>
-        <button className={`td-toggle ${open ? "on" : ""}`} onClick={() => setOpen(!open)} title="Teardown: explode, cut, focus on the work under way, live panel and tour">
-          <Layers3 size={15} aria-hidden /> Teardown
+        <button className={`td-toggle ${open ? "on" : ""}`} onClick={() => setOpen(!open)} title="Inspeção 4D com vista explodida, cortes, foco nas atividades em curso, painel e visita guiada">
+          <Layers3 size={15} aria-hidden /> Inspeção 4D
         </button>
         {open && (
           <div className="td-body">
-            <label className="td-row" title="Pull the model apart by storey, or from the centre">
+            <label className="td-row" title="Separar as partes do modelo por pavimento ou a partir do centro">
               <Boxes size={14} aria-hidden />
-              <span>Explode</span>
-              <input type="range" min={0} max={1} step={0.01} value={explode} onChange={(e) => setExplode(Number(e.target.value))} aria-label="Explode" />
-              <select value={mode} onChange={(e) => setMode(e.target.value as ExplodeMode)} aria-label="Explode by">
-                <option value="storeys">By storey</option>
-                <option value="radial">From centre</option>
+              <span>Vista explodida</span>
+              <input type="range" min={0} max={1} step={0.01} value={explode} onChange={(e) => setExplode(Number(e.target.value))} aria-label="Vista explodida" />
+              <select value={mode} onChange={(e) => setMode(e.target.value as ExplodeMode)} aria-label="Separar por">
+                <option value="storeys">Por pavimento</option>
+                <option value="radial">A partir do centro</option>
               </select>
             </label>
-            <div className="td-row" title="Section cut through the model">
+            <div className="td-row" title="Criar um corte no modelo">
               <Scissors size={14} aria-hidden />
-              <span>Cut</span>
+              <span>Recortar</span>
               {(["x", "y", "z"] as const).map((ax) => (
                 <button key={ax} className={cut?.axis === ax ? "on" : ""} onClick={() => setCut(cut?.axis === ax ? null : { axis: ax, pos: cut?.pos ?? 0.5, flip: cut?.flip ?? false })} aria-pressed={cut?.axis === ax}>
                   {ax === "y" ? "Plan" : ax.toUpperCase()}
@@ -323,21 +323,21 @@ export function Teardown({ getViewer, gen, onRecord, recording }: { getViewer: (
               ))}
               {cut && (
                 <>
-                  <input type="range" min={0} max={1} step={0.005} value={cut.pos} onChange={(e) => setCut({ ...cut, pos: Number(e.target.value) })} aria-label="Cut position" />
-                  <button onClick={() => setCut({ ...cut, flip: !cut.flip })} title="Keep the other side">
+                  <input type="range" min={0} max={1} step={0.005} value={cut.pos} onChange={(e) => setCut({ ...cut, pos: Number(e.target.value) })} aria-label="Posição do corte" />
+                  <button onClick={() => setCut({ ...cut, flip: !cut.flip })} title="Manter o outro lado">
                     ⇄
                   </button>
                 </>
               )}
             </div>
-            <label className="td-row" title="The elements of the activities under way in red; the rest ghosted">
+            <label className="td-row" title="Elementos em execução em vermelho e os demais em transparência">
               <Crosshair size={14} aria-hidden />
-              <span>Work under way</span>
+              <span>Trabalho em execução</span>
               <input type="checkbox" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
             </label>
             <div className="td-row">
               <Sparkles size={14} aria-hidden />
-              <button className={tour ? "on" : ""} onClick={() => (setPaused(false), setTour(!tour), !tour && useStore.getState().setPlaying(true))} title="Plays the schedule and frames each new piece of work. Any click, drag or key gives you control; after 25 s it carries on.">
+              <button className={tour ? "on" : ""} onClick={() => (setPaused(false), setTour(!tour), !tour && useStore.getState().setPlaying(true))} title="Reproduz o cronograma e enquadra cada nova frente. Clique, arraste ou pressione uma tecla para assumir o controle. A reprodução automática retorna após 25 segundos.">
                 {tour ? "Stop tour" : "Start tour"}
               </button>
               <button
@@ -350,7 +350,7 @@ export function Teardown({ getViewer, gen, onRecord, recording }: { getViewer: (
                   }
                   onRecord();
                 }}
-                title="Record the tour with the live panel as a video"
+                title="Gravar em vídeo a visita guiada com o painel"
               >
                 <Clapperboard size={14} aria-hidden /> {recording ? "Stop" : "Record tour"}
               </button>
@@ -358,7 +358,7 @@ export function Teardown({ getViewer, gen, onRecord, recording }: { getViewer: (
           </div>
         )}
       </div>
-      <canvas ref={hudRef} className="td-hud" style={{ display: open ? "block" : "none" }} aria-label="Live panel" />
+      <canvas ref={hudRef} className="td-hud" style={{ display: open ? "block" : "none" }} aria-label="Painel ao vivo" />
     </>
   );
 }

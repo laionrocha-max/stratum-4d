@@ -398,16 +398,16 @@ export function ActivityTable({ onSchedule, trace }: { onSchedule?: () => void; 
     e.preventDefault();
     const open = useP6.getState().open;
     showCtx(e.clientX, e.clientY, [
-      { label: "Sort Ascending", onClick: () => setLayout({ sort: [{ field: f.id }] }) },
-      { label: "Sort Descending", onClick: () => setLayout({ sort: [{ field: f.id, desc: true }] }) },
+      { label: "Classificar em ordem crescente", onClick: () => setLayout({ sort: [{ field: f.id }] }) },
+      { label: "Classificar em ordem decrescente", onClick: () => setLayout({ sort: [{ field: f.id, desc: true }] }) },
       { label: `Group by ${f.label}`, onClick: () => setLayout({ groupBy: f.id }), checked: layout.groupBy === f.id },
-      { label: "Group by WBS", onClick: () => setLayout({ groupBy: "wbs" }), checked: layout.groupBy === "wbs" },
-      { label: "Show WBS Path in Bands", onClick: () => setLayout({ wbsPathLabels: !layout.wbsPathLabels }), checked: !!layout.wbsPathLabels },
-      { label: "No Grouping", onClick: () => setLayout({ groupBy: "none" }), checked: layout.groupBy === "none" },
+      { label: "Agrupar pela EAP", onClick: () => setLayout({ groupBy: "wbs" }), checked: layout.groupBy === "wbs" },
+      { label: "Mostrar hierarquia da EAP nos grupos", onClick: () => setLayout({ wbsPathLabels: !layout.wbsPathLabels }), checked: !!layout.wbsPathLabels },
+      { label: "Sem agrupamento", onClick: () => setLayout({ groupBy: "none" }), checked: layout.groupBy === "none" },
       "sep",
       { label: `Hide ${f.label}`, onClick: () => setLayout({ columns: layout.columns.filter((c) => c.id !== f.id) }), disabled: layout.columns.length <= 1 },
       {
-        label: "Rename Column Title…",
+        label: "Renomear título da coluna…",
         onClick: () => {
           const cur = layout.columns.find((c) => c.id === f.id)?.title ?? f.label;
           const t = window.prompt(`Column title for ${f.label} (empty restores it):`, cur);
@@ -415,9 +415,9 @@ export function ActivityTable({ onSchedule, trace }: { onSchedule?: () => void; 
           setLayout({ columns: layout.columns.map((c) => (c.id === f.id ? { ...c, title: t.trim() && t.trim() !== f.label ? t.trim() : undefined } : c)) });
         },
       },
-      { label: "Columns…", onClick: () => open("columns") },
-      { label: "Group and Sort…", onClick: () => open("groupSort") },
-      { label: "Filters…", onClick: () => open("filters") },
+      { label: "Colunas…", onClick: () => open("columns") },
+      { label: "Agrupar e classificar…", onClick: () => open("groupSort") },
+      { label: "Filtros…", onClick: () => open("filters") },
       { label: "Adjust Column Widths", onClick: () => setLayout({ columns: layout.columns.map((c) => ({ id: c.id })) }) },
     ]);
   };
@@ -430,36 +430,36 @@ export function ActivityTable({ onSchedule, trace }: { onSchedule?: () => void; 
     const st = useStore.getState();
     const items: CtxItem[] = [
       { label: "Add Activity", onClick: addActivity, shortcut: "Ins" },
-      { label: n > 1 ? `Delete ${n} Activities` : "Delete", onClick: () => deleteSelected(), shortcut: "Del" },
+      { label: n > 1 ? `Delete ${n} Activities` : "Excluir", onClick: () => deleteSelected(), shortcut: "Del" },
       "sep",
-      { label: "Cut", onClick: cutSelected, shortcut: "Ctrl+X" },
-      { label: "Copy", onClick: copySelected, shortcut: "Ctrl+C" },
-      { label: "Paste", onClick: paste, shortcut: "Ctrl+V", disabled: !st.clipboard },
+      { label: "Recortar", onClick: cutSelected, shortcut: "Ctrl+X" },
+      { label: "Copiar", onClick: copySelected, shortcut: "Ctrl+C" },
+      { label: "Colar", onClick: paste, shortcut: "Ctrl+V", disabled: !st.clipboard },
       "sep",
-      { label: "Dissolve", onClick: dissolveSelected },
-      { label: "Renumber Activity IDs…", onClick: () => open("renumber") },
-      { label: "Link Activities", onClick: () => linkSelected("FS"), disabled: n < 2, sub: n < 2 ? undefined : (["FS", "SS", "FF", "SF"] as const).map((t) => ({ label: `Link ${t}`, onClick: () => linkSelected(t) })) },
-      { label: "Unlink Activities", onClick: unlinkSelected, disabled: n < 2 },
-      { label: "Fill Down", onClick: fillDownSelected, disabled: n < 2, shortcut: "Ctrl+E" },
+      { label: "Excluir e religar", onClick: dissolveSelected },
+      { label: "Renumerar IDs de atividades…", onClick: () => open("renumber") },
+      { label: "Vincular atividades", onClick: () => linkSelected("FS"), disabled: n < 2, sub: n < 2 ? undefined : (["FS", "SS", "FF", "SF"] as const).map((t) => ({ label: `Link ${t}`, onClick: () => linkSelected(t) })) },
+      { label: "Desvincular atividades", onClick: unlinkSelected, disabled: n < 2 },
+      { label: "Preencher para baixo", onClick: fillDownSelected, disabled: n < 2, shortcut: "Ctrl+E" },
       "sep",
       {
-        label: "Assign",
+        label: "Atribuir",
         sub: [
-          { label: "Predecessors…", onClick: () => open("assignPred") },
-          { label: "Successors…", onClick: () => open("assignSucc") },
-          { label: "Resources…", onClick: () => open("assignRes") },
-          { label: "Activity Codes…", onClick: () => open("assignCode") },
+          { label: "Predecessoras…", onClick: () => open("assignPred") },
+          { label: "Sucessoras…", onClick: () => open("assignSucc") },
+          { label: "Recursos…", onClick: () => open("assignRes") },
+          { label: "Códigos de atividade…", onClick: () => open("assignCode") },
         ],
       },
-      { label: "Select All", onClick: selectAll, shortcut: "Ctrl+A" },
+      { label: "Selecionar tudo", onClick: selectAll, shortcut: "Ctrl+A" },
       "sep",
-      { label: "Columns…", onClick: () => open("columns") },
-      { label: "Filters…", onClick: () => open("filters") },
-      { label: "Group and Sort…", onClick: () => open("groupSort") },
-      { label: "Bar Chart Options…", onClick: () => open("bars") },
-      { label: "Expand All", onClick: expandAll },
-      { label: "Collapse All", onClick: collapseAll },
-      ...(onSchedule ? (["sep", { label: "Schedule…", onClick: onSchedule, shortcut: "F9" }] as CtxItem[]) : []),
+      { label: "Colunas…", onClick: () => open("columns") },
+      { label: "Filtros…", onClick: () => open("filters") },
+      { label: "Agrupar e classificar…", onClick: () => open("groupSort") },
+      { label: "Opções das barras do Gantt…", onClick: () => open("bars") },
+      { label: "Expandir tudo", onClick: expandAll },
+      { label: "Recolher tudo", onClick: collapseAll },
+      ...(onSchedule ? (["sep", { label: "Calcular cronograma…", onClick: onSchedule, shortcut: "F9" }] as CtxItem[]) : []),
     ];
     showCtx(e.clientX, e.clientY, items);
   };
@@ -527,7 +527,7 @@ export function ActivityTable({ onSchedule, trace }: { onSchedule?: () => void; 
     st.setStatus(`${a.code} remaining duration set to ${Math.round((hours / ctx.hpd) * 10) / 10} days. Press F9 to reschedule.`);
   };
 
-  if (!schedule || !ctx) return <div className="empty">No schedule loaded.</div>;
+  if (!schedule || !ctx) return <div className="empty">Nenhum cronograma carregado.</div>;
 
   const first = printAll ? 0 : Math.max(0, Math.floor(scrollTop / ROW) - 6);
   const last = printAll ? Math.min(rows.length, 6000) : Math.min(rows.length, Math.ceil((scrollTop + height) / ROW) + 6);
@@ -844,7 +844,7 @@ export function ActivityTable({ onSchedule, trace }: { onSchedule?: () => void; 
           </div>
         </div>
       )}
-      {layout.showTable && layout.showGantt && <div className="p6t-split" onMouseDown={splitter} title="Drag to resize" />}
+      {layout.showTable && layout.showGantt && <div className="p6t-split" onMouseDown={splitter} title="Arraste para redimensionar" />}
       {layout.showGantt && (
         <div className="p6g-pane gantt-body" ref={ganttRef} onScroll={onScroll("g")}>
           <div style={{ height: bodyH + HEAD, width: gw, position: "relative" }}>
@@ -891,13 +891,13 @@ export function ActivityTable({ onSchedule, trace }: { onSchedule?: () => void; 
           {bars.actual && (
             <span>
               <i style={{ background: "var(--p6-actual)" }} />
-              Actual Work
+              Trabalho realizado
             </span>
           )}
           {bars.remaining && (
             <span>
               <i style={{ background: "var(--p6-remaining)" }} />
-              Remaining Work
+              Trabalho restante
             </span>
           )}
           {bars.critical && (
@@ -927,7 +927,7 @@ export function ActivityTable({ onSchedule, trace }: { onSchedule?: () => void; 
         </div>
       )}
       <div className="p6t-count" aria-live="polite">
-        {shown.toLocaleString()} of {schedule.activities.length.toLocaleString()} activities
+        {shown.toLocaleString()} of {schedule.activities.length.toLocaleString()} atividades
         {selection.size > 1 ? ` · ${selection.size.toLocaleString()} selected` : ""}
       </div>
     </div>

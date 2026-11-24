@@ -118,7 +118,7 @@ export function WorkingTimeDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <MspDlg
-      title="Change Working Time"
+      title="Alterar período de trabalho"
       width={760}
       onClose={onClose}
       onOk={ok}
@@ -213,9 +213,9 @@ export function WorkingTimeDialog({ onClose }: { onClose: () => void }) {
             <thead>
               <tr>
                 <th style={{ width: 28 }} />
-                <th>Name</th>
-                <th style={{ width: 140 }}>Start</th>
-                <th style={{ width: 140 }}>Finish</th>
+                <th>Nome</th>
+                <th style={{ width: 140 }}>Início</th>
+                <th style={{ width: 140 }}>Término</th>
                 <th style={{ width: 90 }}>Working</th>
                 <th style={{ width: 24 }} />
               </tr>
@@ -225,13 +225,13 @@ export function WorkingTimeDialog({ onClose }: { onClose: () => void }) {
                 <tr key={e.key}>
                   <td className="num">{i + 1}</td>
                   <td>
-                    <input value={e.name} onChange={(ev) => setList(list.map((x) => (x.key === e.key ? { ...x, name: ev.target.value } : x)))} aria-label="Name" />
+                    <input value={e.name} onChange={(ev) => setList(list.map((x) => (x.key === e.key ? { ...x, name: ev.target.value } : x)))} aria-label="Nome" />
                   </td>
                   <td>
-                    <input type="date" value={dateVal(e.from)} onChange={(ev) => setList(list.map((x) => (x.key === e.key ? { ...x, from: fromDateVal(ev.target.value, null, 0) ?? x.from, to: Math.max(x.to, fromDateVal(ev.target.value, null, 0) ?? x.to) } : x)))} aria-label="Start" />
+                    <input type="date" value={dateVal(e.from)} onChange={(ev) => setList(list.map((x) => (x.key === e.key ? { ...x, from: fromDateVal(ev.target.value, null, 0) ?? x.from, to: Math.max(x.to, fromDateVal(ev.target.value, null, 0) ?? x.to) } : x)))} aria-label="Início" />
                   </td>
                   <td>
-                    <input type="date" value={dateVal(e.to)} onChange={(ev) => setList(list.map((x) => (x.key === e.key ? { ...x, to: Math.max(x.from, fromDateVal(ev.target.value, null, 0) ?? x.to) } : x)))} aria-label="Finish" />
+                    <input type="date" value={dateVal(e.to)} onChange={(ev) => setList(list.map((x) => (x.key === e.key ? { ...x, to: Math.max(x.from, fromDateVal(ev.target.value, null, 0) ?? x.to) } : x)))} aria-label="Término" />
                   </td>
                   <td>
                     <select value={e.working ? "yes" : "no"} onChange={(ev) => setList(list.map((x) => (x.key === e.key ? { ...x, working: ev.target.value === "yes", spans: ev.target.value === "yes" && !x.spans.length ? [[8, 12], [13, 17]] : x.spans } : x)))} aria-label="Working">
@@ -240,7 +240,7 @@ export function WorkingTimeDialog({ onClose }: { onClose: () => void }) {
                     </select>
                   </td>
                   <td>
-                    <button className="msp-x" onClick={() => setList(list.filter((x) => x.key !== e.key))} aria-label="Delete" title="Delete">
+                    <button className="msp-x" onClick={() => setList(list.filter((x) => x.key !== e.key))} aria-label="Excluir" title="Excluir">
                       ×
                     </button>
                   </td>

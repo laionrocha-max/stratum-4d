@@ -37,10 +37,10 @@ export const WIDGET_KINDS: { kind: WidgetKind; label: string; group: WidgetGroup
   { kind: "pscurve", label: "Progress S-curve (%)", group: "Charts", hint: "Cumulative plan vs actual % with period bars", defaults: { w: 12, h: 3, basis: "cost", step: "month" } },
   { kind: "phasecurves", label: "S-curve per phase", group: "Charts", hint: "One small S-curve per discipline (E, P, C…)", defaults: { w: 12, h: 2, dimension: "wbs1", basis: "cost", step: "month" } },
   { kind: "groupbars", label: "Plan vs actual by group", group: "Charts", hint: "Bars per discipline, WBS or activity code", defaults: { w: 6, h: 2, dimension: "wbs1", basis: "cost" } },
-  { kind: "histogram", label: "Resource histogram", group: "Charts", hint: "Weekly labour and plant hours", defaults: { w: 6, h: 2 } },
+  { kind: "histogram", label: "Histograma de recursos", group: "Charts", hint: "Weekly labour and plant hours", defaults: { w: 6, h: 2 } },
   { kind: "quantity", label: "Quantity curve", group: "Charts", hint: "Installed quantity from the 3D model", defaults: { w: 6, h: 2 } },
-  { kind: "table", label: "Activity table", group: "Tables", hint: "Pick the filter, columns and sort", defaults: { w: 12, h: 2, filter: "critical", limit: 15 } },
-  { kind: "milestones", label: "Milestone tracker", group: "Tables", hint: "Baseline vs forecast, days late, status", defaults: { w: 6, h: 2.5, limit: 12 } },
+  { kind: "table", label: "Tabela de atividades", group: "Tables", hint: "Pick the filter, columns and sort", defaults: { w: 12, h: 2, filter: "critical", limit: 15 } },
+  { kind: "milestones", label: "Acompanhamento de marcos", group: "Tables", hint: "Baseline vs forecast, days late, status", defaults: { w: 6, h: 2.5, limit: 12 } },
   { kind: "lookahead", label: "Look-ahead", group: "Tables", hint: "Work starting or running in the next weeks", defaults: { w: 6, h: 2.5, weeks: 3, limit: 30 } },
   { kind: "progress", label: "Progress table (BL plan vs actual)", group: "Tables", hint: "Weighted rows with a TOTAL line", defaults: { w: 12, h: 2, dimension: "wbs1", basis: "cost", totalLabel: "TOTAL" } },
   { kind: "portfolio", label: "Portfolio table", group: "Tables", hint: "One row per project in the database", defaults: { w: 12, h: 2 } },
@@ -55,21 +55,21 @@ export const WIDGET_KINDS: { kind: WidgetKind; label: string; group: WidgetGroup
 
 export const TABLE_COLUMNS: { id: TableColumn; label: string }[] = [
   { id: "code", label: "ID" },
-  { id: "name", label: "Name" },
-  { id: "wbs", label: "WBS" },
-  { id: "status", label: "Status" },
+  { id: "name", label: "Nome" },
+  { id: "wbs", label: "EAP" },
+  { id: "status", label: "Situação" },
   { id: "percent", label: "%" },
-  { id: "start", label: "Start" },
-  { id: "finish", label: "Finish" },
+  { id: "start", label: "Início" },
+  { id: "finish", label: "Término" },
   { id: "blStart", label: "BL Start" },
   { id: "blFinish", label: "BL Finish" },
-  { id: "actualStart", label: "Act. Start" },
-  { id: "actualFinish", label: "Act. Finish" },
+  { id: "actualStart", label: "Início real" },
+  { id: "actualFinish", label: "Término real" },
   { id: "variance", label: "Var (d)" },
   { id: "totalFloat", label: "TF (d)" },
   { id: "origDur", label: "Orig. Dur (d)" },
   { id: "remDur", label: "Rem. Dur (d)" },
-  { id: "critical", label: "Critical" },
+  { id: "critical", label: "Crítico" },
 ];
 export const DEFAULT_COLUMNS: TableColumn[] = ["code", "name", "percent", "start", "finish", "blFinish", "variance", "totalFloat"];
 
@@ -270,12 +270,12 @@ function SCurve({ schedule, measure, w }: { schedule: Schedule; measure?: "cost"
       area={w.chart === "area"}
       legend={w.showLegend !== false}
       series={[
-        { id: "pv", label: "Planned", color: SERIES[0], points: pts.map((p) => ({ t: p.t, v: p.pv })) },
-        { id: "ev", label: "Earned", color: SERIES[1], points: pts.map((p) => ({ t: p.t, v: p.ev })) },
-        { id: "ac", label: "Actual", color: SERIES[2], points: pts.map((p) => ({ t: p.t, v: p.ac })) },
-        { id: "fc", label: "Forecast", color: SERIES[3], dashed: true, points: pts.map((p) => ({ t: p.t, v: p.forecast })) },
+        { id: "pv", label: "Planejado", color: SERIES[0], points: pts.map((p) => ({ t: p.t, v: p.pv })) },
+        { id: "ev", label: "Agregado", color: SERIES[1], points: pts.map((p) => ({ t: p.t, v: p.ev })) },
+        { id: "ac", label: "Realizado", color: SERIES[2], points: pts.map((p) => ({ t: p.t, v: p.ac })) },
+        { id: "fc", label: "Previsto", color: SERIES[3], dashed: true, points: pts.map((p) => ({ t: p.t, v: p.forecast })) },
       ].filter((x) => !w.hiddenSeries?.includes(x.id))}
-      markers={schedule.dataDate !== null ? [{ t: schedule.dataDate, label: "Data date", color: "#1f6feb" }] : []}
+      markers={schedule.dataDate !== null ? [{ t: schedule.dataDate, label: "Data de corte", color: "#1f6feb" }] : []}
     />
   );
 }
@@ -290,7 +290,7 @@ function Histogram({ schedule }: { schedule: Schedule }) {
       bars={hist.bars.map((b) => ({ t: b.t, values: b.byResource }))}
       series={hist.resources.map((r) => ({ id: r.id, label: r.code, color: color.get(r.id)! }))}
       unit="h"
-      marker={schedule.dataDate !== null ? { t: schedule.dataDate, label: "Data date", color: "#1f6feb" } : undefined}
+      marker={schedule.dataDate !== null ? { t: schedule.dataDate, label: "Data de corte", color: "#1f6feb" } : undefined}
     />
   );
 }
@@ -304,7 +304,7 @@ function cellOf(r: ActivityRow, c: TableColumn, s: Schedule): { text: string; so
     case "wbs":
       return { text: groupOf(r.activity, "wbs2", s), sort: groupOf(r.activity, "wbs2", s) };
     case "status":
-      return { text: r.status === "complete" ? "Complete" : r.status === "in-progress" ? "In progress" : "Not started", sort: r.status };
+      return { text: r.status === "complete" ? "Concluído" : r.status === "in-progress" ? "Em andamento" : "Não iniciado", sort: r.status };
     case "percent":
       return { text: String(Math.round(r.percent)), sort: r.percent };
     case "start":
@@ -328,7 +328,7 @@ function cellOf(r: ActivityRow, c: TableColumn, s: Schedule): { text: string; so
     case "remDur":
       return { text: r.remDurDays === null ? "" : String(r.remDurDays), sort: r.remDurDays ?? 0 };
     case "critical":
-      return { text: r.critical ? "Yes" : "", sort: r.critical ? 1 : 0, cls: r.critical ? "bad" : "" };
+      return { text: r.critical ? "Sim" : "", sort: r.critical ? 1 : 0, cls: r.critical ? "bad" : "" };
     default: {
       const v = groupOf(r.activity, c.slice(4), s);
       return { text: v, sort: v };
@@ -361,7 +361,7 @@ function ActivityTable({ schedule, w }: { schedule: Schedule; w: Widget }) {
     }
     return w.limit ? all.slice(0, w.limit) : all;
   }, [schedule, w.filter, w.days, w.limit, sort]);
-  if (!rows.length) return <p className="muted">None.</p>;
+  if (!rows.length) return <p className="muted">Nenhum.</p>;
   return (
     <table className="data">
       <thead>
@@ -477,7 +477,7 @@ function DonutWidget({ w, schedule, slice }: { w: Widget; schedule: Schedule; sl
 
 function StatusDonut({ w, schedule }: { w: Widget; schedule: Schedule }) {
   const mix = useMemo(() => statusMix(schedule, (w.split as "status" | "float" | "critical") ?? "status"), [schedule, w.split]);
-  return <Donut caption={w.split && w.split !== "status" ? "open" : "activities"} slices={mix.map((m) => ({ id: m.id, label: m.label, value: m.value, color: TONE_COLOR[m.tone] }))} />;
+  return <Donut caption={w.split && w.split !== "status" ? "abrir" : "atividades"} slices={mix.map((m) => ({ id: m.id, label: m.label, value: m.value, color: TONE_COLOR[m.tone] }))} />;
 }
 
 function GroupBarsWidget({ w, schedule, slice }: { w: Widget; schedule: Schedule; slice?: SliceProps }) {
@@ -532,7 +532,7 @@ function PhaseCurves({ w, schedule }: { w: Widget; schedule: Schedule }) {
             <div className="phase-head">
               <b>{g}</b>
               <span className="muted">
-                Actual {pct(last?.actual ?? 0)} · Plan {pct(planAt)}
+                Realizado {pct(last?.actual ?? 0)} · Plan {pct(planAt)}
               </span>
             </div>
             <LineChart
@@ -544,8 +544,8 @@ function PhaseCurves({ w, schedule }: { w: Widget; schedule: Schedule }) {
               compact
               series={[
                 { id: "plan", label: "Plan", color: SERIES[0], points: pts.map((p) => ({ t: p.t, v: p.plan })) },
-                { id: "actual", label: "Actual", color: SERIES[1], points: pts.map((p) => ({ t: p.t, v: p.actual })) },
-                { id: "fc", label: "Forecast", color: SERIES[2], dashed: true, points: pts.filter((p) => dd === null || p.t >= dd - 31 * 86_400_000).map((p) => ({ t: p.t, v: p.forecast })) },
+                { id: "actual", label: "Realizado", color: SERIES[1], points: pts.map((p) => ({ t: p.t, v: p.actual })) },
+                { id: "fc", label: "Previsto", color: SERIES[2], dashed: true, points: pts.filter((p) => dd === null || p.t >= dd - 31 * 86_400_000).map((p) => ({ t: p.t, v: p.forecast })) },
               ].filter((x) => !w.hiddenSeries?.includes(x.id))}
               markers={dd !== null ? [{ t: dd, label: "DD", color: "#0b2a8a" }] : []}
             />
@@ -571,11 +571,11 @@ function MilestoneTable({ w, schedule }: { w: Widget; schedule: Schedule }) {
     <table className="data ms-table">
       <thead>
         <tr>
-          <th>Milestone</th>
-          <th>Baseline</th>
-          <th>Forecast</th>
+          <th>Marco</th>
+          <th>Linha de base</th>
+          <th>Previsto</th>
           <th>Var (d)</th>
-          <th>Status</th>
+          <th>Situação</th>
         </tr>
       </thead>
       <tbody>
@@ -610,9 +610,9 @@ function Lookahead({ w, schedule }: { w: Widget; schedule: Schedule }) {
       <thead>
         <tr>
           <th>ID</th>
-          <th>Activity</th>
-          <th>Start</th>
-          <th>Finish</th>
+          <th>Atividade</th>
+          <th>Início</th>
+          <th>Término</th>
           <th>%</th>
           <th>TF (d)</th>
         </tr>
@@ -621,7 +621,7 @@ function Lookahead({ w, schedule }: { w: Widget; schedule: Schedule }) {
         {weeks.map((wk, i) => [
           <tr key={`h${i}`} className="la-week">
             <td colSpan={6}>
-              Week {i + 1} · from {fmtDay(wk.from)} <span className="muted">({wk.rows.length})</span>
+              Semana {i + 1} · from {fmtDay(wk.from)} <span className="muted">({wk.rows.length})</span>
             </td>
           </tr>,
           ...wk.rows.map((r) => (
@@ -630,7 +630,7 @@ function Lookahead({ w, schedule }: { w: Widget; schedule: Schedule }) {
                 <b>{r.code}</b>
               </td>
               <td>
-                {r.critical && <span className="crit-dot" title="Critical" aria-label="Critical" />}
+                {r.critical && <span className="crit-dot" title="Crítico" aria-label="Crítico" />}
                 {r.name}
               </td>
               <td>{fmtDay(r.start)}</td>
@@ -653,12 +653,12 @@ function PortfolioTable({ entries }: { entries: PortfolioEntry[] | null }) {
     <table className="data">
       <thead>
         <tr>
-          <th>Project</th>
-          <th>Name</th>
-          <th>Data date</th>
-          <th>Finish</th>
+          <th>Projeto</th>
+          <th>Nome</th>
+          <th>Data de corte</th>
+          <th>Término</th>
           <th>Var (d)</th>
-          <th>% complete</th>
+          <th>% concluído</th>
           <th>SPI</th>
           <th>CPI</th>
           <th>Late</th>
@@ -707,8 +707,8 @@ function QuantityWidget({ schedule, quantityKey }: { schedule: Schedule; quantit
     <LineChart
       title=""
       series={[
-        { id: "cur", label: "Current plan", color: SERIES[0], points: pts.map((p) => ({ t: p.t, v: p.current })) },
-        { id: "base", label: "Baseline", color: SERIES[1], dashed: true, points: pts.map((p) => ({ t: p.t, v: p.baseline })) },
+        { id: "cur", label: "Plano atual", color: SERIES[0], points: pts.map((p) => ({ t: p.t, v: p.current })) },
+        { id: "base", label: "Linha de base", color: SERIES[1], dashed: true, points: pts.map((p) => ({ t: p.t, v: p.baseline })) },
       ]}
     />
   );
@@ -766,8 +766,8 @@ function ProgressSCurve({ w, schedule }: { w: Widget; schedule: Schedule }) {
         legend={w.showLegend !== false}
         series={[
           { id: "plan", label: "Cum. BL Plan %", short: "Plan", color: SERIES[0], points: pts.map((p) => ({ t: p.t, v: p.plan })) },
-          { id: "actual", label: "Cum. Actual %", short: "Actual", color: SERIES[1], points: pts.map((p) => ({ t: p.t, v: p.actual })) },
-          { id: "fc", label: "Forecast %", short: "Forecast", color: SERIES[2], dashed: true, points: pts.filter((p) => dd === null || p.t >= dd - 31 * 86_400_000).map((p) => ({ t: p.t, v: p.forecast })) },
+          { id: "actual", label: "Cum. Actual %", short: "Realizado", color: SERIES[1], points: pts.map((p) => ({ t: p.t, v: p.actual })) },
+          { id: "fc", label: "Forecast %", short: "Previsto", color: SERIES[2], dashed: true, points: pts.filter((p) => dd === null || p.t >= dd - 31 * 86_400_000).map((p) => ({ t: p.t, v: p.forecast })) },
         ].filter((x) => !w.hiddenSeries?.includes(x.id))}
         markers={dd !== null ? [{ t: dd, label: `Data date ${fmtDay(dd)}`, color: "#0b2a8a" }] : []}
       />
@@ -1000,7 +1000,7 @@ export function PageHead({ dash, schedule, print = false }: { dash: Dashboard; s
       </div>
       {pg.showDataDate && schedule?.dataDate != null && (
         <div className="page-head-dd">
-          <span className="muted">Data date</span>
+          <span className="muted">Data de corte</span>
           <b>{fmtDay(schedule.dataDate)}</b>
         </div>
       )}
@@ -1050,7 +1050,7 @@ function Drill({ w, schedule, children }: { w: Widget; schedule: Schedule; child
                   {d.rows.length} activit{d.rows.length === 1 ? "y" : "ies"} · {schedule.projectCode}
                 </span>
                 <span className="spacer" />
-                <button className="icon-only" aria-label="Close" onClick={() => setOpen(false)}>
+                <button className="icon-only" aria-label="Fechar" onClick={() => setOpen(false)}>
                   ✕
                 </button>
               </header>
@@ -1060,9 +1060,9 @@ function Drill({ w, schedule, children }: { w: Widget; schedule: Schedule; child
                     <thead>
                       <tr>
                         <th>ID</th>
-                        <th>Activity</th>
-                        <th>Start</th>
-                        <th>Finish</th>
+                        <th>Atividade</th>
+                        <th>Início</th>
+                        <th>Término</th>
                         <th>BL finish</th>
                         <th>TF (d)</th>
                         <th>%</th>

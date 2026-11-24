@@ -63,16 +63,16 @@ const TaskModeIcon = () => (
 function columnsFor(mode: InterfaceMode, t: Terms): Col[] {
   if (mode === "p6") {
     return [
-      { key: "code", label: "Activity ID", width: 88, render: (c) => c.a.code },
-      { key: "name", label: "Activity Name", width: 220, render: (c) => c.a.name },
-      { key: "od", label: <>Original<br />Duration</>, width: 58, align: "right", render: (c) => days(c.a.originalDurationHours, c.hpd) },
-      { key: "rd", label: <>Remaining<br />Duration</>, width: 64, align: "right", render: (c) => days(c.a.remainingDurationHours, c.hpd) },
-      { key: "pct", label: <>Schedule %<br />Complete</>, width: 66, align: "right", render: (c) => `${Math.round(c.a.percentComplete)}%` },
-      { key: "start", label: "Start", width: 88, render: p6Start },
-      { key: "finish", label: "Finish", width: 88, render: p6Finish },
+      { key: "code", label: "ID da atividade", width: 88, render: (c) => c.a.code },
+      { key: "name", label: "Nome da atividade", width: 220, render: (c) => c.a.name },
+      { key: "od", label: <>Duração<br />original</>, width: 58, align: "right", render: (c) => days(c.a.originalDurationHours, c.hpd) },
+      { key: "rd", label: <>Duração<br />restante</>, width: 64, align: "right", render: (c) => days(c.a.remainingDurationHours, c.hpd) },
+      { key: "pct", label: <>% concluído<br />do cronograma</>, width: 66, align: "right", render: (c) => `${Math.round(c.a.percentComplete)}%` },
+      { key: "start", label: "Início", width: 88, render: p6Start },
+      { key: "finish", label: "Término", width: 88, render: p6Finish },
       {
         key: "tf",
-        label: <>Total<br />Float</>,
+        label: <>Folga<br />total</>,
         width: 46,
         align: "right",
         render: (c) => days(c.a.totalFloatHours, c.hpd),
@@ -89,22 +89,22 @@ function columnsFor(mode: InterfaceMode, t: Terms): Col[] {
     };
     return [
       { key: "rowno", label: "", width: 34, align: "right", render: (c) => c.rowNo.get(c.a.id) ?? "" },
-      { key: "ind", label: <span title="Indicators">ⓘ</span>, width: 24, align: "center", render: (c) => (c.a.status === "complete" ? <span className="ind-done" title="This task was completed">✔</span> : "") },
-      { key: "mode", label: <span title="Task Mode"><TaskModeIcon /></span>, width: 30, align: "center", render: () => <TaskModeIcon /> },
-      { key: "name", label: "Task Name", width: 230, render: (c) => c.a.name },
-      { key: "dur", label: "Duration", width: 70, render: (c) => (c.a.originalDurationHours === null ? "" : dayWord(days(c.a.originalDurationHours, c.hpd))) },
-      { key: "start", label: "Start", width: 92, render: (c) => mspDate(c.start) },
-      { key: "finish", label: "Finish", width: 92, render: (c) => mspDate(c.finish) },
+      { key: "ind", label: <span title="Indicadores">ⓘ</span>, width: 24, align: "center", render: (c) => (c.a.status === "complete" ? <span className="ind-done" title="Esta tarefa foi concluída">✔</span> : "") },
+      { key: "mode", label: <span title="Modo da tarefa"><TaskModeIcon /></span>, width: 30, align: "center", render: () => <TaskModeIcon /> },
+      { key: "name", label: "Nome da tarefa", width: 230, render: (c) => c.a.name },
+      { key: "dur", label: "Duração", width: 70, render: (c) => (c.a.originalDurationHours === null ? "" : dayWord(days(c.a.originalDurationHours, c.hpd))) },
+      { key: "start", label: "Início", width: 92, render: (c) => mspDate(c.start) },
+      { key: "finish", label: "Término", width: 92, render: (c) => mspDate(c.finish) },
       { key: "pred", label: t.predecessors, width: 90, render: (c) => c.preds.map((r) => rel(r, c)).filter(Boolean).join(",") },
-      { key: "res", label: "Resource Names", width: 150, render: (c) => c.resources },
-      { key: "add", label: <span className="add-col">Add New Column ▾</span>, width: 112, render: () => "" },
+      { key: "res", label: "Nomes dos recursos", width: 150, render: (c) => c.resources },
+      { key: "add", label: <span className="add-col">Adicionar coluna ▾</span>, width: 112, render: () => "" },
     ];
   }
-  const start: Col = { key: "start", label: "Start", width: 78, render: (c) => fmtDate(c.start) };
-  const finish: Col = { key: "finish", label: "Finish", width: 78, render: (c) => fmtDate(c.finish) };
+  const start: Col = { key: "start", label: "Início", width: 78, render: (c) => fmtDate(c.start) };
+  const finish: Col = { key: "finish", label: "Término", width: 78, render: (c) => fmtDate(c.finish) };
   return [
     { key: "code", label: t.activityId, width: 86, render: (c) => c.a.code },
-    { key: "name", label: "Name", width: 160, render: (c) => c.a.name },
+    { key: "name", label: "Nome", width: 160, render: (c) => c.a.name },
     start,
     finish,
     { key: "pct", label: "%", width: 38, title: t.percentComplete, render: (c) => Math.round(c.a.percentComplete) },
@@ -112,11 +112,11 @@ function columnsFor(mode: InterfaceMode, t: Terms): Col[] {
       key: "tf",
       label: "TF",
       width: 40,
-      title: `${t.totalFloat} (days)`,
+      title: `${t.totalFloat} (dias)`,
       render: (c) => days(c.a.totalFloatHours, c.hpd),
       className: (c) => (c.a.totalFloatHours !== null && c.a.totalFloatHours < 0 ? "bad" : ""),
     },
-    { key: "links", label: "🔗", width: 28, title: "Linked elements", render: (c) => c.linkCount || "" },
+    { key: "links", label: "🔗", width: 28, title: "Elementos vinculados", render: (c) => c.linkCount || "" },
   ];
 }
 
@@ -296,7 +296,7 @@ export function Gantt() {
     return () => window.removeEventListener("stratum:gantt", on);
   }, []);
 
-  if (!schedule || !range) return <div className="empty">No schedule loaded.</div>;
+  if (!schedule || !range) return <div className="empty">Nenhum cronograma carregado.</div>;
 
   const first = Math.max(0, Math.floor(scrollTop / ROW) - 5);
   const last = Math.min(rows.length, Math.ceil((scrollTop + height) / ROW) + 5);
@@ -373,17 +373,17 @@ export function Gantt() {
     <div className={`gantt gantt-${mode}`}>
       {!classic && (
         <div className="gantt-toolbar">
-          <input ref={filterRef} placeholder={`Filter ${t.activities.toLowerCase()}…`} value={ganttFilter.text} onChange={(e) => setGanttFilter({ text: e.target.value })} />
+          <input ref={filterRef} placeholder={`Filtrar ${t.activities.toLowerCase()}…`} value={ganttFilter.text} onChange={(e) => setGanttFilter({ text: e.target.value })} />
           <span className="muted">
             {schedule.activities.length} {t.activities.toLowerCase()}
           </span>
-          <button title="Zoom out" onClick={() => setZoom((z) => Math.max(0.25, z / 1.5))}>
+          <button title="Afastar" onClick={() => setZoom((z) => Math.max(0.25, z / 1.5))}>
             −
           </button>
-          <button title="Fit" onClick={() => setZoom(1)}>
-            Fit
+          <button title="Enquadrar" onClick={() => setZoom(1)}>
+            Enquadrar
           </button>
-          <button title="Zoom in" onClick={() => setZoom((z) => Math.min(60, z * 1.5))}>
+          <button title="Aproximar" onClick={() => setZoom((z) => Math.min(60, z * 1.5))}>
             +
           </button>
         </div>

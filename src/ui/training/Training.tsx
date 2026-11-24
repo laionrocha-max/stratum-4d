@@ -12,11 +12,17 @@ const SAMPLE = "GIS-220";
 const MODE_NAME = { p6: "P6", msp: "Project", "4d": "4D" } as const;
 
 /** The automatic first step: switch layout and load the sample if needed. */
+const LEVEL_LABEL: Record<Lesson["level"], string> = {
+  Beginner: "Iniciante",
+  Intermediate: "Intermediário",
+  Advanced: "Avançado",
+};
+
 function prepStep(l: Lesson): Step {
   const ready = (c: Ctx) =>
     (!l.needs.sample || c.s.schedule?.projectCode === SAMPLE) && (!l.needs.mode || (c.cfg.mode === l.needs.mode && c.s.view === "workspace"));
   return {
-    title: "Get ready",
+    title: "Preparação",
     task: [l.needs.sample ? "Open the 220 kV GIS sample project" : null, l.needs.mode ? `switch to the ${MODE_NAME[l.needs.mode]} layout` : null].filter(Boolean).join(" and ") || undefined,
     target: l.needs.mode && !l.needs.sample ? ".mode-switch" : undefined,
     done: ready,
@@ -33,14 +39,14 @@ function prepStep(l: Lesson): Step {
     body: () => (
       <>
         <p>{l.summary}</p>
-        <p className="tr-learn-head">In this lesson you will:</p>
+        <p className="tr-learn-head">Nesta lição você vai:</p>
         <ul>
           {l.learn.map((x) => (
             <li key={x}>{x}</li>
           ))}
         </ul>
         <p className="muted">
-          Press <b>Show me</b> to get set up, or do it yourself. With no project open, the sample is the button in the middle of the screen.
+          Clique em <b>Mostrar como fazer</b> para preparar o exercício, ou faça você mesmo. Com o projeto fechado, clique no exemplo no centro da tela.
         </p>
       </>
     ),
@@ -49,13 +55,13 @@ function prepStep(l: Lesson): Step {
 
 function finishStep(l: Lesson, next: Lesson | undefined): Step {
   return {
-    title: "Lesson complete",
+    title: "Lição concluída",
     body: () => (
       <>
         <p className="tr-done-big">
-          <CircleCheck size={22} aria-hidden /> Well done: <b>{l.title}</b>
+          <CircleCheck size={22} aria-hidden /> Parabéns: <b>{l.title}</b>
         </p>
-        <p>You practised:</p>
+        <p>Você praticou:</p>
         <ul>
           {l.learn.map((x) => (
             <li key={x}>{x}</li>
@@ -63,10 +69,10 @@ function finishStep(l: Lesson, next: Lesson | undefined): Step {
         </ul>
         {next ? (
           <p>
-            Next up: <b>{next.title}</b> ({next.minutes} min).
+            A seguir: <b>{next.title}</b> ({next.minutes} min).
           </p>
         ) : (
-          <p>That was the last lesson. The glossary in the training catalogue keeps every term for reference.</p>
+          <p>Você concluiu a última lição. Consulte os termos no glossário do treinamento.</p>
         )}
       </>
     ),
@@ -82,11 +88,11 @@ export function TrainingButton({ className = "tb" }: { className?: string }) {
   return (
     <button
       className={`${className} training-btn ${active ? "on" : ""}`}
-      title={active ? "Training mode is on: open the lesson card" : "Training mode: guided lessons for new planners"}
+      title={active ? "Treinamento ativo. Abrir o cartão da lição." : "Treinamento com lições guiadas de planejamento"}
       onClick={() => (active && minimized ? setMin(false) : open(true))}
     >
       <GraduationCap size={16} aria-hidden />
-      <span>{active ? "Training" : "Learn"}</span>
+      <span>{"Treinamento"}</span>
     </button>
   );
 }
@@ -203,7 +209,7 @@ function Coach() {
   if (t.minimized)
     return (
       <button className="tr-pill" onClick={() => t.setMinimized(false)}>
-        <GraduationCap size={16} aria-hidden /> {lesson.title} · step {t.step + 1}/{steps.length} <ChevronRight size={14} aria-hidden />
+        <GraduationCap size={16} aria-hidden /> {lesson.title} · etapa {t.step + 1}/{steps.length} <ChevronRight size={14} aria-hidden />
       </button>
     );
 
@@ -216,7 +222,7 @@ function Coach() {
           aria-hidden
         />
       )}
-      <div className="tr-card" ref={cardRef} style={{ left: pos.left, top: pos.top }} role="dialog" aria-label={`Training: ${lesson.title}`}>
+      <div className="tr-card" ref={cardRef} style={{ left: pos.left, top: pos.top }} role="dialog" aria-label={`Treinamento: ${lesson.title}`}>
         <div className="tr-head">
           <GraduationCap size={16} aria-hidden />
           <span className="tr-lesson">{lesson.title}</span>
@@ -224,13 +230,13 @@ function Coach() {
           <span className="tr-count">
             {t.step + 1} / {steps.length}
           </span>
-          <button className="icon-only" title="Minimise" onClick={() => t.setMinimized(true)}>
+          <button className="icon-only" title="Minimizar" onClick={() => t.setMinimized(true)}>
             <Minimize2 size={14} aria-hidden />
           </button>
-          <button className="icon-only" title="All lessons" onClick={() => t.openCatalog(true)}>
+          <button className="icon-only" title="Todas as lições" onClick={() => t.openCatalog(true)}>
             <BookOpen size={14} aria-hidden />
           </button>
-          <button className="icon-only" title="Leave training" onClick={t.exit}>
+          <button className="icon-only" title="Sair do treinamento" onClick={t.exit}>
             <X size={15} aria-hidden />
           </button>
         </div>
@@ -244,7 +250,7 @@ function Coach() {
             <div className={`tr-task ${ok ? "ok" : ""}`}>
               {ok ? <Check size={16} aria-hidden /> : <Sparkles size={16} aria-hidden />}
               <div>
-                <b>{ok ? (already ? "Already done" : "Done") : "Your turn"}</b>
+                <b>{ok ? (already ? "Already done" : "Concluído") : "Sua vez"}</b>
                 <div>{step.task}</div>
               </div>
             </div>
@@ -272,38 +278,38 @@ function Coach() {
           )}
         </div>
         <div className="tr-foot">
-          <button onClick={() => t.go(Math.max(0, t.step - 1))} disabled={t.step === 0} title="Previous step">
-            <ChevronLeft size={15} aria-hidden /> Back
+          <button onClick={() => t.go(Math.max(0, t.step - 1))} disabled={t.step === 0} title="Etapa anterior">
+            <ChevronLeft size={15} aria-hidden /> Voltar
           </button>
           <span className="spacer" />
           {step.showMe && !ok && (
-            <button onClick={() => step.showMe!(makeCtx(mem.current))} title="Do this step for me">
-              <Play size={14} aria-hidden /> Show me
+            <button onClick={() => step.showMe!(makeCtx(mem.current))} title="Executar esta etapa para mim">
+              <Play size={14} aria-hidden /> Mostrar como fazer
             </button>
           )}
           {last ? (
             <>
-              <button onClick={() => (t.exit(), t.openCatalog(true))}>All lessons</button>
+              <button onClick={() => (t.exit(), t.openCatalog(true))}>Todas as lições</button>
               {next && (
                 <button className="primary" onClick={() => t.start(next.id)}>
-                  Next lesson <ChevronRight size={15} aria-hidden />
+                  Próxima lição <ChevronRight size={15} aria-hidden />
                 </button>
               )}
               {!next && (
                 <button className="primary" onClick={t.exit}>
-                  Finish
+                  Término
                 </button>
               )}
             </>
           ) : (
             <>
               {step.done && !ok && (
-                <button className="link" onClick={() => t.go(t.step + 1)} title="Skip this task">
-                  Skip
+                <button className="link" onClick={() => t.go(t.step + 1)} title="Pular esta tarefa">
+                  Pular
                 </button>
               )}
               <button className="primary" disabled={!canNext} onClick={() => t.go(t.step + 1)}>
-                Next <ChevronRight size={15} aria-hidden />
+                Avançar <ChevronRight size={15} aria-hidden />
               </button>
             </>
           )}
@@ -342,14 +348,14 @@ function Catalog() {
     if (anchor) setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 30);
   };
   return (
-    <div className="learn-shell" role="dialog" aria-label="Stratum Learn">
-      <nav className={`learn-side ${menu ? "open" : ""}`} aria-label="Learn navigation">
+    <div className="learn-shell" role="dialog" aria-label="Aprenda Stratum">
+      <nav className={`learn-side ${menu ? "open" : ""}`} aria-label="Navegação do treinamento">
         <div className="learn-brand">
-          <b>STRATUM LEARN</b>
-          <span>learning centre</span>
+          <b>APRENDA STRATUM</b>
+          <span>central de aprendizagem</span>
         </div>
         <div className="learn-grp">
-          <h5>Using Stratum</h5>
+          <h5>Como usar o Stratum</h5>
           {COURSES.map((c, i) => {
             const ls = LESSONS.filter((l) => l.course === c);
             const n = ls.filter((l) => t.done[l.id]).length;
@@ -363,21 +369,21 @@ function Catalog() {
           })}
         </div>
         <div className="learn-grp">
-          <h5>Planning &amp; Controls</h5>
+          <h5>Planejamento e controle</h5>
           <button className={`learn-navi ${view === "course" ? "on" : ""}`} onClick={() => go("course")}>
             <span className="ic">P</span>
-            <span className="lbl">Course: 4 levels, 21 lessons</span>
+            <span className="lbl">Curso com 4 níveis e 21 lições</span>
           </button>
         </div>
         <div className="learn-grp">
-          <h5>Reference</h5>
+          <h5>Referência</h5>
           <button className={`learn-navi ${view === "glossary" ? "on" : ""}`} onClick={() => go("glossary")}>
             <span className="ic">A</span>
-            <span className="lbl">Glossary ({GLOSSARY.length})</span>
+            <span className="lbl">Glossário ({GLOSSARY.length})</span>
           </button>
           <button className="learn-navi" onClick={() => t.openCatalog(false)}>
             <span className="ic">←</span>
-            <span className="lbl">Back to the app</span>
+            <span className="lbl">Voltar ao aplicativo</span>
           </button>
         </div>
       </nav>
@@ -387,14 +393,14 @@ function Catalog() {
             ☰
           </button>
           <span className="learn-chip">
-            <span className="k">App tours</span>
+            <span className="k">Tutoriais do aplicativo</span>
             <span className="v">
               {done} / {total}
             </span>
           </span>
           <div className="learn-prog">
             <div className="lab">
-              <span>tours completed</span>
+              <span>tutoriais concluídos</span>
               <span>{Math.round((done / total) * 100)}%</span>
             </div>
             <div className="learn-bar">
@@ -402,42 +408,42 @@ function Catalog() {
             </div>
           </div>
           <span className="spacer" />
-          <button className="learn-btn gh" title="Close (Esc)" onClick={() => t.openCatalog(false)}>
-            <X size={15} aria-hidden /> Close
+          <button className="learn-btn gh" title="Fechar (Esc)" onClick={() => t.openCatalog(false)}>
+            <X size={15} aria-hidden /> Fechar
           </button>
         </header>
         {view === "course" ? (
-          <iframe className="learn-course" src="./learn/index.html" title="Planning and Controls course" />
+          <iframe className="learn-course" src="./learn/index.html" title="Curso de planejamento e controle" />
         ) : (
           <div className="learn-view">
             {view === "tours" ? (
               <>
                 <div className="learn-card accent">
-                  <h1>Learn Stratum on the live application</h1>
+                  <h1>Aprenda usando o próprio Stratum</h1>
                   <p className="muted">
-                    Each tour opens the 220 kV GIS sample and walks you through the real screens, one step at a time. {total} tours, about {minutes} minutes in all. For planning theory, from CPM to delay analysis, open the Planning &amp; Controls course.
+                    Cada tutorial abre o projeto de exemplo da subestação GIS de 220 kV e guia você pelas telas, etapa por etapa. {total} tutoriais, cerca de {minutes} minutos ao todo. Para estudar teoria, do caminho crítico à análise de atrasos, abra o curso de planejamento e controle.
                   </p>
                   <div className="learn-kpis">
                     <div>
-                      <span>Tours</span>
+                      <span>Tutoriais</span>
                       <b>
                         {done}/{total}
                       </b>
                     </div>
                     <div>
-                      <span>Minutes</span>
+                      <span>Minutos</span>
                       <b>{minutes}</b>
                     </div>
                     <div>
-                      <span>Courses</span>
+                      <span>Cursos</span>
                       <b>{COURSES.length}</b>
                     </div>
                   </div>
                 </div>
                 <button className="learn-card learn-course-card" onClick={() => go("course")}>
-                  <span className="learn-pill l3">Course</span>
-                  <h2>Planning &amp; Controls</h2>
-                  <p className="muted">Foundations, building the schedule, measure and control, commercial and forensic. 21 lessons with live tools, worked level reviews, a final assessment and a certificate of completion.</p>
+                  <span className="learn-pill l3">Curso</span>
+                  <h2>Planejamento e controle</h2>
+                  <p className="muted">Fundamentos, montagem de cronograma, medição e controle, contratos e análise forense. São 21 lições com exercícios, revisões, avaliação final e certificado de conclusão.</p>
                 </button>
                 {COURSES.map((course, ci) => (
                   <section key={course} id={`learn-c${ci}`} className="learn-card">
@@ -450,17 +456,17 @@ function Catalog() {
                         const current = t.lessonId === l.id;
                         return (
                           <div key={l.id} className={`learn-row ${isDone ? "done" : ""} ${current ? "current" : ""}`}>
-                            <span className={`learn-pill ${l.level.toLowerCase()}`}>{l.level}</span>
+                            <span className={`learn-pill ${l.level.toLowerCase()}`}>{LEVEL_LABEL[l.level]}</span>
                             <div className="learn-row-text">
                               <b>{l.title}</b>
                               <span className="muted">{l.summary}</span>
                             </div>
                             <span className="learn-mono">
-                              {l.minutes} min · {l.steps.length + 2} steps
+                              {l.minutes} min · {l.steps.length + 2} etapas
                             </span>
-                            {isDone && <CircleCheck size={16} className="good" aria-label="Completed" />}
+                            {isDone && <CircleCheck size={16} className="good" aria-label="Concluído" />}
                             <button className={`learn-btn ${current || !isDone ? "" : "sec"}`} onClick={() => (current ? t.openCatalog(false) : t.start(l.id))}>
-                              {current ? `Resume (step ${t.step + 1})` : isDone ? "Review" : "Start"}
+                              {current ? `Resume (step ${t.step + 1})` : isDone ? "Review" : "Início"}
                             </button>
                           </div>
                         );
@@ -469,21 +475,21 @@ function Catalog() {
                   </section>
                 ))}
                 <div className="learn-card learn-foot">
-                  <span className="muted">The tour card moves out of the way of what it points at; minimise it to see the whole screen.</span>
+                  <span className="muted">O cartão do tutorial se move para liberar a área destacada. Minimize-o para ver a tela inteira.</span>
                   <span className="spacer" />
                   {done > 0 && (
                     <button className="learn-btn gh" onClick={() => window.confirm("Clear your tour progress?") && t.reset()}>
-                      <RotateCcw size={13} aria-hidden /> Reset tours
+                      <RotateCcw size={13} aria-hidden /> Reiniciar tutoriais
                     </button>
                   )}
                 </div>
               </>
             ) : (
               <div className="learn-card">
-                <h1>Glossary</h1>
+                <h1>Glossário</h1>
                 <label className="tr-search">
                   <Search size={14} aria-hidden />
-                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search terms, e.g. float" autoFocus />
+                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar termos, como folga" autoFocus />
                 </label>
                 <dl className="tr-glossary learn-gloss">
                   {terms.map((g) => (
@@ -495,9 +501,9 @@ function Catalog() {
                       <dd>{g.def}</dd>
                     </div>
                   ))}
-                  {!terms.length && <p className="muted">No term matches “{q}”.</p>}
+                  {!terms.length && <p className="muted">Nenhum termo corresponde a “{q}”.</p>}
                 </dl>
-                <p className="muted small">The Planning &amp; Controls course has its own glossary of 69 planning terms.</p>
+                <p className="muted small">O curso de planejamento e controle tem um glossário próprio com 69 termos.</p>
               </div>
             )}
           </div>

@@ -10,9 +10,9 @@ import { effectiveTheme } from "./appearance";
 import { useStore } from "./store";
 
 const MODES: { id: InterfaceMode; short: string; title: string; Icon: typeof Boxes }[] = [
-  { id: "p6", short: "P6", title: "P6 style layout (Ctrl+Alt+1)", Icon: ChartGantt },
-  { id: "msp", short: "Project", title: "MS Project style layout (Ctrl+Alt+2)", Icon: PanelsTopLeft },
-  { id: "4d", short: "4D", title: "4D style layout (Ctrl+Alt+3)", Icon: Boxes },
+  { id: "p6", short: "P6", title: "Layout do P6 (Ctrl+Alt+1)", Icon: ChartGantt },
+  { id: "msp", short: "Projeto", title: "Layout do Microsoft Project (Ctrl+Alt+2)", Icon: PanelsTopLeft },
+  { id: "4d", short: "4D", title: "Layout 4D (Ctrl+Alt+3)", Icon: Boxes },
 ];
 
 export function ModeSwitch() {
@@ -37,7 +37,7 @@ export function ModeSwitch() {
   }, [update, setView]);
 
   return (
-    <div className="mode-switch" role="radiogroup" aria-label="Interface layout">
+    <div className="mode-switch" role="radiogroup" aria-label="Layout da interface">
       {MODES.map(({ id, short, title, Icon }) => {
         const on = !reports && mode === id;
         return (
@@ -58,9 +58,9 @@ export function ModeSwitch() {
         );
       })}
       <span className="mode-sep" aria-hidden />
-      <button role="radio" aria-checked={reports} className={`mode-reports ${reports ? "on" : ""}`} title="Reports and dashboards (Ctrl+Alt+4)" onClick={() => setView("dashboards")}>
+      <button role="radio" aria-checked={reports} className={`mode-reports ${reports ? "on" : ""}`} title="Relatórios e painéis (Ctrl+Alt+4)" onClick={() => setView("dashboards")}>
         <LayoutDashboard size={15} strokeWidth={2} aria-hidden />
-        <span>Reports</span>
+        <span>Relatórios</span>
       </button>
     </div>
   );
@@ -72,7 +72,7 @@ export function ThemeButton() {
   const update = useConfig((s) => s.update);
   const dark = effectiveTheme(config) === "dark";
   return (
-    <button className="tb icon-only" title={dark ? "Switch to light theme" : "Switch to dark theme"} onClick={() => update({ theme: dark ? "light" : "dark" })}>
+    <button className="tb icon-only" title={dark ? "Usar tema claro" : "Usar tema escuro"} onClick={() => update({ theme: dark ? "light" : "dark" })}>
       {dark ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
     </button>
   );

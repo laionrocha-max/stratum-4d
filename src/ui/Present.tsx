@@ -29,6 +29,7 @@ import {
 import { STATUS_COLORS } from "../core/profiles";
 import { uid } from "../core/reporting";
 import { computeStates, PLAN_COLORS, scheduleRange, type SimulationOptions } from "../core/simulation";
+import { EMPTY_VISIBILITY, normalizeVisibility } from "../core/visibility";
 import type { AppearanceProfile, Link } from "../core/types";
 import type { Viewer } from "../viewer/Viewer";
 import { download, downloadDataUrl } from "./files";
@@ -37,24 +38,24 @@ import { fmtDate, useStore } from "./store";
 type Panel = null | "sections" | "views";
 const AXIS_NAME = { x: "X", y: "Height", z: "Z" } as const;
 const CHANNEL_COLOR: Record<Channel, string> = { camera: "#3b7dd8", time: "#d4a574", view: "#8a5a3b" };
-const CHANNEL_NAME: Record<Channel, string> = { camera: "Camera", time: "Date", view: "View" };
+const CHANNEL_NAME: Record<Channel, string> = { camera: "Câmera", time: "Dados", view: "Exibir" };
 export const LINK_PROFILE_KEY = "stratum.linkProfile";
 
 /** Legend rows for the colour mode in use. */
 export function legendItems(sim: SimulationOptions, profiles: AppearanceProfile[], links: Link[]): { label: string; color: string }[] {
   if (sim.colorMode === "status")
     return [
-      { label: "Not started", color: STATUS_COLORS["not-started"] },
-      { label: "In progress", color: STATUS_COLORS["in-progress"] },
-      { label: "Critical, in progress", color: STATUS_COLORS.critical },
-      { label: "Late against baseline", color: STATUS_COLORS.late },
-      { label: "Complete", color: STATUS_COLORS.complete },
+      { label: "Não iniciado", color: STATUS_COLORS["not-started"] },
+      { label: "Em andamento", color: STATUS_COLORS["in-progress"] },
+      { label: "Crítico e em andamento", color: STATUS_COLORS.critical },
+      { label: "Atrasado em relação à linha de base", color: STATUS_COLORS.late },
+      { label: "Concluído", color: STATUS_COLORS.complete },
     ];
   if (sim.colorMode === "plan-vs-actual")
     return [
-      { label: "Ahead of baseline", color: PLAN_COLORS.ahead },
-      { label: "On plan", color: PLAN_COLORS.onPlan },
-      { label: "Behind baseline", color: PLAN_COLORS.behind },
+      { label: "Adiantado em relação à linha de base", color: PLAN_COLORS.ahead },
+      { label: "Conforme o plano", color: PLAN_COLORS.onPlan },
+      { label: "Atrasado em relação à linha de base", color: PLAN_COLORS.behind },
     ];
   const used = new Set(links.map((l) => l.profileId));
   return profiles.filter((p) => used.has(p.id)).map((p) => ({ label: p.name, color: p.active.color ?? "#9aa5b1" }));
@@ -111,8 +112,8 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
 
   // The live sections follow the store.
   useEffect(() => {
-    getViewer()?.setSections(view3d.cuts, view3d.box);
-  }, [view3d.cuts, view3d.box, gen, getViewer]);
+    getViewer()?.setSections(view3d.cuts, view3d.box, view3d.sectionBounds);
+  }, [view3d.cuts, view3d.box, view3d.sectionBounds, gen, getViewer]);
 
   // Ctrl+Shift+A: link the selected elements to the selected activity (profile last used in the Selection tab).
   useEffect(() => {
@@ -123,7 +124,7 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
       const s = useStore.getState();
       const act = s.schedule?.activities.find((a) => a.id === s.selectedActivity);
       if (!act || !s.selectedElements.size) {
-        s.setStatus("To link: select elements in the 3D view and one activity, then push Ctrl+Shift+A.");
+        s.setStatus("Selecione os elementos na vista 3D e uma atividade. Depois pressione Ctrl+Shift+A para vincular.");
         return;
       }
       e.preventDefault();
@@ -135,18 +136,36 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
       }
       if (!s.profiles.some((p) => p.id === profileId)) profileId = s.profiles[0]?.id ?? "install";
       s.setLinks(mergeLinks(s.links, [...s.selectedElements].map((elementId) => ({ elementId, activityId: act.id, profileId }))));
-      s.setStatus(`Linked ${s.selectedElements.size} element(s) to ${act.code} (${s.profiles.find((p) => p.id === profileId)?.name}).`);
+      s.setStatus(`${s.selectedElements.size} elemento(s) vinculado(s) à atividade ${act.code} (${s.profiles.find((p) => p.id === profileId)?.name}).`);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const current = (): ViewSettings => ({ ...structuredClone(useStore.getState().view3d), colorMode: useStore.getState().sim.colorMode, dateSource: useStore.getState().sim.dateSource });
+  const current = (): ViewSettings => ({
+    ...structuredClone(useStore.getState().view3d),
+    sectionBounds: getViewer()?.getSectionBounds(),
+    colorMode: useStore.getState().sim.colorMode,
+    dateSource: useStore.getState().sim.dateSource,
+  });
+
+  const normalizedVisibility = useMemo(() => new WeakMap<NonNullable<ViewSettings["visibility"]>, NonNullable<ViewSettings["visibility"]>>(), []);
 
   /** Apply view settings (sections, legend, colour mode, dates) to the store. */
   const applyView = (v: ViewSettings) => {
     const s = useStore.getState();
-    s.setView3d({ cuts: v.cuts, box: v.box, legend: v.legend });
+    let visibility = s.view3d.visibility;
+    if (v.visibility) {
+      visibility = normalizedVisibility.get(v.visibility);
+      if (!visibility) {
+        visibility = normalizeVisibility(v.visibility);
+        normalizedVisibility.set(v.visibility, visibility);
+      }
+    }
+    s.setView3d({
+      cuts: v.cuts, box: v.box, legend: v.legend, sectionBounds: v.sectionBounds,
+      visibility,
+    });
     const patch: Partial<SimulationOptions> = {};
     if (v.colorMode && v.colorMode !== s.sim.colorMode) patch.colorMode = v.colorMode;
     if (v.dateSource && v.dateSource !== s.sim.dateSource) patch.dateSource = v.dateSource;
@@ -155,33 +174,36 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
 
   const items = useMemo(() => legendItems(sim, profiles, links), [sim, profiles, links]);
   const v = getViewer();
-  if (!v || !schedule) return null;
+  if (!v || !st.elements.length) return null;
 
   return (
     <>
       <div className="pr-dock">
-      <div className="pr-bar" role="toolbar" aria-label="3D view">
-        <button className="pr-btn" title="Zoom All: show the whole model" onClick={() => v.zoomAll()}>
-          <Maximize size={14} aria-hidden /> <span className="pr-txt">Zoom All</span>
+      <div className="pr-bar" role="toolbar" aria-label="Vista 3D">
+        <button className="pr-btn" title="Enquadrar todo o modelo" onClick={() => v.zoomAll()}>
+          <Maximize size={14} aria-hidden /> <span className="pr-txt">Enquadrar tudo</span>
         </button>
-        <select className="pr-btn" title="Look from a standard direction" value="" onChange={(e) => e.target.value && v.viewFrom(e.target.value as Parameters<Viewer["viewFrom"]>[0])}>
-          <option value="">View…</option>
-          <option value="iso">Isometric</option>
-          <option value="top">Top</option>
-          <option value="front">Front</option>
-          <option value="back">Back</option>
-          <option value="left">Left</option>
-          <option value="right">Right</option>
+        <button className="pr-btn" title="Redefinir para a vista isométrica" onClick={() => v.viewFrom("iso")}>
+          <span className="pr-txt">Redefinir vista</span>
+        </button>
+        <select className="pr-btn" title="Escolher uma direção de vista" value="" onChange={(e) => e.target.value && v.viewFrom(e.target.value as Parameters<Viewer["viewFrom"]>[0])}>
+          <option value="">Vista…</option>
+          <option value="iso">Isométrica</option>
+          <option value="top">Superior</option>
+          <option value="front">Frente</option>
+          <option value="back">Traseira</option>
+          <option value="left">Esquerda</option>
+          <option value="right">Direita</option>
         </select>
-        <button className={`pr-btn ${panel === "sections" ? "on" : ""}`} title="Section planes and section box" onClick={() => setPanel(panel === "sections" ? null : "sections")}>
-          <Scissors size={14} aria-hidden /> <span className="pr-txt">Sections</span>
+        <button className={`pr-btn ${panel === "sections" ? "on" : ""}`} title="Planos e caixa de corte" onClick={() => setPanel(panel === "sections" ? null : "sections")}>
+          <Scissors size={14} aria-hidden /> <span className="pr-txt">Cortes</span>
           {view3d.cuts.some((c) => c.on) || view3d.box?.on ? " •" : ""}
         </button>
-        <button className={`pr-btn ${panel === "views" ? "on" : ""}`} title="Saved viewpoints: date, camera and view settings" onClick={() => setPanel(panel === "views" ? null : "views")}>
-          <Bookmark size={14} aria-hidden /> <span className="pr-txt">Viewpoints</span>
+        <button className={`pr-btn ${panel === "views" ? "on" : ""}`} title="Pontos de vista salvos com data, câmera e configurações" onClick={() => setPanel(panel === "views" ? null : "views")}>
+          <Bookmark size={14} aria-hidden /> <span className="pr-txt">Pontos de vista</span>
         </button>
-        <button className={`pr-btn ${editor ? "on" : ""}`} title="Animation editor: keyframes and video export" onClick={() => setEditor(!editor)}>
-          <Film size={14} aria-hidden /> <span className="pr-txt">Animation</span>
+        <button disabled={!schedule} className={`pr-btn ${editor ? "on" : ""}`} title="Editor de animação com quadros-chave e exportação de vídeo" onClick={() => setEditor(!editor)}>
+          <Film size={14} aria-hidden /> <span className="pr-txt">Animação</span>
         </button>
       </div>
 
@@ -190,7 +212,7 @@ export function Present({ getViewer, gen }: { getViewer: () => Viewer | null; ge
       </div>
 
       {view3d.legend && !editor && items.length > 0 && (
-        <div className="pr-legend" aria-label="Legend">
+        <div className="pr-legend" aria-label="Legenda">
           <b>{fmtDate(time)}</b>
           {items.map((i) => (
             <span key={i.label}>
@@ -219,37 +241,37 @@ function SectionsPanel({ viewer }: { viewer: Viewer }) {
     if (f) setBox({ on: true, min: f.min, max: f.max });
   };
   return (
-    <div className="pr-panel" aria-label="Sections">
+    <div className="pr-panel" aria-label="Cortes">
       <div className="pr-head">
-        <b>Section planes</b>
+        <b>Planos de corte</b>
         <span className="spacer" />
         {(["x", "y", "z"] as const).map((a) => (
-          <button key={a} className="mini" onClick={() => add(a)} title={`Add a section plane across ${AXIS_NAME[a]}`}>
+          <button key={a} className="mini" onClick={() => add(a)} title={`Adicionar plano de corte em ${AXIS_NAME[a]}`}>
             <Plus size={12} aria-hidden /> {AXIS_NAME[a]}
           </button>
         ))}
       </div>
-      {view3d.cuts.length === 0 && <p className="muted">No section planes. Add one across X, the height or Z.</p>}
+      {view3d.cuts.length === 0 && <p className="muted">Nenhum plano de corte. Adicione um corte no eixo X, na altura ou no eixo Z.</p>}
       {view3d.cuts.map((c) => (
         <div key={c.id} className="pr-row">
           <input type="checkbox" checked={c.on} onChange={(e) => setCut(c.id, { on: e.target.checked })} aria-label={`Use the ${AXIS_NAME[c.axis]} plane`} />
           <span className="pr-axis">{AXIS_NAME[c.axis]}</span>
           <input type="range" min={0} max={1} step={0.005} value={c.pos} onChange={(e) => setCut(c.id, { pos: Number(e.target.value) })} aria-label={`Position of the ${AXIS_NAME[c.axis]} plane`} />
-          <button className={`mini ${c.flip ? "on" : ""}`} title="Keep the other side" onClick={() => setCut(c.id, { flip: !c.flip })}>
+          <button className={`mini ${c.flip ? "on" : ""}`} title="Manter o outro lado" onClick={() => setCut(c.id, { flip: !c.flip })}>
             <ArrowLeftRight size={12} aria-hidden />
           </button>
-          <button className="mini" title="Remove the plane" onClick={() => setView3d({ cuts: view3d.cuts.filter((x) => x.id !== c.id) })}>
+          <button className="mini" title="Remover plano" onClick={() => setView3d({ cuts: view3d.cuts.filter((x) => x.id !== c.id) })}>
             <X size={12} aria-hidden />
           </button>
         </div>
       ))}
       <div className="pr-head">
         <label className="check">
-          <input type="checkbox" checked={box.on} onChange={(e) => setBox({ on: e.target.checked })} /> <b>Section box</b>
+          <input type="checkbox" checked={box.on} onChange={(e) => setBox({ on: e.target.checked })} /> <b>Caixa de corte</b>
         </label>
         <span className="spacer" />
-        <button className="mini" disabled={!selectedElements.size} onClick={fitToSelection} title="Put the box around the selected elements">
-          Fit to selection
+        <button className="mini" disabled={!selectedElements.size} onClick={fitToSelection} title="Posicionar a caixa ao redor dos elementos selecionados">
+          Ajustar à seleção
         </button>
       </div>
       {box.on &&
@@ -262,11 +284,11 @@ function SectionsPanel({ viewer }: { viewer: Viewer }) {
         ))}
       <div className="pr-head">
         <label className="check">
-          <input type="checkbox" checked={!!view3d.legend} onChange={(e) => setView3d({ legend: e.target.checked })} /> Show the legend and date
+          <input type="checkbox" checked={!!view3d.legend} onChange={(e) => setView3d({ legend: e.target.checked })} /> Mostrar a legenda e a data
         </label>
         <span className="spacer" />
-        <button className="mini" onClick={() => setView3d({ cuts: [], box: null })} disabled={!view3d.cuts.length && !view3d.box}>
-          Clear
+        <button className="mini" onClick={() => setView3d({ cuts: [], box: null, sectionBounds: undefined })} disabled={!view3d.cuts.length && !view3d.box}>
+          Limpar
         </button>
       </div>
     </div>
@@ -280,10 +302,10 @@ function ViewpointsPanel({ viewer, current, applyView }: { viewer: Viewer; curre
   const list = presentation.viewpoints;
   const put = (viewpoints: Viewpoint[]) => setPresentation({ ...useStore.getState().presentation, viewpoints });
   const save = () => {
-    const name = window.prompt("Name of the viewpoint", `Viewpoint ${list.length + 1} – ${fmtDate(time)}`);
+    const name = window.prompt("Nome do ponto de vista", `Ponto de vista ${list.length + 1} – ${fmtDate(time)}`);
     if (!name) return;
     put([...list, { id: uid("vp"), name, time, camera: viewer.getCamera(), view: current(), createdAt: new Date().toISOString() }]);
-    setStatus(`Saved viewpoint "${name}".`);
+    setStatus(`Ponto de vista «${name}» salvo.`);
   };
   const activate = (vp: Viewpoint, ms = 900) => {
     if (vp.time !== null) setTime(vp.time);
@@ -299,41 +321,41 @@ function ViewpointsPanel({ viewer, current, applyView }: { viewer: Viewer; curre
     downloadDataUrl(`${schedule?.projectCode ?? "stratum"}-${vp.name.replace(/[^\w-]+/g, "_")}.png`, c.toDataURL("image/png"));
   };
   return (
-    <div className="pr-panel" aria-label="Viewpoints">
+    <div className="pr-panel" aria-label="Pontos de vista">
       <div className="pr-head">
-        <b>Viewpoints</b>
+        <b>Pontos de vista</b>
         <span className="spacer" />
         <button className="mini primary" onClick={save}>
-          <Plus size={12} aria-hidden /> Save viewpoint
+          <Plus size={12} aria-hidden /> Salvar ponto de vista
         </button>
       </div>
-      <p className="muted">A viewpoint keeps the date, the camera, the section planes and box, the colour mode and the dates to simulate.</p>
-      {list.length === 0 && <p className="muted">No viewpoints yet.</p>}
+      <p className="muted">Um ponto de vista salva a data, a câmera, os cortes, a visibilidade e o modo de cor da simulação.</p>
+      {list.length === 0 && <p className="muted">Nenhum ponto de vista salvo.</p>}
       <ul className="pr-list">
         {list.map((vp) => (
           <li key={vp.id}>
-            <button className="link pr-name" title="Show this viewpoint" onClick={() => activate(vp)} onDoubleClick={() => activate(vp, 0)}>
+            <button className="link pr-name" title="Exibir este ponto de vista" onClick={() => activate(vp)} onDoubleClick={() => activate(vp, 0)}>
               {vp.name}
             </button>
-            <span className="muted">{vp.time !== null ? fmtDate(vp.time) : "any date"}</span>
+            <span className="muted">{vp.time !== null ? fmtDate(vp.time) : "qualquer data"}</span>
             <span className="spacer" />
-            <button className="mini" title="Replace with the current view" onClick={() => put(list.map((x) => (x.id === vp.id ? { ...x, time, camera: viewer.getCamera(), view: current() } : x)))}>
-              Update
+            <button className="mini" title="Substituir pela vista atual" onClick={() => put(list.map((x) => (x.id === vp.id ? { ...x, time, camera: viewer.getCamera(), view: current() } : x)))}>
+              Atualizar
             </button>
             <button
               className="mini"
-              title="Rename"
+              title="Renomear"
               onClick={() => {
-                const name = window.prompt("Name of the viewpoint", vp.name);
+                const name = window.prompt("Nome do ponto de vista", vp.name);
                 if (name) put(list.map((x) => (x.id === vp.id ? { ...x, name } : x)));
               }}
             >
-              Rename
+              Renomear
             </button>
-            <button className="mini" title="Save as image (1920 × 1080 PNG)" onClick={() => void image(vp)}>
+            <button className="mini" title="Salvar como imagem (PNG de 1920 × 1080)" onClick={() => void image(vp)}>
               <ImageIcon size={12} aria-hidden />
             </button>
-            <button className="mini" title="Delete" onClick={() => put(list.filter((x) => x.id !== vp.id))}>
+            <button className="mini" title="Excluir" onClick={() => put(list.filter((x) => x.id !== vp.id))}>
               <Trash2 size={12} aria-hidden />
             </button>
           </li>
@@ -353,6 +375,7 @@ interface ExportOptions {
   date: boolean;
   legend: boolean;
   grid: boolean;
+  presentationLook: boolean;
 }
 
 function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: Viewer; current: () => ViewSettings; applyView: (v: ViewSettings) => void; onClose: () => void }) {
@@ -387,12 +410,13 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
     setPresentation({ ...presentation, animations: [...anims, a] });
     setSelId(a.id);
     setT(0);
-    setStatus("New animation: the whole schedule in 30 s. Move the camera and click the Camera channel to add camera keys.");
+    setStatus("Nova animação com todo o cronograma em 30 s. Mova a câmera e clique na faixa Câmera para adicionar quadros-chave.");
   };
 
   // Preview: play the animation in real time.
   useEffect(() => {
     if (!playing || !anim) return;
+    viewer.setAnimationPreview(true);
     let raf = 0;
     const t0 = performance.now() - t * 1000;
     const step = (now: number) => {
@@ -408,7 +432,10 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      viewer.setAnimationPreview(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, anim?.id]);
 
@@ -494,68 +521,79 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
     out.width = o.width;
     out.height = o.height;
     const g = out.getContext("2d")!;
-    viewer.setGridVisible(o.grid);
     const files: Record<string, Uint8Array> = {};
     let rec: MediaRecorder | null = null;
     let track: CanvasCaptureMediaStreamTrack | null = null;
     const chunks: Blob[] = [];
-    if (o.format === "video") {
-      const stream = out.captureStream(0);
-      track = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
-      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
-      rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: Math.round(o.width * o.height * o.fps * 0.15) });
-      rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-      rec.start(500);
-    }
-    const start = performance.now();
-    for (let i = 0; i < times.length; i++) {
-      if (cancel.current) break;
-      const u = times[i];
-      const f = evalAnimation(anim, u);
-      const s = useStore.getState();
-      const date = f.date ?? s.time;
-      const view = f.view ?? current();
-      const simV: SimulationOptions = { ...s.sim, colorMode: view.colorMode ?? s.sim.colorMode, dateSource: view.dateSource ?? s.sim.dateSource };
-      viewer.applyFrame(computeStates(schedule, s.links, s.profiles, ids, date, simV), motionAt(schedule, s.paths, date, simV.dateSource));
-      viewer.setSections(view.cuts, view.box);
-      if (f.camera) viewer.setCamera(f.camera, 0);
-      const frame = viewer.renderFrame(o.width, o.height);
-      g.drawImage(frame, 0, 0);
-      drawOverlay(g, o.width, o.height, { title: null, date: o.date ? fmtDate(date) : null, items: o.legend ? legendItems(simV, s.profiles, s.links) : null });
+    try {
+      viewer.setPresentationLook(o.presentationLook);
+      viewer.setGridVisible(o.grid);
       if (o.format === "video") {
-        // The recorder stamps frames as they arrive, so they arrive at the frame rate.
-        const due = start + (i * 1000) / o.fps;
-        const wait = due - performance.now();
-        if (wait > 0) await sleep(wait);
-        track!.requestFrame();
-        // The canvas is captured when the page paints, so give it one paint for each frame.
-        await new Promise((r) => requestAnimationFrame(r));
-      } else {
-        const blob = await new Promise<Blob | null>((r) => out.toBlob(r, "image/png"));
-        if (blob) files[`frame_${String(i).padStart(5, "0")}.png`] = new Uint8Array(await blob.arrayBuffer());
+        const stream = out.captureStream(0);
+        track = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+        const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+        rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: Math.round(o.width * o.height * o.fps * 0.15) });
+        rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        rec.start(500);
       }
-      if (i % 3 === 0) {
-        setProgress({ i: i + 1, n: times.length });
-        if (o.format === "images") await sleep(0);
+      const start = performance.now();
+      for (let i = 0; i < times.length; i++) {
+        if (cancel.current) break;
+        const u = times[i];
+        const f = evalAnimation(anim, u);
+        const s = useStore.getState();
+        const date = f.date ?? s.time;
+        const view = f.view ?? current();
+        const simV: SimulationOptions = { ...s.sim, colorMode: view.colorMode ?? s.sim.colorMode, dateSource: view.dateSource ?? s.sim.dateSource };
+        viewer.setInspection(view.visibility ?? s.view3d.visibility ?? EMPTY_VISIBILITY, undefined, true);
+        viewer.applyFrame(computeStates(schedule, s.links, s.profiles, ids, date, simV), motionAt(schedule, s.paths, date, simV.dateSource));
+        viewer.setSections(view.cuts, view.box, view.sectionBounds);
+        if (f.camera) viewer.setCamera(f.camera, 0);
+        const frame = viewer.renderFrame(o.width, o.height);
+        g.drawImage(frame, 0, 0);
+        drawOverlay(g, o.width, o.height, { title: null, date: o.date ? fmtDate(date) : null, items: o.legend ? legendItems(simV, s.profiles, s.links) : null });
+        if (o.format === "video") {
+          // The recorder stamps frames as they arrive, so they arrive at the frame rate.
+          const due = start + (i * 1000) / o.fps;
+          const wait = due - performance.now();
+          if (wait > 0) await sleep(wait);
+          track!.requestFrame();
+          // The canvas is captured when the page paints, so give it one paint for each frame.
+          await new Promise((r) => requestAnimationFrame(r));
+        } else {
+          const blob = await new Promise<Blob | null>((r) => out.toBlob(r, "image/png"));
+          if (blob) files[`frame_${String(i).padStart(5, "0")}.png`] = new Uint8Array(await blob.arrayBuffer());
+        }
+        if (i % 3 === 0) {
+          setProgress({ i: i + 1, n: times.length });
+          if (o.format === "images") await sleep(0);
+        }
       }
+      const name = `${schedule.projectCode}-${anim.name}-${o.presentationLook ? "apresentacao" : "leve"}`.replace(/[^\w-]+/g, "_");
+      if (rec) {
+        await sleep(1000 / o.fps + 50);
+        await new Promise<void>((r) => {
+          rec!.onstop = () => r();
+          rec!.stop();
+        });
+        if (!cancel.current) download(`${name}.webm`, new Blob(chunks, { type: "video/webm" }), "video/webm");
+      } else if (!cancel.current) {
+        files["README.txt"] = strToU8(`${anim.name}: ${times.length} frames at ${o.fps} frames per second, ${o.width} x ${o.height}.\n`);
+        download(`${name}-frames.zip`, zipSync(files, { level: 0 }), "application/zip");
+      }
+      setStatus(cancel.current ? "Exportação cancelada." : `Animação «${anim.name}» exportada (${times.length} quadros).`);
+    } catch (err) {
+      setStatus(`Falha ao exportar: ${(err as Error).message}`);
+    } finally {
+      if (rec && rec.state !== "inactive") rec.stop();
+      track?.stop();
+      const live = useStore.getState().sim;
+      viewer.setPresentationLook(live.presentationLook === true);
+      viewer.setGridVisible(live.showGrid !== false);
+      viewer.setInspection(useStore.getState().view3d.visibility ?? EMPTY_VISIBILITY, undefined, useStore.getState().playing);
+      setProgress(null);
+      show(anim, t);
     }
-    viewer.setGridVisible(true);
-    setProgress(null);
-    const name = `${schedule.projectCode}-${anim.name}`.replace(/[^\w-]+/g, "_");
-    if (rec) {
-      await sleep(1000 / o.fps + 50);
-      await new Promise<void>((r) => {
-        rec!.onstop = () => r();
-        rec!.stop();
-      });
-      if (!cancel.current) download(`${name}.webm`, new Blob(chunks, { type: "video/webm" }), "video/webm");
-    } else if (!cancel.current) {
-      files["README.txt"] = strToU8(`${anim.name}: ${times.length} frames at ${o.fps} frames per second, ${o.width} x ${o.height}.\n`);
-      download(`${name}-frames.zip`, zipSync(files, { level: 0 }), "application/zip");
-    }
-    // Put the view back to the editor's playhead.
-    show(anim, t);
-    setStatus(cancel.current ? "Export cancelled." : `Exported "${anim.name}" (${times.length} frames).`);
   };
 
   const ticks = anim ? Array.from({ length: Math.floor(anim.duration / (anim.duration > 60 ? 10 : 5)) + 1 }, (_, i) => i * (anim.duration > 60 ? 10 : 5)) : [];
@@ -563,36 +601,36 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
   const dateNow = anim ? evalAnimation(anim, t).date : null;
 
   return (
-    <div className="pr-anim" tabIndex={-1} onKeyDown={onKeyDown} aria-label="Animation editor">
+    <div className="pr-anim" tabIndex={-1} onKeyDown={onKeyDown} aria-label="Editor de animação">
       <div className="pr-anim-head">
-        <b>Animation</b>
-        <select value={anim?.id ?? ""} onChange={(e) => (setSelId(e.target.value), setT(0), setSel(null))} aria-label="Animation">
-          {anims.length === 0 && <option value="">No animations</option>}
+        <b>Animação</b>
+        <select value={anim?.id ?? ""} onChange={(e) => (setSelId(e.target.value), setT(0), setSel(null))} aria-label="Animação">
+          {anims.length === 0 && <option value="">Nenhuma animação</option>}
           {anims.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
             </option>
           ))}
         </select>
-        <button className="mini" onClick={create} title="A new animation of the whole schedule">
-          <Plus size={12} aria-hidden /> New
+        <button className="mini" onClick={create} title="Criar animação de todo o cronograma">
+          <Plus size={12} aria-hidden /> Novo
         </button>
         {anim && (
           <>
             <button
               className="mini"
               onClick={() => {
-                const name = window.prompt("Name of the animation", anim.name);
+                const name = window.prompt("Nome da animação", anim.name);
                 if (name) putAnim({ ...anim, name });
               }}
             >
-              Rename
+              Renomear
             </button>
             <button
               className="mini"
-              title="Delete the animation"
+              title="Excluir animação"
               onClick={() => {
-                if (!window.confirm(`Delete the animation "${anim.name}"?`)) return;
+                if (!window.confirm(`Excluir a animação «${anim.name}»?`)) return;
                 setPresentation({ ...presentation, animations: anims.filter((x) => x.id !== anim.id) });
                 setSelId(null);
               }}
@@ -600,7 +638,7 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
               <Trash2 size={12} aria-hidden />
             </button>
             <label className="pr-dur">
-              Length
+              Duração
               <input
                 type="number"
                 min={2}
@@ -617,24 +655,24 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
               s
             </label>
             <span className="spacer" />
-            <button className="mini" onClick={() => (t >= anim.duration ? (setT(0), setPlaying(true)) : setPlaying(!playing))} title="Preview">
-              {playing ? <Pause size={12} aria-hidden /> : <Play size={12} aria-hidden />} {playing ? "Pause" : "Preview"}
+            <button className="mini" onClick={() => (t >= anim.duration ? (setT(0), setPlaying(true)) : setPlaying(!playing))} title="Prévia">
+              {playing ? <Pause size={12} aria-hidden /> : <Play size={12} aria-hidden />} {playing ? "Pausar" : "Prévia"}
             </button>
             <span className="pr-clock">
               {t.toFixed(1)} s{dateNow !== null ? ` · ${fmtDate(dateNow)}` : ""}
             </span>
             <button className="mini primary" onClick={() => setExportOpen(true)} disabled={!!progress}>
-              Export…
+              Exportar…
             </button>
           </>
         )}
-        <button className="mini" onClick={onClose} title="Close the animation editor">
+        <button className="mini" onClick={onClose} title="Fechar editor de animação">
           <X size={12} aria-hidden />
         </button>
       </div>
 
       {!anim ? (
-        <p className="muted pr-empty">Click New to make an animation of the whole schedule. Then add keys: move the camera, change the date or the view, and click in a channel.</p>
+        <p className="muted pr-empty">Clique em Novo para animar todo o cronograma. Para criar um quadro-chave, mova a câmera ou altere a data ou a vista. Depois clique na faixa correspondente.</p>
       ) : (
         <div className="pr-tracks" onPointerMove={onTrackMove} onPointerUp={onTrackUp}>
           <div className="pr-label" />
@@ -651,7 +689,7 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
                 <i style={{ background: CHANNEL_COLOR[ch] }} />
                 {CHANNEL_NAME[ch]}
               </div>
-              <div className="pr-track" onPointerDown={onTrackDown(ch)} title={`Click to add a ${CHANNEL_NAME[ch].toLowerCase()} key from the current view; drag a key to move it`}>
+              <div className="pr-track" onPointerDown={onTrackDown(ch)} title={`Clique para gravar um quadro de ${CHANNEL_NAME[ch].toLowerCase()} na vista atual. Arraste o quadro para mudar sua posição no vídeo.`}>
                 {keysOf(anim, ch).map((k) => (
                   <span key={k.t} className={`pr-key ${sel?.ch === ch && Math.abs(sel.t - k.t) < 1e-6 ? "sel" : ""}`} style={{ left: pct(k.t), background: CHANNEL_COLOR[ch] }} />
                 ))}
@@ -664,23 +702,23 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
 
       {anim && (
         <div className="pr-anim-foot">
-          <button className="mini" onClick={() => addKey("camera", t)}>Key camera</button>
-          <button className="mini" onClick={() => addKey("time", t)}>Key date</button>
-          <button className="mini" onClick={() => addKey("view", t)}>Key view</button>
+          <button className="mini" onClick={() => addKey("camera", t)}>Gravar posição da câmera</button>
+          <button className="mini" onClick={() => addKey("time", t)}>Gravar data</button>
+          <button className="mini" onClick={() => addKey("view", t)}>Gravar vista</button>
           {sel && (
             <>
               <span className="muted">
-                {CHANNEL_NAME[sel.ch]} key at {sel.t.toFixed(1)} s
+                {CHANNEL_NAME[sel.ch]} quadro-chave em {sel.t.toFixed(1)} s
               </span>
               {selCameraKey && (
-                <select value={selCameraKey.interp} onChange={(e) => putAnim({ ...anim, camera: anim.camera.map((k) => (k === selCameraKey ? { ...k, interp: e.target.value as Interpolation } : k)) })} aria-label="Camera movement to the next key">
-                  <option value="smooth">Smooth</option>
+                <select value={selCameraKey.interp} onChange={(e) => putAnim({ ...anim, camera: anim.camera.map((k) => (k === selCameraKey ? { ...k, interp: e.target.value as Interpolation } : k)) })} aria-label="Movimento da câmera até o próximo quadro-chave">
+                  <option value="smooth">Suave</option>
                   <option value="linear">Linear</option>
-                  <option value="step">Jump</option>
+                  <option value="step">Salto</option>
                 </select>
               )}
               <button className="mini" onClick={deleteKey}>
-                Remove key
+                Remover quadro-chave
               </button>
             </>
           )}
@@ -690,10 +728,10 @@ function AnimationEditor({ viewer, current, applyView, onClose }: { viewer: View
       {exportOpen && anim && <ExportDialog anim={anim} onCancel={() => setExportOpen(false)} onExport={(o) => void runExport(o)} />}
       {progress && (
         <div className="pr-progress">
-          Exporting frame {progress.i} of {progress.n}…
+          Exportando quadro {progress.i} of {progress.n}…
           <progress value={progress.i} max={progress.n} />
           <button className="mini" onClick={() => (cancel.current = true)}>
-            Cancel
+            Cancelar
           </button>
         </div>
       )}
@@ -709,14 +747,30 @@ const SIZES: [number, number, string][] = [
 ];
 
 function ExportDialog({ anim, onCancel, onExport }: { anim: Animation4D; onCancel: () => void; onExport: (o: ExportOptions) => void }) {
-  const [size, setSize] = useState(1);
-  const [o, setO] = useState<Omit<ExportOptions, "width" | "height">>({ fps: 25, format: "video", date: true, legend: true, grid: true });
+  const [size, setSize] = useState(0);
+  const [o, setO] = useState<Omit<ExportOptions, "width" | "height">>(() => ({
+    fps: 15, format: "video", date: true, legend: true, grid: useStore.getState().sim.showGrid !== false, presentationLook: false,
+  }));
   const frames = Math.round(anim.duration * o.fps) + 1;
   return (
-    <div className="pr-dialog" role="dialog" aria-label="Export animation">
-      <h4>Export "{anim.name}"</h4>
+    <div className="pr-dialog" role="dialog" aria-label="Exportar animação">
+      <h4>Exportar «{anim.name}»</h4>
       <label>
-        Resolution
+        Aparência do vídeo
+        <select
+          value={o.presentationLook ? "presentation" : "light"}
+          onChange={(e) => {
+            const presentationLook = e.target.value === "presentation";
+            setSize(presentationLook ? 1 : 0);
+            setO({ ...o, presentationLook, fps: presentationLook ? 25 : 15 });
+          }}
+        >
+          <option value="light">Leve · conferência</option>
+          <option value="presentation">Apresentação · luz e sombras</option>
+        </select>
+      </label>
+      <label>
+        Resolução
         <select value={size} onChange={(e) => setSize(Number(e.target.value))}>
           {SIZES.map(([, , l], i) => (
             <option key={l} value={i}>
@@ -726,39 +780,39 @@ function ExportDialog({ anim, onCancel, onExport }: { anim: Animation4D; onCance
         </select>
       </label>
       <label>
-        Frame rate
+        Taxa de quadros
         <select value={o.fps} onChange={(e) => setO({ ...o, fps: Number(e.target.value) })}>
           {[15, 25, 30, 60].map((f) => (
             <option key={f} value={f}>
-              {f} frames per second
+              {f} quadros por segundo
             </option>
           ))}
         </select>
       </label>
       <label>
-        Output
+        Saída
         <select value={o.format} onChange={(e) => setO({ ...o, format: e.target.value as ExportOptions["format"] })}>
-          <option value="video">Video (WebM)</option>
-          <option value="images">Series of images (PNG, in a zip file)</option>
+          <option value="video">Vídeo (WebM)</option>
+          <option value="images">Sequência de imagens (PNG em arquivo ZIP)</option>
         </select>
       </label>
       <label className="check">
-        <input type="checkbox" checked={o.date} onChange={(e) => setO({ ...o, date: e.target.checked })} /> Show the date
+        <input type="checkbox" checked={o.date} onChange={(e) => setO({ ...o, date: e.target.checked })} /> Mostrar a data
       </label>
       <label className="check">
-        <input type="checkbox" checked={o.legend} onChange={(e) => setO({ ...o, legend: e.target.checked })} /> Show the legend
+        <input type="checkbox" checked={o.legend} onChange={(e) => setO({ ...o, legend: e.target.checked })} /> Mostrar a legenda
       </label>
       <label className="check">
-        <input type="checkbox" checked={o.grid} onChange={(e) => setO({ ...o, grid: e.target.checked })} /> Show the ground grid
+        <input type="checkbox" checked={o.grid} onChange={(e) => setO({ ...o, grid: e.target.checked })} /> Mostrar a grade do piso
       </label>
       <p className="muted">
-        {frames} frames. {o.format === "video" ? `The video export takes about ${Math.ceil(anim.duration)} s, the length of the animation.` : "Each frame is one PNG file."} Tip: hold the last view for a few seconds at the end.
+        {frames} quadros. {o.format === "video" ? `A animação foi configurada para ${Math.ceil(anim.duration)} s.` : "Cada quadro é um arquivo PNG."}
       </p>
       <div className="row">
         <span className="spacer" />
-        <button onClick={onCancel}>Cancel</button>
+        <button onClick={onCancel}>Cancelar</button>
         <button className="primary" onClick={() => onExport({ ...o, width: SIZES[size][0], height: SIZES[size][1] })}>
-          Export
+          Exportar
         </button>
       </div>
     </div>

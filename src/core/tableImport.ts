@@ -1,3 +1,4 @@
+import { shortMonthIndex } from "./dates";
 // Apply a table of values to the schedule: rows from an Excel sheet (matched
 // by Activity ID, as P6's Excel import does) or cells pasted from Excel into
 // the activity table (matched by position).
@@ -7,8 +8,6 @@ import { uid } from "./ops";
 import type { Activity, Schedule } from "./types";
 
 export type Cell = string | number | boolean | Date | null | undefined;
-
-const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
 /** Read a date typed or exported in any of the usual forms; keeps 08:00 / 17:00 style times when given. */
 export function parseDateCell(v: Cell, fallbackHour = 8): number | null {
@@ -22,7 +21,7 @@ export function parseDateCell(v: Cell, fallbackHour = 8): number | null {
   const t = String(v).replace(/\s*\*?\s*A\s*$/i, "").trim();
   let m = /^(\d{1,2})[-\s/]([A-Za-z]{3})[A-Za-z]*[-\s/](\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?$/.exec(t);
   if (m) {
-    const mi = MONTHS.indexOf(m[2].toLowerCase());
+    const mi = shortMonthIndex(m[2]);
     const y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]);
     if (mi >= 0) return Date.UTC(y, mi, Number(m[1]), m[4] ? Number(m[4]) : fallbackHour, m[5] ? Number(m[5]) : 0);
   }

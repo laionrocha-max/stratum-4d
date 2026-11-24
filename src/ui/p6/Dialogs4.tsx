@@ -69,18 +69,18 @@ export function RolesDialog() {
   };
   return (
     <P6Dlg
-      title="Roles"
+      title="Funções"
       width={900}
       onClose={close}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={close} />
+          <SideBtn kind="close" label="Fechar" primary onClick={close} />
           <SideGap />
-          <SideBtn kind="add" label="Add" onClick={() => addRole()} />
+          <SideBtn kind="add" label="Adicionar" onClick={() => addRole()} />
           <SideBtn kind="delete" label="Del. / Merge" disabled={!role} onClick={delMerge} />
-          <SideBtn kind="cut" label="Cut" disabled={!role} onClick={() => role && ((roleClip = role), delMerge())} />
-          <SideBtn kind="copy" label="Copy" disabled={!role} onClick={() => (roleClip = role)} />
-          <SideBtn kind="paste" label="Paste" onClick={() => roleClip && addRole(roleClip)} />
+          <SideBtn kind="cut" label="Recortar" disabled={!role} onClick={() => role && ((roleClip = role), delMerge())} />
+          <SideBtn kind="copy" label="Copiar" disabled={!role} onClick={() => (roleClip = role)} />
+          <SideBtn kind="paste" label="Colar" onClick={() => roleClip && addRole(roleClip)} />
           <SideArrows up={idx > 0 ? () => swap(-1) : undefined} down={idx >= 0 && idx < roles.length - 1 ? () => swap(1) : undefined} />
           <SideGap />
           <SideHelp topic="roles" />
@@ -95,7 +95,7 @@ export function RolesDialog() {
               <tr>
                 <td style={{ width: "35%" }}>Role ID</td>
                 <td>Role Name</td>
-                <td style={{ width: 90 }}>Assignments</td>
+                <td style={{ width: 90 }}>Atribuições</td>
               </tr>
             </thead>
             <tbody>
@@ -137,9 +137,9 @@ export function RolesDialog() {
                 <table>
                   <thead>
                     <tr>
-                      <td style={{ width: 50 }}>Assign</td>
-                      <td>Resource ID</td>
-                      <td>Resource Name</td>
+                      <td style={{ width: 50 }}>Atribuir</td>
+                      <td>ID do recurso</td>
+                      <td>Nome do recurso</td>
                     </tr>
                   </thead>
                   <tbody>
@@ -189,7 +189,7 @@ export function RolesDialog() {
                         <PriceCells x={x} set={(nx) => setRate(i, nx)} />
                         <td>
                           <button className="link" onClick={() => put({ ...role, rates: rates.filter((_, k) => k !== i) })}>
-                            Remove
+                            Remover
                           </button>
                         </td>
                       </tr>
@@ -198,7 +198,7 @@ export function RolesDialog() {
                 </table>
                 </div>
                 <div className="row">
-                  <button onClick={() => put({ ...role, rates: [...rates, { from: Math.floor((rates.at(-1)?.from ?? s.dataDate ?? Date.now()) / 86_400_000) * 86_400_000 + (rates.length ? 365 * 86_400_000 : 0), pricePerUnit: rates.at(-1)?.pricePerUnit ?? role.pricePerUnit }] })}>Add</button>
+                  <button onClick={() => put({ ...role, rates: [...rates, { from: Math.floor((rates.at(-1)?.from ?? s.dataDate ?? Date.now()) / 86_400_000) * 86_400_000 + (rates.length ? 365 * 86_400_000 : 0), pricePerUnit: rates.at(-1)?.pricePerUnit ?? role.pricePerUnit }] })}>Adicionar</button>
                   <span className="muted small">Unstaffed role assignments are costed at the price in force each day.</span>
                 </div>
               </>,
@@ -242,9 +242,9 @@ export function AssignRoleDialog() {
         <>
           <span className="spacer" />
           <button className="primary" disabled={!picked || !ids.length} onClick={assign}>
-            Assign
+            Atribuir
           </button>
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -255,8 +255,8 @@ export function AssignRoleDialog() {
               <tr>
                 <td>Role ID</td>
                 <td>Role Name</td>
-                <td>Price / Unit</td>
-                <td>Resources</td>
+                <td>Preço por unidade</td>
+                <td>Recursos</td>
               </tr>
             </thead>
             <tbody>
@@ -309,7 +309,7 @@ export function ShiftsDialog() {
                 setSel(x.id);
               }}
             >
-              Add
+              Adicionar
             </button>
             <button
               disabled={!shift}
@@ -319,7 +319,7 @@ export function ShiftsDialog() {
                 setSel(null);
               }}
             >
-              Delete
+              Excluir
             </button>
           </div>
         </div>
@@ -348,7 +348,7 @@ export function ShiftsDialog() {
                     </td>
                     <td>
                       <button className="link" disabled={shift.periods.length <= 1} onClick={() => put({ ...shift, periods: shift.periods.filter((_, k) => k !== i) })}>
-                        Remove
+                        Remover
                       </button>
                     </td>
                   </tr>
@@ -395,7 +395,7 @@ export function ResourceRatesDialog() {
     <Shell title="Resource Rates and Shifts" width={1120} onClose={close}>
       <div className="p6-cal">
         <div className="p6-list">
-          <div className="p6-list-head">Resources</div>
+          <div className="p6-list-head">Recursos</div>
           <div className="p6-list-body">
             {res.map((x) => (
               <button key={x.id} className={sel === x.id ? "on" : ""} onClick={() => setSel(x.id)}>
@@ -408,7 +408,7 @@ export function ResourceRatesDialog() {
           <div className="stack" key={r.id}>
             <div className="grid2">
               <label>
-                Shift
+                Turno
                 <select value={r.shiftId ?? ""} disabled={r.type === "material"} onChange={(e) => put({ ...r, shiftId: e.target.value || null })}>
                   <option value="">(none: use max units / h)</option>
                   {(s.shifts ?? []).map((x) => (
@@ -444,7 +444,7 @@ export function ResourceRatesDialog() {
                     </td>
                     <td>
                       <button className="link" onClick={() => put({ ...r, rates: rates.filter((_, k) => k !== i) })}>
-                        Remove
+                        Remover
                       </button>
                     </td>
                   </tr>
@@ -532,7 +532,7 @@ export function CurvesDialog() {
                 setSel(STANDARD_CURVES[0].id);
               }}
             >
-              Delete
+              Excluir
             </button>
           </div>
         </div>
@@ -588,7 +588,7 @@ export function CostAccountsDialog() {
       onClose={close}
       foot={
         <>
-          <button onClick={() => add(null)}>Add</button>
+          <button onClick={() => add(null)}>Adicionar</button>
           <button disabled={!acct} onClick={() => acct && add(acct.id)}>
             Add child
           </button>
@@ -613,10 +613,10 @@ export function CostAccountsDialog() {
               setSel(null);
             }}
           >
-            Delete
+            Excluir
           </button>
           <span className="spacer" />
-          <button onClick={close}>Close</button>
+          <button onClick={close}>Fechar</button>
         </>
       }
     >
@@ -627,8 +627,8 @@ export function CostAccountsDialog() {
               <tr>
                 <td>Cost Account ID</td>
                 <td>Cost Account Name</td>
-                <td>Budgeted Cost</td>
-                <td>Actual Cost</td>
+                <td>Custo orçado</td>
+                <td>Custo real</td>
                 <td>Remaining Cost</td>
                 <td>At Completion</td>
               </tr>

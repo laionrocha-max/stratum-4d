@@ -81,7 +81,7 @@ export function RecurringDialog({ onClose }: { onClose: () => void }) {
             )}
             {pattern === "monthly" && (
               <span className="msp-inline">
-                Day <input value={dom} onChange={(e) => setDom(e.target.value)} style={{ width: 44 }} aria-label="Day of month" /> of the month
+                Day <input value={dom} onChange={(e) => setDom(e.target.value)} style={{ width: 44 }} aria-label="Dia do mês" /> of the month
               </span>
             )}
           </div>
@@ -147,15 +147,15 @@ export function CustomFieldsDialog({ onClose }: { onClose: () => void }) {
     onClose();
   };
   return (
-    <MspDlg title="Custom Fields" width={620} onClose={onClose} onOk={ok}>
+    <MspDlg title="Campos personalizados" width={620} onClose={onClose} onOk={ok}>
       <p className="msp-note">Task fields. New fields are added to the current table; type values straight into their column or in Task Information › Custom Fields.</p>
       <div className="msp-cf">
         <div className="msp-ti-grid">
           <table className="msp-tbl selectable">
             <thead>
               <tr>
-                <th>Field</th>
-                <th style={{ width: 120 }}>Type</th>
+                <th>Campo</th>
+                <th style={{ width: 120 }}>Tipo</th>
               </tr>
             </thead>
             <tbody>
@@ -208,7 +208,7 @@ export function CustomFieldsDialog({ onClose }: { onClose: () => void }) {
                 setNewName("");
               }}
             >
-              Add
+              Adicionar
             </button>
           </Fieldset>
         </div>
@@ -255,7 +255,7 @@ export function FilterEditDialog({ onClose }: { onClose: () => void }) {
         <>
           {editing && (
             <button className="msp-btn" onClick={() => (m.set({ customFilters: m.customFilters.filter((x) => x.name !== editing.name), customFilter: m.customFilter === editing.name ? null : m.customFilter }), onClose())}>
-              Delete
+              Excluir
             </button>
           )}
           <button className="msp-btn" onClick={() => save(true)}>
@@ -273,7 +273,7 @@ export function FilterEditDialog({ onClose }: { onClose: () => void }) {
             <tr>
               <th style={{ width: 70 }}>And/Or</th>
               <th>Field Name</th>
-              <th style={{ width: 170 }}>Test</th>
+              <th style={{ width: 170 }}>Testar</th>
               <th>Value(s)</th>
               <th style={{ width: 24 }} />
             </tr>
@@ -293,13 +293,13 @@ export function FilterEditDialog({ onClose }: { onClose: () => void }) {
                   <select value={r.field} onChange={(e) => put(i, { field: e.target.value })} aria-label="Field Name">
                     {fields.map((f) => (
                       <option key={f.key} value={f.key}>
-                        {f.key === "name" ? "Name" : f.label}
+                        {f.key === "name" ? "Nome" : f.label}
                       </option>
                     ))}
                   </select>
                 </td>
                 <td>
-                  <select value={r.test} onChange={(e) => put(i, { test: e.target.value as CustomFilter["rows"][number]["test"] })} aria-label="Test">
+                  <select value={r.test} onChange={(e) => put(i, { test: e.target.value as CustomFilter["rows"][number]["test"] })} aria-label="Testar">
                     {TESTS.map(([k, l]) => (
                       <option key={k} value={k}>
                         {l}
@@ -309,7 +309,7 @@ export function FilterEditDialog({ onClose }: { onClose: () => void }) {
                 </td>
                 <td>
                   <span className="msp-inline" style={{ flexWrap: "nowrap" }}>
-                    <input value={r.value} onChange={(e) => put(i, { value: e.target.value })} placeholder={r.test === "within" ? "from" : "e.g. 10 days, 01/03/27, Crew"} aria-label="Value" />
+                    <input value={r.value} onChange={(e) => put(i, { value: e.target.value })} placeholder={r.test === "within" ? "from" : "e.g. 10 days, 01/03/27, Crew"} aria-label="Valor" />
                     {r.test === "within" && <input value={r.value2 ?? ""} onChange={(e) => put(i, { value2: e.target.value })} placeholder="to" aria-label="Value 2" />}
                   </span>
                 </td>
@@ -351,7 +351,7 @@ export function BarStylesDialog({ onClose }: { onClose: () => void }) {
   const [size, setSize] = useState(m.format.fontSize ?? 12);
   return (
     <MspDlg
-      title={tab === "bars" ? "Bar Styles" : "Text Styles"}
+      title={tab === "bars" ? "Estilos de barra" : "Estilos de texto"}
       width={480}
       onClose={onClose}
       onOk={() => {
@@ -374,7 +374,7 @@ export function BarStylesDialog({ onClose }: { onClose: () => void }) {
         <table className="msp-tbl">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Nome</th>
               <th style={{ width: 80 }}>Colour</th>
             </tr>
           </thead>

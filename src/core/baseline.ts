@@ -4,6 +4,7 @@
 // keep no baseline dates, so they never look "on plan" by accident.
 
 import type { Schedule } from "./types";
+import { duplicates } from "./update";
 
 export interface AssignResult {
   schedule: Schedule;
@@ -14,6 +15,8 @@ export interface AssignResult {
 }
 
 export function assignBaseline(current: Schedule, baseline: Schedule, name?: string): AssignResult {
+  const clashes = [...duplicates(current.activities.map((a) => a.code)), ...duplicates(baseline.activities.map((a) => a.code))];
+  if (clashes.length) throw new Error(`Códigos de atividade ambíguos na baseline: ${[...new Set(clashes)].slice(0, 12).join(", ")}.`);
   const byCode = new Map(baseline.activities.map((a) => [a.code, a]));
   const seen = new Set<string>();
   const missing: string[] = [];

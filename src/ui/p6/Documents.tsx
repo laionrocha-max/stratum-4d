@@ -47,7 +47,7 @@ export function DocumentDialog() {
       onClose={closeDlg}
       side={
         <>
-          <SideBtn kind="close" label="Close" primary onClick={closeDlg} />
+          <SideBtn kind="close" label="Fechar" primary onClick={closeDlg} />
           <SideGap />
           <SideBtn kind="add" label="Assign Activity" disabled={!selected || linkedActs.includes(selected)} onClick={() => selected && commit(assignDoc(s, d.id, { activityId: selected }), "Assign document")} />
           {url && <SideBtn kind="run" label="Open Document" onClick={() => window.open(url, "_blank", "noopener")} />}
@@ -69,7 +69,7 @@ export function DocumentDialog() {
                   </label>
                 ))}
                 <label>
-                  Status
+                  Situação
                   <select value={val("Status")} onChange={(e) => setVal("Status", e.target.value)}>
                     <option value="" />
                     {DOC_STATUSES.map((x) => (
@@ -102,13 +102,13 @@ export function DocumentDialog() {
           [
             "Assignments",
             <div className="stack" key="a">
-              <ListHead>Activities</ListHead>
+              <ListHead>Atividades</ListHead>
               <div className="p6-list2">
                 <table>
                   <thead>
                     <tr>
-                      <td style={{ width: 110 }}>Activity ID</td>
-                      <td>Activity Name</td>
+                      <td style={{ width: 110 }}>ID da atividade</td>
+                      <td>Nome da atividade</td>
                       <td style={{ width: 30 }} />
                     </tr>
                   </thead>
@@ -134,7 +134,7 @@ export function DocumentDialog() {
                   </tbody>
                 </table>
               </div>
-              <ListHead>WBS</ListHead>
+              <ListHead>EAP</ListHead>
               <div className="p6-list2">
                 <table>
                   <tbody>
@@ -164,7 +164,7 @@ export function DocumentDialog() {
                     ))}
                 </select>
                 <button disabled={!wbsPick} onClick={() => (commit(assignDoc(s, d.id, { wbsId: wbsPick }), "Assign document to WBS"), setWbsPick(""))}>
-                  Assign
+                  Atribuir
                 </button>
               </div>
             </div>,
@@ -177,7 +177,7 @@ export function DocumentDialog() {
                 <table>
                   <thead>
                     <tr>
-                      <td style={{ width: 150 }}>Date</td>
+                      <td style={{ width: 150 }}>Dados</td>
                       <td style={{ width: 120 }}>Reviewer</td>
                       <td style={{ width: 170 }}>Decision</td>
                       <td>Comment</td>
@@ -252,11 +252,11 @@ export function ActivityDocs({ activityId }: { activityId: string }) {
       <table className="p6-grid">
         <thead>
           <tr>
-            <td>Title</td>
+            <td>Título</td>
             <td>Reference No.</td>
             <td>Version</td>
-            <td>Status</td>
-            <td>Deliverable</td>
+            <td>Situação</td>
+            <td>Entregável</td>
             <td />
           </tr>
         </thead>
@@ -271,7 +271,7 @@ export function ActivityDocs({ activityId }: { activityId: string }) {
               <td>{d.values["Reference No."]}</td>
               <td>{d.values.Version}</td>
               <td>{d.values.Status}</td>
-              <td>{d.values.Deliverable === "Yes" ? "Yes" : ""}</td>
+              <td>{d.values.Deliverable === "Yes" ? "Sim" : ""}</td>
               <td>
                 <button className="link" aria-label="Unassign" onClick={() => commit(unassignDoc(s, d.id, { activityId }), "Unassign document")}>
                   ✕
@@ -298,7 +298,7 @@ export function ActivityDocs({ activityId }: { activityId: string }) {
           ))}
         </select>
         <button disabled={!pick} onClick={() => (commit(assignDoc(s, pick, { activityId }), "Assign document"), setPick(""))}>
-          Assign
+          Atribuir
         </button>
         <button onClick={() => useP6.getState().show("documents")}>WPs & Docs window</button>
       </div>

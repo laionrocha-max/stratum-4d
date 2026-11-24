@@ -17,6 +17,7 @@ export interface ProjectSummary {
   version: number;
   updatedAt: string;
   updatedBy: string | null;
+  archived?: boolean;
 }
 
 export interface P6ProjectInfo {

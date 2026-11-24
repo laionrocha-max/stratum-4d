@@ -28,7 +28,7 @@ export function P6Dlg({ title, children, side, onClose, width = 760 }: { title: 
       <div className="p6-dlg p6-dlg2" style={{ width: `min(${width}px, calc(100vw - 32px))` }} role="dialog" aria-label={title} onKeyDown={(e) => e.key === "Escape" && onClose()}>
         <div className="p6-dlg-title">
           <span>{title}</span>
-          <button className="icon-btn" onClick={onClose} aria-label="Close" title="Close">
+          <button className="icon-btn" onClick={onClose} aria-label="Fechar" title="Fechar">
             <X size={14} aria-hidden />
           </button>
         </div>
@@ -72,16 +72,16 @@ export const SideGap = () => <div className="p6-side-gap" />;
 export function SideArrows({ up, down, left, right }: { up?: () => void; down?: () => void; left?: () => void; right?: () => void }) {
   return (
     <div className="p6-side-arrows">
-      <button aria-label="Move up" disabled={!up} onClick={up}>
+      <button aria-label="Mover para cima" disabled={!up} onClick={up}>
         <ArrowUp size={13} aria-hidden />
       </button>
-      <button aria-label="Move left" disabled={!left} onClick={left}>
+      <button aria-label="Mover à esquerda" disabled={!left} onClick={left}>
         <ArrowLeft size={13} aria-hidden />
       </button>
-      <button aria-label="Move right" disabled={!right} onClick={right}>
+      <button aria-label="Mover à direita" disabled={!right} onClick={right}>
         <ArrowRight size={13} aria-hidden />
       </button>
-      <button aria-label="Move down" disabled={!down} onClick={down}>
+      <button aria-label="Mover para baixo" disabled={!down} onClick={down}>
         <ArrowDown size={13} aria-hidden />
       </button>
     </div>
@@ -90,7 +90,7 @@ export function SideArrows({ up, down, left, right }: { up?: () => void; down?: 
 
 /** Help opens the matching chapter of the user guide. */
 export function SideHelp({ topic }: { topic: string }) {
-  return <SideBtn kind="help" label="Help" onClick={() => window.dispatchEvent(new CustomEvent("stratum:help", { detail: topic }))} />;
+  return <SideBtn kind="help" label="Ajuda" onClick={() => window.dispatchEvent(new CustomEvent("stratum:help", { detail: topic }))} />;
 }
 
 /** "Display: …" header bar above a P6 list. */

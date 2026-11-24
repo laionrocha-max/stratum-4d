@@ -5,19 +5,25 @@ import { useP6 } from "./p6/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { scheduleCpm, ScheduleLoopError } from "../core/cpm";
 import { SAMPLE_ORDER, SAMPLES, sampleKindOf, sampleProject, type SampleKind } from "../core/samples";
-import { motionAt } from "../core/motion";
+import { expandElements, motionAt } from "../core/motion";
 import { parseMspdi } from "../core/mspdi";
 import { writeMspdi } from "../core/mspdiWrite";
-import { EMPTY_PRESENTATION } from "../core/presentation";
-import { parseProject, serializeProject, type StratumProject } from "../core/project";
-import { computeStates, scheduleRange } from "../core/simulation";
-import type { ModelElement, Schedule } from "../core/types";
-import { diffSchedules, remapLinks } from "../core/update";
+import { EMPTY_PRESENTATION, EMPTY_VIEW, type CameraState } from "../core/presentation";
+import { normalizeProject, parseProject, PROJECT_FORMAT, PROJECT_VERSION, type ModelManifest, type ProjectModel, type ProjectRevision, type RevisionSource, type StratumProject } from "../core/project";
+import { DEFAULT_PROFILES } from "../core/profiles";
+import { computeStates, DEFAULT_SIM_OPTIONS, scheduleRange } from "../core/simulation";
+import type { Schedule } from "../core/types";
+import { applyScheduleRevision, planScheduleRevision, sameScheduleIdentity } from "../core/update";
 import { decodeXer, listXerProjects, parseXerTables, xerToSchedule } from "../core/xer";
 import { exportCsv, exportXer } from "../core/xerExport";
 import { Viewer } from "../viewer/Viewer";
 import { DEMO_SESSIONS, demoSession, demoStoreKind } from "../backend/demo";
 import { MESH_FORMATS } from "../viewer/meshLoader";
+import { combineModelParts, disposeModelParts, loadModelPart, restoreModelParts, type ModelPart } from "../viewer/projectModels";
+import { getModelAsset, modelHash, saveModelAsset, saveModelAssets } from "../backend/modelAssets";
+import { readCheckpoint, saveCheckpoint } from "../backend/revisionHistory";
+import { compareModelRevision } from "../viewer/modelRevision";
+import { elementVisibilityKey, EMPTY_VISIBILITY, normalizeVisibility, type VisibilitySettings } from "../core/visibility";
 import { Present } from "./Present";
 import { Teardown, teardownHud } from "./Teardown";
 import { reportRoute, useConfig } from "../backend/config";
@@ -27,6 +33,7 @@ import { DashboardsView } from "./Dashboards";
 import { isCombined } from "../core/multiproject";
 import { saveCombined } from "./p6/EnterpriseProjects";
 import { ProjectsDialog } from "./ProjectsDialog";
+import { RevisionDialog, RevisionHistory, type RevisionOffer } from "./RevisionDialog";
 import { ReportView } from "./ReportView";
 import { SettingsDialog } from "./SettingsDialog";
 import { SetupWizard } from "./SetupWizard";
@@ -46,9 +53,11 @@ import {
   CloudUpload,
   Database,
   Download,
+  Eye,
   FileUp,
   FolderOpen,
   LayoutDashboard,
+  ListTree,
   Maximize,
   Menu,
   Save,
@@ -60,10 +69,12 @@ import {
 import { ActivityEditor } from "./ActivityEditor";
 import { clearAutosave, loadAutosave, startAutosave } from "./autosave";
 import { CostPanel, QuantityPanel, ResourcePanel } from "./Analysis";
-import { download, downloadDataUrl, isNativeApp, pickFile } from "./files";
+import { download, downloadDataUrl, isNativeApp, pickFile, pickFiles } from "./files";
 import { Gantt } from "./Gantt";
 import { Help } from "./Help";
 import { SidePanel } from "./SidePanel";
+import { focusElements, hideElements, ModelTree, showElements, type InspectionTarget } from "./ModelTree";
+import { InspectionMenu } from "./InspectionMenu";
 import { fmtDate, useStore, type LeftTab } from "./store";
 import { Timeline } from "./Timeline";
 import { assignBaseline } from "../core/baseline";
@@ -72,10 +83,10 @@ import { TrainingButton, TrainingLayer } from "./training/Training";
 
 const LEFT_TABS: { id: LeftTab; label: string }[] = [
   { id: "gantt", label: "Gantt" },
-  { id: "activity", label: "Activity" },
-  { id: "cost", label: "Cost & EVM" },
-  { id: "resources", label: "Resources" },
-  { id: "quantities", label: "Quantities" },
+  { id: "activity", label: "Atividade" },
+  { id: "cost", label: "Custos e valor agregado" },
+  { id: "resources", label: "Recursos" },
+  { id: "quantities", label: "Quantitativos" },
 ];
 
 /** Built-in sample projects (see core/samples). The model name tells a saved project which one to rebuild. */
@@ -105,57 +116,97 @@ function Workspace() {
   const [projectsTab, setProjectsTab] = useState<null | "database" | "p6">(null);
   /** Model objects as loaded (before splitting into segments). */
   const objectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
+  const partsRef = useRef(new Map<string, ModelPart>());
+  const projectAction = useRef(0);
+  const cameraRef = useRef<CameraState>();
   const [recording, setRecording] = useState<MediaRecorder | null>(null);
   const [restore, setRestore] = useState<StratumProject | null>(null);
+  const [revisionOffer, setRevisionOffer] = useState<{ review: RevisionOffer; finish: (value: Map<string, string> | null) => void } | null>(null);
+  const finishReview = useRef<(value: Map<string, string> | null) => void>();
+  const [showHistory, setShowHistory] = useState(false);
+  const [showTree, setShowTree] = useState(false);
+  const [inspectionTarget, setInspectionTarget] = useState<InspectionTarget | null>(null);
+  const closeInspection = useCallback(() => setInspectionTarget(null), []);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  useEffect(() => {
+    if (!config.configured || DEMO_SESSIONS || mode !== "4d") return;
+    let active = true;
+    void backend.listProjects().then((projects) => {
+      if (active && !useStore.getState().projectKey && projects.some((p) => !p.archived)) setProjectsTab("database");
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [backend, config.configured, mode]);
 
   // Offer to restore the last autosaved session, then keep autosaving.
   useEffect(() => {
     let stop: (() => void) | undefined;
+    let active = true;
     // The demo starts every session from the samples, so it has nothing to restore.
     if (DEMO_SESSIONS) return;
     loadAutosave().then((p) => {
-      if (p?.schedule) setRestore(p);
-      stop = startAutosave(setSavedAt);
+      if (!active) return;
+      if (p) setRestore(p);
+      stop = startAutosave(currentPayload, setSavedAt);
     });
-    return () => stop?.();
+    return () => {
+      active = false;
+      stop?.();
+    };
   }, []);
   const store = useStore();
   const { schedule, elements, links, profiles, time, sim, selectedElements, status, busy, segments, paths, pathDraft, leftTab, scheduleDirty, currentProjectId, currentVersion } = store;
+  const visibilityKeys = useMemo(() => new Map(elements.map((element) => [element.id, elementVisibilityKey(element)])), [elements]);
 
   // One viewer for the session, created the first time a layout shows a 3D view
   // (only the 4D layout does). A model loaded before then is handed over here.
   const [viewerGen, setViewerGen] = useState(0);
-  const hostRef = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
+  const [viewportHost, setViewportHost] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!viewportHost) return;
     if (!viewerRef.current) {
-      const v = new Viewer(el);
+      const v = new Viewer(viewportHost);
       viewerRef.current = v;
       v.setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+      const state = useStore.getState();
+      v.setInspection(state.view3d.visibility ?? EMPTY_VISIBILITY, new Map(state.elements.map((e) => [e.id, elementVisibilityKey(e)])), state.playing);
       if (objectsRef.current.size) {
         v.setObjects(objectsRef.current, useStore.getState().segments, true);
         v.setSelection(useStore.getState().selectedElements);
       }
+      if (cameraRef.current) v.setCamera(cameraRef.current);
       setViewerGen((g) => g + 1);
-    } else viewerRef.current.attach(el);
+    } else viewerRef.current.attach(viewportHost);
+  }, [viewportHost]);
+  useEffect(() => () => {
+    viewerRef.current?.dispose();
+    viewerRef.current = null;
   }, []);
-  useEffect(() => () => viewerRef.current?.dispose(), []);
   const getViewer = useCallback(() => viewerRef.current, []);
   useEffect(() => viewerRef.current?.setTheme(theme), [theme]);
+  useEffect(() => {
+    viewerRef.current?.setPresentationLook(sim.presentationLook === true);
+  }, [sim.presentationLook, viewerGen]);
+  useEffect(() => {
+    viewerRef.current?.setGridVisible(sim.showGrid !== false);
+  }, [sim.showGrid, viewerGen]);
+  useEffect(() => {
+    viewerRef.current?.setSolarLighting(sim.naturalSky === true, sim.solar);
+  }, [sim.naturalSky, sim.solar, viewerGen]);
 
   // Rebuild viewer objects when elements are split or unsplit.
   const segKey = useMemo(() => segments.map((s) => s.id).join(","), [segments]);
-  const firstLoad = useRef(true);
   useEffect(() => {
     if (!objectsRef.current.size) return;
-    viewerRef.current?.setObjects(objectsRef.current, segments, firstLoad.current);
-    firstLoad.current = false;
+    viewerRef.current?.setObjects(objectsRef.current, segments, false);
     viewerRef.current?.setSelection(useStore.getState().selectedElements);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segKey]);
 
   const elementIds = useMemo(() => elements.map((e) => e.id), [elements]);
+  useEffect(() => {
+    viewerRef.current?.setInspection(store.view3d.visibility ?? EMPTY_VISIBILITY, visibilityKeys, store.playing || !!recording);
+  }, [store.view3d.visibility, visibilityKeys, store.playing, recording, viewerGen]);
 
   // One 4D frame: states for every element plus equipment motion.
   useEffect(() => {
@@ -250,7 +301,7 @@ function Workspace() {
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (s.schedule) void saveRef.current(false).catch(() => {});
+        if (s.schedule || s.projectKey || s.models?.files.length) void saveRef.current(false).catch(() => {});
         return;
       }
       const tag = (e.target as HTMLElement).tagName;
@@ -303,7 +354,7 @@ function Workspace() {
     }
     const id = v.pick(e.clientX, e.clientY);
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-    const next = new Set(additive ? selectedElements : []);
+    const next = new Set(id && additive ? s.selectedElements : []);
     if (id) {
       if (additive && next.has(id)) next.delete(id);
       else next.add(id);
@@ -312,12 +363,15 @@ function Workspace() {
   };
 
   // Distinguish a click from an orbit drag.
-  const down = useRef<{ x: number; y: number } | null>(null);
+  const down = useRef<{ x: number; y: number; pointer: number } | null>(null);
+  const rightDown = useRef<{ x: number; y: number; pointer: number } | null>(null);
 
-  const importSchedule = async () => {
+  const importSchedule = async (update = false) => {
+    const workspace = useStore.getState().workspaceRevision;
     const f = await pickFile(".xer,.xml");
     if (!f) return;
-    await importScheduleBytes(f.name, new Uint8Array(await f.arrayBuffer()));
+    const buffer = await f.arrayBuffer();
+    if (workspace === useStore.getState().workspaceRevision) await importScheduleBytes(f.name, new Uint8Array(buffer), update);
   };
 
   /** Read an XER / MS Project XML file into a schedule (first project, or the one the user picks). */
@@ -328,7 +382,7 @@ function Workspace() {
     const projects = listXerProjects(tables);
     let projectId = projects[0]?.id;
     if (projects.length > 1) {
-      const pick = window.prompt(`This XER has ${projects.length} projects. Enter the number to use:\n` + projects.map((p, i) => `${i + 1}. ${p.code} – ${p.name}`).join("\n"), "1");
+      const pick = window.prompt(`Este XER contém ${projects.length} projetos. Informe o número do projeto que deseja abrir:\n` + projects.map((p, i) => `${i + 1}. ${p.code} – ${p.name}`).join("\n"), "1");
       const idx = Number(pick) - 1;
       if (!projects[idx]) return null;
       projectId = projects[idx].id;
@@ -338,108 +392,181 @@ function Workspace() {
 
   /** P6 "Assign Baselines": take baseline dates from an approved-baseline XER or XML, matched by Activity ID. */
   const assignBaselineFromFile = async () => {
-    const cur = useStore.getState().schedule;
-    if (!cur) return store.setStatus("Open the current schedule first, then assign its baseline.");
+    const original = useStore.getState();
+    const cur = original.schedule;
+    if (!cur) return store.setStatus("Abra o cronograma atual antes de atribuir a linha de base.");
     const f = await pickFile(".xer,.xml");
-    if (!f) return;
+    if (!f || original.workspaceRevision !== useStore.getState().workspaceRevision) return;
     try {
-      store.setStatus(`Reading baseline ${f.name}…`, true);
-      const bl = readScheduleFile(f.name, new Uint8Array(await f.arrayBuffer()));
-      if (!bl) return store.setStatus("Baseline not assigned.");
-      const r = assignBaseline(useStore.getState().schedule ?? cur, bl, `${bl.projectCode} – ${bl.projectName}`);
-      if (!r.matched) return store.setStatus(`No Activity IDs in ${f.name} match the open project; baseline not assigned.`);
+      store.setStatus(`Lendo a linha de base ${f.name}…`, true);
+      const bytes = await f.arrayBuffer();
+      const latest = useStore.getState();
+      if (latest.workspaceRevision !== original.workspaceRevision) return;
+      if (latest.schedule !== cur) return store.setStatus("O cronograma mudou enquanto a baseline era lida. Selecione a baseline novamente.");
+      const bl = readScheduleFile(f.name, new Uint8Array(bytes));
+      if (!bl) return store.setStatus("Linha de base não atribuída.");
+      const r = assignBaseline(cur, bl, `${bl.projectCode} – ${bl.projectName}`);
+      if (!r.matched) return store.setStatus(`Nenhum código em ${f.name} corresponde ao cronograma aberto. A linha de base não foi atribuída.`);
       store.setSchedule(r.schedule, { keepTime: true, dirty: false });
       store.setStatus(
-        `Baseline assigned from ${bl.projectCode} (data date ${fmtDate(bl.dataDate)}): ${r.matched} activities matched` +
-          (r.missing.length ? `, ${r.missing.length} added since the baseline have no baseline dates` : "") +
-          (r.dropped.length ? `, ${r.dropped.length} baseline activities no longer exist` : "") +
-          ". Commit to keep it.",
+        `Linha de base atribuída de ${bl.projectCode} (data de corte ${fmtDate(bl.dataDate)}). ${r.matched} atividade(s) com correspondência` +
+          (r.missing.length ? `, ${r.missing.length} sem datas de referência` : "") +
+          (r.dropped.length ? `, ${r.dropped.length} atividade(s) da linha de base ausente(s) no cronograma` : "") +
+          ". Salve a obra para guardar a atribuição.",
       );
     } catch (err) {
-      store.setStatus(`Baseline import failed: ${(err as Error).message}`);
+      if (original.workspaceRevision === useStore.getState().workspaceRevision) store.setStatus(`Falha ao importar a linha de base. ${(err as Error).message}`);
     }
   };
 
-  const importScheduleBytes = async (name: string, bytes: Uint8Array) => {
+  const reviewRevision = (review: RevisionOffer) => new Promise<Map<string, string> | null>((resolve) => {
+    finishReview.current?.(null);
+    const finish = (value: Map<string, string> | null) => {
+      finishReview.current = undefined;
+      setRevisionOffer(null);
+      resolve(value);
+    };
+    finishReview.current = finish;
+    setRevisionOffer({
+      review,
+      finish,
+    });
+  });
+
+  const recordRevision = async (kind: ProjectRevision["kind"], source: RevisionSource, before: StratumProject, summary: string, dataDate: number | null, number?: number): Promise<ProjectRevision> => ({
+    id: crypto.randomUUID(),
+    kind,
+    date: new Date().toISOString(),
+    author: useConfig.getState().backend.user?.name || "Usuário local",
+    source,
+    dataDate,
+    number,
+    checkpoint: await saveCheckpoint(before),
+    summary,
+  });
+
+  const importScheduleBytes = async (name: string, bytes: Uint8Array, update = false) => {
+    const request = ++projectAction.current;
     try {
-      store.setStatus(`Reading ${name}…`, true);
-      let s: Schedule;
-      const head = new TextDecoder().decode(bytes.subarray(0, 400)).trimStart();
-      if (/\.xml$/i.test(name) || head.startsWith("<")) {
-        s = parseMspdi(new TextDecoder().decode(bytes));
-      } else {
-        const tables = parseXerTables(decodeXer(bytes));
-        const projects = listXerProjects(tables);
-        let projectId = projects[0]?.id;
-        if (projects.length > 1) {
-          const pick = window.prompt(
-            `This XER has ${projects.length} projects. Enter the number to import:\n` + projects.map((p, i) => `${i + 1}. ${p.code} – ${p.name}`).join("\n"),
-            "1",
-          );
-          const idx = Number(pick) - 1;
-          if (!projects[idx]) return store.setStatus("Import cancelled.");
-          projectId = projects[idx].id;
-        }
-        s = xerToSchedule(tables, { projectId });
-      }
-      adoptSchedule(s);
+      store.setStatus(`Lendo ${name}…`, true);
+      const schedule = readScheduleFile(name, bytes);
+      if (!schedule) return store.setStatus("Importação cancelada.");
+      const file = new Blob([new Uint8Array(bytes)]);
+      const source = { name, hash: await modelHash(await file.arrayBuffer()) };
+      if (request !== projectAction.current) return;
+      await adoptSchedule(schedule, source, request, update, file);
     } catch (err) {
-      store.setStatus(`Schedule import failed: ${(err as Error).message}`);
+      if (request === projectAction.current) store.setStatus(`Falha na revisão ou importação. ${(err as Error).message}`);
     }
   };
 
-  /** Bring an imported schedule in: as an update of the open project when IDs overlap, else as a new project. */
-  const adoptSchedule = (s: Schedule) => {
-    {
-      const prev = useStore.getState().schedule;
-      const prevLinks = useStore.getState().links;
-      // Treat it as an update of the open project when Activity IDs overlap.
-      const overlap = prev ? s.activities.filter((a) => prev.activities.some((p) => p.code === a.code)).length : 0;
-      const isUpdate =
-        !!prev &&
-        overlap > 0 &&
-        window.confirm(
-          `Update the open schedule (${prev.projectCode}) with this file?\n\n${overlap} Activity IDs match. Links will be kept by Activity ID.\n\nCancel to load it as a new project instead.`,
-        );
-      if (isUpdate && prev) {
-        const diff = diffSchedules(prev, s);
-        const { links: kept, dropped } = remapLinks(prev, s, prevLinks);
-        const idMap = new Map(prev.activities.map((a) => [a.id, s.activities.find((b) => b.code === a.code)?.id]));
-        store.setPaths(useStore.getState().paths.flatMap((p) => (idMap.get(p.activityId) ? [{ ...p, activityId: idMap.get(p.activityId)! }] : [])));
-        store.setSchedule(s);
-        store.setLinks(kept);
-        store.setLastUpdate({ ...diff, keptLinks: kept.length, droppedLinks: dropped.length, at: Date.now() });
-        store.setSideTab("check");
-        const fin = diff.finishShiftDays;
-        store.setStatus(
-          `Updated ${s.projectCode}: ${diff.changed.length} changed, ${diff.added.length} added, ${diff.removed.length} removed. ` +
-            `Finish ${fin ? `${fin > 0 ? "+" : ""}${fin}d` : "unchanged"}. ${kept.length} links kept${dropped.length ? `, ${dropped.length} dropped` : ""}.`,
-        );
-      } else {
-        store.setSchedule(s);
-        store.setLinks([]);
-        store.setPaths([]);
-        store.setPresentation({ viewpoints: [], animations: [] });
-        store.setLastUpdate(null);
-        store.setScheduleReport(null);
-        store.setCurrentProject(null, null);
-        const src = s.sourceFormat === "mspdi" ? "MS Project" : s.sourceFormat === "p6-eppm" ? "P6 EPPM" : s.sourceFormat === "p6-db" ? "P6 database" : "P6";
-        store.setStatus(
-          `Imported ${s.projectCode} (${src}): ${s.activities.length} activities, ` +
-            `${s.relationships.length} relationships, ${s.resources?.length ?? 0} resources. Data date ${fmtDate(s.dataDate)}.`,
-        );
+  const adoptSchedule = async (schedule: Schedule, source: RevisionSource, request: number, update = false, file?: Blob) => {
+    const st = useStore.getState();
+    const prev = st.schedule;
+    const sameProject = prev && sameScheduleIdentity(prev, schedule);
+    if (update || sameProject) {
+      if (!prev) throw new Error("Importe o primeiro cronograma antes de atualizar.");
+      const plan = planScheduleRevision(prev, schedule);
+      const imported = new Map(schedule.activities.map((a) => [a.code, a.id]));
+      const linked = new Map<string, number>();
+      for (const link of st.links) linked.set(link.activityId, (linked.get(link.activityId) ?? 0) + 1);
+      const diff = plan.diff;
+      const manual = await reviewRevision({
+        title: "Prévia da revisão de cronograma",
+        file: source.name,
+        summary: [
+          `${plan.matches.size} atividade(s) correspondentes · ${diff.added.length} adicionada(s) · ${diff.removed.length} removida(s) · ${diff.changed.length} alterada(s)`,
+          `Corte ${fmtDate(diff.dataDateFrom)} → ${fmtDate(diff.dataDateTo)}`,
+          `${st.links.filter((l) => plan.matches.has(l.activityId)).length} vínculo(s) com correspondência automática`,
+          "A baseline, os IFCs e as vistas salvas serão preservados.",
+        ],
+        warnings: [
+          ...(plan.ambiguous.size ? [`${plan.ambiguous.size} atividade(s) com identidade ambígua. Confira as correspondências manuais.`] : []),
+          ...(diff.calendarsChanged ? ["Calendários alterados."] : []),
+          ...(diff.relationshipsChanged ? ["Relações entre atividades alteradas."] : []),
+          ...(diff.removed.length && diff.added.length ? ["Confira possíveis renumerações, divisões ou fusões entre atividades removidas e adicionadas."] : []),
+        ],
+        changes: [
+          { title: "Atividades adicionadas", items: diff.added.map((a) => `${a.code} · ${a.name}`) },
+          { title: "Atividades removidas", items: diff.removed.map((a) => `${a.code} · ${a.name}`) },
+          { title: "Atividades alteradas", items: diff.changed.map((a) => `${a.code} · ${a.name} · ${a.fields.join(", ")}`) },
+        ],
+        mappings: prev.activities.filter((a) => !plan.matches.has(a.id)).map((a) => ({
+          id: a.id, label: `${a.code} · ${a.name}${plan.ambiguous.has(a.id) ? " (ambígua)" : ""}`, links: linked.get(a.id) ?? 0,
+        })),
+        destinations: imported,
+        occupied: new Set(plan.matches.values()),
+        destinationLabel: "o código da atividade",
+      });
+      if (request !== projectAction.current) return;
+      if (!manual) return store.setStatus("Revisão de cronograma cancelada. A obra ficou na versão anterior.");
+      const before = currentPayload();
+      if (prev !== before.schedule) throw new Error("O cronograma mudou durante a prévia. Abra a revisão novamente.");
+      const mapping = new Map([...plan.matches, ...manual]);
+      const result = applyScheduleRevision(prev, schedule, before.links, before.paths ?? [], mapping);
+      const summary = `${result.links.length} vínculo(s) mantido(s) e ${result.orphaned.length} sem correspondência.`;
+      if (file && source.hash) await saveModelAsset(source.hash, file);
+      const number = (before.revisions?.filter((entry) => entry.kind === "schedule").length ?? 0) + 2;
+      const entry = await recordRevision("schedule", source, before, summary, schedule.dataDate, number);
+      if (request !== projectAction.current) return;
+      if (prev !== useStore.getState().schedule || before.links !== useStore.getState().links || before.paths !== useStore.getState().paths) {
+        throw new Error("A obra mudou durante a revisão. Abra a prévia novamente.");
+      }
+      useStore.setState({
+        schedule: result.schedule, scheduleSource: source, scheduleDirty: false, past: [], future: [],
+        links: result.links, paths: result.paths, selectedActivity: null, selectedActivities: new Set(), collapsedWbs: new Set(),
+        revisions: [...(before.revisions ?? []), entry], playing: false, scheduleReport: null,
+        lastUpdate: { ...diff, keptLinks: result.links.length, droppedLinks: result.orphaned.length, at: Date.now() },
+        sideTab: "check",
+      });
+      store.setStatus(`Revisão de cronograma aplicada. ${summary}`);
+      return;
+    }
+    if (prev && !window.confirm(`Abrir ${schedule.projectCode} como nova obra? Salve a obra atual antes de trocar.`)) {
+      return store.setStatus("Importação cancelada.");
+    }
+    if (file && source.hash) {
+      try {
+        await saveModelAsset(source.hash, file);
+      } catch {
+        // An initial import can still work in memory. Revisions require a checkpoint.
+        source = { name: source.name };
       }
     }
+    if (request !== projectAction.current) return;
+    if (prev) applyProject({ ...emptyProject(), schedule, scheduleSource: source });
+    else {
+      store.setSchedule(schedule);
+      useStore.setState({ scheduleSource: source, projectKey: st.projectKey ?? crypto.randomUUID() });
+    }
+    const label = schedule.sourceFormat === "mspdi" ? "MS Project" : schedule.sourceFormat === "p6-eppm" ? "P6 EPPM" : "P6";
+    store.setStatus(`Cronograma ${schedule.projectCode} (${label}) importado. ${schedule.activities.length} atividade(s) e ${schedule.relationships.length} relação(ões). Data de corte ${fmtDate(schedule.dataDate)}.`);
   };
 
   // ---- database
-  const currentPayload = (): StratumProject => {
+  function currentPayload(): StratumProject {
     const st = useStore.getState();
     return {
-      format: "stratum-project",
-      version: 2,
+      format: PROJECT_FORMAT,
+      version: PROJECT_VERSION,
       savedAt: new Date().toISOString(),
       modelFileName: st.modelFileName,
+      projectKey: st.projectKey ?? undefined,
+      title: st.projectTitle ?? undefined,
+      archived: st.projectArchived || undefined,
+      models: st.models,
+      scheduleSource: st.scheduleSource,
+      revisions: st.revisions,
+      simulation: st.sim,
+      view: {
+        camera: viewerRef.current?.getCamera() ?? cameraRef.current,
+        settings: {
+          ...st.view3d,
+          sectionBounds: st.view3d.sectionBounds ??
+            (st.view3d.cuts.some((cut) => cut.on) || st.view3d.box?.on ? viewerRef.current?.getSectionBounds() : undefined),
+        },
+        time: st.time,
+      },
       schedule: st.schedule,
       links: st.links,
       rules: st.rules,
@@ -449,46 +576,75 @@ function Workspace() {
       paths: st.paths,
       presentation: st.presentation,
     };
+  }
+
+  const emptyProject = (title?: string): StratumProject => ({
+    format: PROJECT_FORMAT,
+    version: PROJECT_VERSION,
+    savedAt: "",
+    projectKey: crypto.randomUUID(),
+    title,
+    modelFileName: null,
+    schedule: null,
+    links: [],
+    rules: [],
+    profiles: structuredClone(DEFAULT_PROFILES),
+  });
+
+  const createProject = async (title: string) => {
+    const project = { ...emptyProject(title), savedAt: new Date().toISOString() };
+    const id = uid("prj");
+    const request = projectAction.current;
+    const backend = useConfig.getState().backend;
+    const version = await backend.saveProject(id, project).catch((error: unknown) => {
+      throw new Error(`Não foi possível criar a obra. ${error instanceof Error ? error.message : String(error)}`);
+    });
+    if (request !== projectAction.current || backend !== useConfig.getState().backend) return;
+    applyProject(project, undefined, undefined, id, version);
+    setProjectsTab(null);
+    store.setStatus(`Obra ${title} criada e salva na biblioteca. Importe os modelos e o cronograma em qualquer ordem.`);
   };
 
   const saveToDb = async (asNew = false) => {
     const st = useStore.getState();
-    if (!st.schedule) return;
-    if (isCombined(st.schedule) && !asNew) {
+    if (!st.schedule && !st.projectKey && !st.models?.files.length) return;
+    if (st.schedule && isCombined(st.schedule) && !asNew) {
       st.setStatus(await saveCombined());
       return;
     }
     const id = asNew || !st.currentProjectId ? uid("prj") : st.currentProjectId;
+    const request = projectAction.current;
+    const payload = currentPayload();
+    payload.projectKey = asNew && st.currentProjectId ? crypto.randomUUID() : st.projectKey ?? id;
+    if (asNew) delete payload.archived;
     try {
-      const v = await useConfig.getState().backend.saveProject(id, currentPayload(), asNew || !st.currentProjectId ? undefined : st.currentVersion ?? undefined);
-      st.setCurrentProject(id, v);
-      st.setStatus(`Saved ${st.schedule.projectCode} to ${useConfig.getState().backend.label} (version ${v}).`);
+      const v = await useConfig.getState().backend.saveProject(id, payload, asNew || !st.currentProjectId ? undefined : st.currentVersion ?? undefined);
+      if (request !== projectAction.current) return;
+      useStore.setState({ currentProjectId: id, currentVersion: v, projectKey: payload.projectKey, projectArchived: !!payload.archived });
+      st.setStatus(`Projeto ${payload.title ?? st.schedule?.projectCode ?? id} salvo (versão ${v}).`);
     } catch (e) {
+      if (request !== projectAction.current) throw e;
       if (e instanceof ConflictError) {
-        st.setStatus(`Not saved: ${e.message}`);
-        throw new Error(`${e.message} Use "Save as new" to keep your version, or reopen the project.`);
+        st.setStatus(`Projeto não salvo: ${e.message}`);
+        throw new Error(`${e.message} Use "Salvar como novo" to keep your version, or reopen the project.`);
       }
-      st.setStatus(`Save failed: ${(e as Error).message}`);
+      st.setStatus(`Falha ao salvar: ${(e as Error).message}`);
       throw e;
     }
   };
 
   const openFromDb = async (id: string) => {
+    const request = ++projectAction.current;
     const r = await useConfig.getState().backend.getProject(id);
-    if (!r) throw new Error("Project not found");
-    applyProject(r.project);
-    const rk = demoKindOf(r.project.modelFileName);
-    if (rk) loadDemoModelOnly(rk);
-    store.setCurrentProject(id, r.version);
-    store.setStatus(
-      `Opened ${r.project.schedule?.projectCode ?? "project"} (version ${r.version}).` +
-        (r.project.modelFileName && !demoKindOf(r.project.modelFileName) ? ` Open ${r.project.modelFileName} with Import model to see the 4D links.` : ""),
-    );
+    if (!r) throw new Error("Obra não encontrada.");
+    if (request === projectAction.current) await restoreProject(normalizeProject(r.project), request, id, r.version);
   };
 
   const importFromP6 = (s: Schedule, c: P6Connection) => {
-    adoptSchedule(s);
-    store.setStatus(`${useStore.getState().status} Pulled from ${c.name}.`);
+    const request = ++projectAction.current;
+    void adoptSchedule(s, { name: c.name }, request).catch((error) => {
+      if (request === projectAction.current) store.setStatus((error as Error).message);
+    });
   };
 
   const pushToP6 = async () => {
@@ -503,121 +659,398 @@ function Workspace() {
       }
       store.setStatus(`Sent progress for ${r.updated} activities to P6.${r.skipped.length ? ` Not sent (new in Stratum, use XER): ${r.skipped.slice(0, 8).join(", ")}${r.skipped.length > 8 ? "…" : ""}.` : ""} Reschedule in P6 (F9).`);
     } catch (e) {
-      store.setStatus(`P6 update failed: ${(e as Error).message}`);
+      store.setStatus(`Falha ao atualizar o P6: ${(e as Error).message}`);
     }
   };
 
-  const importIfc = async () => {
+  const importIfc = async (target?: ProjectModel, revision = false) => {
+    const workspace = useStore.getState().workspaceRevision;
     const f = await pickFile(".ifc,.glb,.gltf,.obj,.stl,.fbx");
-    if (!f) return;
-    await importIfcBytes(f.name, new Uint8Array(await f.arrayBuffer()));
+    if (f && workspace === useStore.getState().workspaceRevision) await importModel(f.name, f, target, revision);
   };
 
-  const loadObjects = (objects: Map<string, THREE.Object3D>) => {
-    objectsRef.current = objects;
-    viewerRef.current?.setObjects(objects, useStore.getState().segments, true);
-  };
-
-  const importIfcBytes = async (name: string, bytes: Uint8Array) => {
-    try {
-      store.setStatus(`Loading ${name}…`, true);
-      const t0 = performance.now();
-      let note = "";
-      let loaded: { elements: ModelElement[]; objects: Map<string, THREE.Object3D> };
-      if (MESH_FORMATS.test(name)) {
-        const { loadMeshModel } = await import("../viewer/meshLoader");
-        const m = await loadMeshModel(name, bytes, (msg) => store.setStatus(msg, true));
-        loaded = m;
-        if (m.scaled !== 1) note = ` Scaled by ${m.scaled} (the file looks like ${m.scaled === 0.001 ? "millimetres" : "centimetres"}).`;
-      } else {
-        const { loadIfc } = await import("../viewer/ifcLoader");
-        loaded = await loadIfc(bytes, (m) => store.setStatus(m, true));
-      }
-      store.setModel(loaded.elements, name);
-      loadObjects(loaded.objects);
-      // Keep links whose element still exists (same GlobalId).
-      const ids = new Set(useStore.getState().elements.map((e) => e.id));
-      const kept = useStore.getState().links.filter((l) => ids.has(l.elementId));
-      store.setLinks(kept);
-      store.setStatus(`Loaded ${name}: ${loaded.elements.length} elements in ${((performance.now() - t0) / 1000).toFixed(1)} s. ${kept.length} existing link(s) kept.${note}`);
-    } catch (err) {
-      console.error(err);
-      store.setStatus(`Model load failed: ${(err as Error).message}`);
+  const addIfcs = async () => {
+    const workspace = useStore.getState().workspaceRevision;
+    const files = await pickFiles(".ifc");
+    for (const file of files) {
+      if (workspace !== useStore.getState().workspaceRevision) break;
+      await importModel(file.name, file);
     }
   };
 
-  openers.current = { importScheduleBytes, importIfcBytes };
+  const loadObjects = (objects: Map<string, THREE.Object3D>, fit = true) => {
+    const previous = objectsRef.current;
+    objectsRef.current = objects;
+    viewerRef.current?.setObjects(objects, useStore.getState().segments, fit);
+    disposeModelParts([{ objects: new Map([...previous].filter(([id, object]) => objects.get(id) !== object)) }]);
+  };
+
+  const commitModels = (manifest: ModelManifest, parts: Map<string, ModelPart>, lost = new Set<string>(), mapping = new Map<string, string>(), entry?: ProjectRevision) => {
+    const st = useStore.getState();
+    const combined = combineModelParts(parts.values());
+    const fit = !objectsRef.current.size || !!demoKindOf(st.modelFileName);
+    partsRef.current = parts;
+    const key = (id: string) => mapping.get(id) ?? id;
+    const remap = (ids: string[]) => [...new Set(ids.filter((id) => !lost.has(id)).map(key))];
+    const segments = st.segments.filter((s) => !lost.has(s.id) && !lost.has(s.parentId)).map((s) => ({ ...s, parentId: key(s.parentId) }));
+    const groups = st.groups.map((g) => ({ ...g, elementIds: remap(g.elementIds) }));
+    const modelIds = new Set(manifest.files.map((file) => file.id));
+    const updateVisibility = (visibility: VisibilitySettings): VisibilitySettings => {
+      const scope = (ids: string[] | null) => ids === null ? null : remap(ids);
+      const isolated = scope(visibility.isolated);
+      const ghost = scope(visibility.ghost);
+      return {
+        ...visibility, hidden: remap(visibility.hidden), hiddenModels: visibility.hiddenModels.filter((id) => modelIds.has(id)),
+        isolated: isolated?.length ? isolated : null, ghost: ghost?.length ? ghost : null,
+      };
+    };
+    const visibility = st.view3d.visibility;
+    const visibilityAffected = lost.size > 0 || mapping.size > 0 || st.models?.files.some((file) => !modelIds.has(file.id));
+    useStore.setState({
+      ...(visibilityAffected && {
+        view3d: { ...st.view3d, visibility: visibility && updateVisibility(visibility) },
+        visibilityPast: st.visibilityPast.map(updateVisibility),
+        visibilityFuture: st.visibilityFuture.map(updateVisibility),
+      }),
+      baseElements: combined.elements, elements: expandElements(combined.elements, segments, groups),
+      modelFileName: manifest.files[0]?.name ?? null, models: manifest, segments, groups,
+      paths: st.paths.map((p) => ({ ...p, elementIds: remap(p.elementIds) })),
+      links: st.links.filter((l) => !lost.has(l.elementId)).map((l) => ({ ...l, elementId: key(l.elementId) })),
+      revisions: entry ? [...(st.revisions ?? []), entry] : st.revisions,
+      selectedElements: new Set(), projectKey: st.projectKey ?? crypto.randomUUID(), pathDraft: null,
+    });
+    loadObjects(combined.objects, fit);
+    if (fit && cameraRef.current) viewerRef.current?.setCamera(cameraRef.current);
+  };
+
+  const previewModelRevision = async (target: ProjectModel, model: ProjectModel, part: ModelPart) => {
+    const previous = partsRef.current.get(target.id);
+    if (!previous || !target.hash) throw new Error("Localize o modelo atual antes de substituir a revisão.");
+    const diff = compareModelRevision(previous, part);
+    const st = useStore.getState();
+    const unmatched = new Set(diff.removed.map((e) => e.id));
+    const targets = new Map(diff.added.filter((e) => !/(?:^|:)express-\d+$/.test(e.id)).map((e) =>
+      [e.properties.GlobalId ?? e.id, e.id],
+    ));
+    const parents = new Map(st.segments.map((s) => [s.id, s.parentId]));
+    const base = (id: string) => parents.get(id) ?? id;
+    const counts = new Map<string, number>();
+    const referenced = new Set([
+      ...st.links.map((l) => base(l.elementId)), ...st.groups.flatMap((g) => g.elementIds.map(base)),
+      ...st.paths.flatMap((p) => p.elementIds.map(base)), ...st.segments.map((s) => s.parentId),
+    ]);
+    for (const l of st.links) counts.set(base(l.elementId), (counts.get(base(l.elementId)) ?? 0) + 1);
+    const choice = await reviewRevision({
+      title: "Prévia da revisão de modelo",
+      file: model.name,
+      summary: [
+        `${diff.matched} identificador(es) compatível(is), ${diff.added.length} novo(s), ${diff.removed.length} removido(s), ${diff.changed.length} alterado(s).`,
+        `${st.links.length - diff.removed.reduce((total, e) => total + (counts.get(e.id) ?? 0), 0)} vínculo(s) mantido(s) automaticamente.`,
+        "A câmera e as vistas existentes serão mantidas.",
+      ],
+      warnings: [
+        ...(diff.georeferenceChanged ? ["A referência geográfica do IFC mudou. Confira o alinhamento com os demais modelos antes de aplicar."] : []),
+        ...(diff.translated ? ["Vários elementos mudaram de posição na mesma direção. Confira a origem compartilhada do IFC."] : []),
+        ...(diff.added.length && diff.removed.length ? ["Confira possíveis mudanças de GlobalId, divisões ou fusões. Nenhuma correspondência será deduzida pelo nome."] : []),
+      ],
+      changes: [
+        { title: "Elementos adicionados", items: diff.added.map((e) => `${e.name} · ${e.properties.GlobalId ?? e.id}`) },
+        { title: "Elementos removidos ou sem identidade estável", items: diff.removed.map((e) => `${e.name} · ${e.properties.GlobalId ?? e.id}`) },
+        { title: "Elementos alterados", items: diff.changed.map((e) => `${e.label} · ${e.fields.join(", ")}`) },
+      ],
+      mappings: diff.removed.filter((e) => referenced.has(e.id)).map((e) => ({ id: e.id, label: e.name, links: counts.get(e.id) ?? 0 })),
+      destinations: targets,
+      destinationLabel: "o GlobalId do elemento",
+    });
+    if (!choice) return null;
+    const lost = new Set<string>([...unmatched].filter((id) => !choice.has(id)));
+    for (const segment of st.segments) if (lost.has(segment.parentId)) lost.add(segment.id);
+    const dropped = st.links.filter((l) => lost.has(l.elementId)).length;
+    return { choice, lost, summary: `${diff.changed.length} elemento(s) alterado(s), ${choice.size} remapeado(s) e ${dropped} vínculo(s) sem correspondência.` };
+  };
+
+  const confirmModelChange = (target: ProjectModel | undefined, next?: ModelPart) => {
+    const st = useStore.getState();
+    const before = target ? partsRef.current.get(target.id) : undefined;
+    const oldIds = new Set(before?.elements.map((e) => e.id) ?? []);
+    const nextIds = new Set(next?.elements.map((e) => e.id));
+    const segmented = new Map(st.segments.map((s) => [s.id, s.parentId]));
+    const referenced = new Set([
+      ...st.links.map((l) => l.elementId), ...st.groups.flatMap((g) => g.elementIds),
+      ...st.paths.flatMap((p) => p.elementIds), ...st.segments.map((s) => s.parentId),
+    ]);
+    const lost = new Set<string>();
+    for (const visibility of [st.view3d.visibility, ...st.visibilityPast, ...st.visibilityFuture]) {
+      for (const ids of [visibility?.hidden, visibility?.isolated, visibility?.ghost]) {
+        for (const id of ids ?? []) referenced.add(id);
+      }
+    }
+    for (const id of referenced) {
+      const key = segmented.get(id) ?? id;
+      const belongs = target ? (before ? oldIds.has(key) : target.id ? key.startsWith(`${target.id}:`) : !key.includes(":")) : !!demoKindOf(st.modelFileName);
+      if (belongs && (!nextIds.has(key) || /(?:^|:)express-\d+$/.test(key))) lost.add(id);
+    }
+    const dropped = st.links.filter((l) => lost.has(l.elementId)).length;
+    if (target || lost.size) {
+      const added = [...nextIds].filter((id) => !oldIds.has(id)).length;
+      const text = next ? `${nextIds.size - added} identificador(es) compatível(is), ${added} novo(s).` : `Remover ${target?.name} da obra?`;
+      if (!window.confirm(`${text}\n${dropped} vínculo(s) serão removidos e ${st.links.length - dropped} serão mantidos.\n${lost.size} referência(s) de elementos serão descartadas.`)) return null;
+    }
+    return lost;
+  };
+
+  const importModel = async (name: string, file: Blob, explicit?: ProjectModel, revision = false) => {
+    const request = ++projectAction.current;
+    let part: ModelPart | undefined;
+    try {
+      const current = useStore.getState().models ?? { files: [] };
+      const sameName = current.files.filter((f) => !partsRef.current.has(f.id) && f.name.toLowerCase() === name.toLowerCase());
+      const target = explicit ?? (sameName.length === 1 ? sameName[0] : undefined);
+      store.setStatus(`Carregando ${name}…`, true);
+      const buffer = await file.arrayBuffer();
+      const hash = await modelHash(buffer);
+      if (request !== projectAction.current) return;
+      if (target?.hash && !revision && target.hash !== hash) throw new Error("O arquivo difere da versão salva. Para atualizar, use Substituir revisão.");
+      if (revision && target?.hash === hash) return store.setStatus("O modelo selecionado é idêntico à revisão ativa.");
+      if (target && /\.ifc$/i.test(target.name) !== /\.ifc$/i.test(name)) throw new Error("Selecione um arquivo do mesmo formato do original.");
+      if (!target && current.files.some((f) => f.hash === hash)) {
+        store.setStatus("Esse arquivo já está na obra.");
+        return;
+      }
+      const model: ProjectModel = { id: target?.id ?? crypto.randomUUID(), name, hash, size: file.size, revision: (target?.revision ?? 1) + (revision ? 1 : 0) };
+      part = await loadModelPart(model, buffer, current.coordination);
+      if (request !== projectAction.current) return;
+      if (target && !target.hash && !revision) {
+        const modelIds = new Set(part.elements.map((e) => e.id));
+        const st = useStore.getState();
+        const segments = new Map(st.segments.map((s) => [s.id, s.parentId]));
+        const match = st.links.filter((l) => modelIds.has(segments.get(l.elementId) ?? l.elementId)).length;
+        if ((st.links.length > 0 || name.toLowerCase() !== target.name.toLowerCase()) && !window.confirm(
+          `Vincular o arquivo ${name} ao modelo legado ${target.name}?\n${match} vínculo(s) correspondem aos identificadores IFC. Confirme que selecionou o arquivo original.`,
+        )) {
+          store.setStatus("Recuperação do IFC cancelada.");
+          return;
+        }
+      }
+      const before = currentPayload();
+      const preview = revision && target ? await previewModelRevision(target, model, part) : undefined;
+      if (request !== projectAction.current) return;
+      const lost = revision ? preview?.lost : !target ? confirmModelChange(target, part) : new Set<string>();
+      if (!lost) {
+        store.setStatus("Importação cancelada. A versão anterior continua ativa.");
+        return;
+      }
+      let stored = true;
+      try {
+        await saveModelAsset(hash, file);
+      } catch (error) {
+        if (revision) throw error;
+        stored = false;
+      }
+      const entry = preview ? await recordRevision("ifc", { name, hash }, before, preview.summary, before.schedule?.dataDate ?? null, model.revision) : undefined;
+      if (request !== projectAction.current) return;
+      const active = useStore.getState();
+      if (revision && (before.links !== active.links || before.models !== active.models || before.segments !== active.segments || before.paths !== active.paths || before.groups !== active.groups || before.schedule !== active.schedule)) {
+        throw new Error("A obra mudou durante a prévia. Abra a revisão novamente.");
+      }
+      const parts = new Map(partsRef.current).set(model.id, part);
+      const files = target ? current.files.map((f) => f.id === target.id ? model : f) : [...current.files, model];
+      commitModels({ files, coordination: current.coordination ?? part.coordination }, parts, lost, preview?.choice, entry);
+      if (part.location && !revision && active.sim.solar?.latitude == null && active.sim.solar?.longitude == null) {
+        store.setSim({ solar: {
+          date: active.sim.solar?.date ?? new Date(active.schedule?.dataDate ?? Date.now()).toISOString().slice(0, 10),
+          time: active.sim.solar?.time ?? "15:00",
+          utcOffset: active.sim.solar?.utcOffset ?? -new Date().getTimezoneOffset() / 60,
+          ...part.location,
+          north: part.location.north ?? active.sim.solar?.north ?? 0,
+        } });
+      }
+      if (entry && before.view?.settings.sectionBounds) useStore.getState().setView3d({ sectionBounds: before.view.settings.sectionBounds });
+      part = undefined;
+      store.setStatus(`Modelo ${name} carregado. ${parts.size} de ${files.length} modelo(s) na obra.${stored ? "" : " O armazenamento local falhou. Guarde o arquivo original para localizá-lo ao reabrir."}`);
+    } catch (err) {
+      if (request === projectAction.current) store.setStatus(`Falha ao carregar o modelo. ${(err as Error).message}`);
+    } finally {
+      if (part) disposeModelParts([part]);
+    }
+  };
+
+  openers.current = {
+    importScheduleBytes,
+    importIfcBytes: (name, bytes) => importModel(name, new Blob([new Uint8Array(bytes)])),
+  };
   saveRef.current = saveToDb;
 
-  const loadDemoModelOnly = (kind: DemoKind) => {
-    const boxes = SAMPLES[kind].model();
-    store.setModel(
-      boxes.map((b) => b.element),
-      SAMPLES[kind].modelName,
-    );
-    loadObjects(Viewer.demoObjects(boxes));
+  const removeModel = (model: ProjectModel) => {
+    const manifest = useStore.getState().models;
+    if (!manifest) return;
+    const lost = confirmModelChange(model);
+    if (!lost) return;
+    ++projectAction.current;
+    const parts = new Map(partsRef.current);
+    parts.delete(model.id);
+    commitModels({ ...manifest, files: manifest.files.filter((f) => f.id !== model.id) }, parts, lost);
+    store.setStatus(`Modelo ${model.name} removido da obra.`);
   };
 
   const loadDemo = (kind: DemoKind = "gis") => {
-    const d = SAMPLES[kind];
     const p = sampleProject(kind);
-    const boxes = d.model();
-    store.setSegments([]);
-    store.setGroups([]);
-    store.setModel(boxes.map((x) => x.element), d.modelName);
-    loadObjects(Viewer.demoObjects(boxes));
-    applyProject(p);
-    store.setCurrentProject(null, null);
+    const boxes = SAMPLES[kind].model();
+    applyProject(p, new Map(), { elements: boxes.map((b) => b.element), objects: Viewer.demoObjects(boxes) });
     const acts = new Set(p.links.map((l) => l.activityId)).size;
-    store.setStatus(`${d.done} ${boxes.length} elements linked to ${acts} activities, with costs and resources. Press Play, or F9 to reschedule.`);
+    store.setStatus(`${useStore.getState().elements.length} elementos vinculados a ${acts} atividades, com custos e recursos. Clique em Reproduzir ou pressione F9 para recalcular.`);
   };
 
-  const applyProject = (p: StratumProject) => {
-    store.setSchedule(p.schedule);
-    store.setProfiles(p.profiles);
-    store.setRules(p.rules);
-    store.setLinks(p.links);
-    store.setSegments(p.segments ?? []);
-    store.setGroups(p.groups ?? []);
-    store.setPaths(p.paths ?? []);
-    store.setPresentation(p.presentation ?? EMPTY_PRESENTATION);
-    store.setLastUpdate(null);
-    store.setScheduleReport(null);
+  const applyProject = (p: StratumProject, parts = new Map<string, ModelPart>(), scene = combineModelParts(parts.values()), id: string | null = null, version: number | null = null) => {
+    ++projectAction.current;
+    finishReview.current?.(null);
+    partsRef.current = parts;
+    cameraRef.current = p.view?.camera;
+    viewerRef.current?.setPathOverlay([]);
+    viewerRef.current?.setExplode(0, "storeys");
+    viewerRef.current?.setCamera({ pos: [12, 9, 12], target: [0, 0, 0], fov: 45, up: [0, 1, 0], clipping: [0.1, 5000] });
+    const projectSegments = p.segments ?? [];
+    const groups = p.groups ?? [];
+    const simulation = { ...DEFAULT_SIM_OPTIONS, ...p.simulation };
+    const range = p.schedule ? scheduleRange(p.schedule, simulation.dateSource) : null;
+    useStore.setState((st) => ({
+      schedule: p.schedule, scheduleDirty: false, scheduleReport: null, lastUpdate: null, past: [], future: [],
+      baseElements: scene.elements, elements: expandElements(scene.elements, projectSegments, groups),
+      modelFileName: p.models?.files[0]?.name ?? p.modelFileName, segments: projectSegments, groups,
+      links: p.links, rules: p.rules, profiles: p.profiles, paths: p.paths ?? [],
+      presentation: p.presentation ?? EMPTY_PRESENTATION,
+      selectedActivity: null, selectedActivities: new Set(), selectedElements: new Set(),
+      models: p.models, projectKey: p.projectKey ?? id ?? (p.schedule || p.modelFileName ? crypto.randomUUID() : null),
+      scheduleSource: p.scheduleSource, revisions: p.revisions,
+      projectTitle: p.title ?? null, projectArchived: !!p.archived, currentProjectId: id, currentVersion: version,
+      workspaceRevision: st.workspaceRevision + 1, pathDraft: null, clipboard: null, playing: false,
+      collapsedWbs: new Set(), ganttFilter: { text: "", kind: "all" }, ganttTracking: false,
+      time: Number.isFinite(p.view?.time) ? p.view!.time : p.schedule?.dataDate ?? range?.start ?? Date.now(),
+      sim: simulation, view3d: { ...EMPTY_VIEW, ...p.view?.settings, visibility: normalizeVisibility(p.view?.settings.visibility) },
+      visibilityPast: [], visibilityFuture: [],
+    }));
+    const restored = useStore.getState();
+    viewerRef.current?.setInspection(restored.view3d.visibility ?? EMPTY_VISIBILITY, new Map(restored.elements.map((e) => [e.id, elementVisibilityKey(e)])), false);
+    loadObjects(scene.objects);
+    if (cameraRef.current) viewerRef.current?.setCamera(cameraRef.current);
+    setRestore(null);
+    setShowHistory(false);
+    setInspectionTarget(null);
+    setSavedAt(null);
+  };
+
+  const restoreProject = async (p: StratumProject, request: number, id: string | null = null, version: number | null = null, strict = false) => {
+    const label = p.title ?? p.schedule?.projectCode ?? "sem nome";
+    const sample = !p.models && demoKindOf(p.modelFileName);
+    if (sample) {
+      const boxes = SAMPLES[sample].model();
+      applyProject(p, new Map(), { elements: boxes.map((b) => b.element), objects: Viewer.demoObjects(boxes) }, id, version);
+      store.setStatus(`Projeto ${label} aberto com o modelo de exemplo.`);
+      return;
+    }
+    const manifest = p.models ?? { files: p.modelFileName ? [{ id: "", name: p.modelFileName }] : [] };
+    store.setStatus(`Abrindo ${label}…`, true);
+    const result = await restoreModelParts(manifest, () => request === projectAction.current);
+    if (request !== projectAction.current) {
+      disposeModelParts(result.parts.values());
+      return;
+    }
+    if (strict && result.missing.length) {
+      disposeModelParts(result.parts.values());
+      throw new Error(`Arquivos anteriores indisponíveis: ${result.missing.map((file) => file.name).join(", ")}. A obra atual foi preservada.`);
+    }
+    applyProject({ ...p, models: result.manifest }, result.parts, undefined, id, version);
+    const missing = result.missing.map((f) => f.name);
+    store.setStatus(`Projeto ${label} aberto. ${result.parts.size} modelo(s) e ${p.links.length} vínculo(s).${missing.length ? ` Use Modelos → Localizar arquivo para: ${missing.join(", ")}.` : ""}`);
+  };
+
+  const downloadRevision = async (entry: ProjectRevision) => {
+    try {
+      const previous = await readCheckpoint(entry.checkpoint);
+      const name = previous.title ?? previous.schedule?.projectCode ?? "obra";
+      download(`${name}-anterior.stratum.json`, JSON.stringify(previous, null, 2), "application/json");
+    } catch (err) {
+      store.setStatus((err as Error).message);
+      setShowHistory(false);
+    }
+  };
+
+  const restoreRevision = async (item: ProjectRevision) => {
+    if (!window.confirm("Restaurar o estado anterior a esta revisão, incluindo cronograma, modelos, vínculos e vistas? O estado atual será guardado no histórico.")) return;
+    const request = ++projectAction.current;
+    const st = useStore.getState();
+    const before = currentPayload();
+    try {
+      store.setStatus("Preparando o estado anterior…", true);
+      const previous = await readCheckpoint(item.checkpoint);
+      const entry = await recordRevision("restore", item.source, before, `Estado restaurado para antes de ${item.source.name}.`, previous.schedule?.dataDate ?? null);
+      if (request !== projectAction.current) return;
+      await restoreProject({
+        ...previous, projectKey: before.projectKey, title: before.title, archived: before.archived,
+        revisions: [...(before.revisions ?? []), entry],
+      }, request, st.currentProjectId, st.currentVersion, true);
+    } catch (err) {
+      if (request === projectAction.current) {
+        setShowHistory(false);
+        store.setStatus(`A restauração não foi aplicada. ${(err as Error).message}`);
+      }
+    }
   };
 
   const saveProject = () => {
-    const s = useStore.getState();
-    const text = serializeProject({
-      modelFileName: s.modelFileName,
-      schedule: s.schedule,
-      links: s.links,
-      rules: s.rules,
-      profiles: s.profiles,
-      segments: s.segments,
-      groups: s.groups,
-      paths: s.paths,
-      presentation: s.presentation,
-    });
-    download(`${s.schedule?.projectCode ?? "project"}.stratum.json`, text, "application/json");
-    store.setStatus("Project saved.");
+    const p = currentPayload();
+    download(`${p.schedule?.projectCode ?? p.title ?? "projeto"}.stratum.json`, JSON.stringify(p, null, 2), "application/json");
+    store.setStatus("Arquivo de projeto salvo. Os modelos ficam no armazenamento local.");
+  };
+
+  const backupProject = async () => {
+    const request = projectAction.current;
+    const project = currentPayload();
+    try {
+      store.setStatus("Verificando os arquivos da obra e do histórico…", true);
+      const { createProjectBackup } = await import("../backend/projectBackup");
+      const backup = await createProjectBackup(project, getModelAsset);
+      if (request !== projectAction.current) return;
+      const name = (project.title ?? project.schedule?.projectCode ?? "obra").replace(/[\\/:*?"<>|]+/g, "-");
+      download(`${name}.stratum-backup`, backup);
+      store.setStatus("Cópia de segurança gerada com a obra, os arquivos e o histórico.");
+    } catch (error) {
+      if (request === projectAction.current) store.setStatus(`Falha ao gerar a cópia de segurança. ${(error as Error).message}`);
+    }
+  };
+
+  const importBackup = async () => {
+    const request = projectAction.current;
+    const file = await pickFile(".stratum-backup");
+    if (!file || request !== projectAction.current) return;
+    const backend = useConfig.getState().backend;
+    try {
+      store.setStatus("Verificando a integridade da cópia de segurança…", true);
+      const { readProjectBackup } = await import("../backend/projectBackup");
+      const { project, assets } = await readProjectBackup(file);
+      if (request !== projectAction.current) return;
+      await saveModelAssets(assets);
+      if (request !== projectAction.current) return;
+      const id = uid("prj");
+      const title = `${project.title ?? project.schedule?.projectName ?? "Obra"} — cópia restaurada`;
+      await backend.saveProject(id, { ...project, title, projectKey: id, archived: undefined, savedAt: new Date().toISOString() });
+      if (request !== projectAction.current) return;
+      store.setStatus(`Cópia restaurada na biblioteca. ${title}.`);
+      setProjectsTab("database");
+    } catch (error) {
+      if (request === projectAction.current) store.setStatus(`A cópia não foi restaurada. ${(error as Error).message}`);
+    }
   };
 
   const openProject = async () => {
     const f = await pickFile(".json");
     if (!f) return;
+    const request = ++projectAction.current;
     try {
       const p = parseProject(await f.text());
-      applyProject(p);
-      const pk = demoKindOf(p.modelFileName);
-      if (pk) loadDemoModelOnly(pk);
-      const loadedIds = new Set(useStore.getState().elements.map((e) => e.id));
-      const matched = p.links.filter((l) => loadedIds.has(l.elementId)).length;
-      store.setStatus(
-        `Opened project (${p.links.length} links). ${p.modelFileName ? `Model: ${p.modelFileName}. ` : ""}` +
-          (loadedIds.size ? `${matched} links match the loaded model.` : "Load the 3D model to see links."),
-      );
+      if (request === projectAction.current) await restoreProject(p, request);
     } catch (err) {
-      store.setStatus(`Could not open project: ${(err as Error).message}`);
+      if (request === projectAction.current) store.setStatus(`Não foi possível abrir o projeto. ${(err as Error).message}`);
     }
   };
 
@@ -633,10 +1066,10 @@ function Workspace() {
       );
     } else if (kind === "mspdi") {
       download(`${s.projectCode}.xml`, writeMspdi(s), "application/xml");
-      store.setStatus("Saved as Microsoft Project XML. In MS Project use File › Open, choose XML Format, and open it as a new project.");
+      store.setStatus("Arquivo salvo como XML. No Microsoft Project, escolha Arquivo › Abrir, selecione o formato XML e abra como novo projeto.");
     } else {
       download(`${s.projectCode}.csv`, exportCsv(s), "text/csv");
-      store.setStatus("CSV exported.");
+      store.setStatus("CSV exportado.");
     }
   };
 
@@ -689,7 +1122,7 @@ function Workspace() {
       download(`${schedule.projectCode}-4d.webm`, new Blob(chunks, { type: "video/webm" }), "video/webm");
       setRecording(null);
       useStore.getState().setPlaying(false);
-      store.setStatus("Video saved.");
+      store.setStatus("Vídeo salvo.");
     };
     const unsub = useStore.subscribe((s, prev) => {
       if (prev.playing && !s.playing) {
@@ -701,7 +1134,7 @@ function Workspace() {
     setRecording(rec);
     store.setTime(range.start);
     store.setPlaying(true);
-    store.setStatus("Recording 4D video… press Stop to finish early.");
+    store.setStatus("Gravando vídeo 4D… pressione Parar para encerrar a gravação.");
   };
 
   // Web demo: a new session gets its own copy of every sample project, opens the
@@ -715,7 +1148,7 @@ function Workspace() {
       try {
         let list = await be.listProjects();
         if (demoSession.fresh || !list.length) {
-          store.setStatus("Preparing your demo session with the sample projects…", true);
+          store.setStatus("Preparando a demonstração com os projetos de exemplo…", true);
           for (const k of SAMPLE_ORDER) await be.saveProject(`demo-${k}`, sampleProject(k));
           list = await be.listProjects();
         }
@@ -726,9 +1159,9 @@ function Workspace() {
         else if (!useStore.getState().schedule && list.some((p) => p.id === "demo-gis")) await openFromDb("demo-gis");
         useP6.getState().show(linked ? "activities" : "projects");
         const where = (await demoStoreKind()) === "cloudflare" ? "on the demo server" : "in this browser";
-        store.setStatus(`Demo session ready: ${list.length} sample projects, saved ${where}. Change, add or delete anything; sign out or open a new tab to start again with fresh samples.`);
+        store.setStatus(`Sessão de demonstração pronta. Projetos de exemplo salvos ${where}: ${list.length}. Para reiniciar a demonstração, saia da sessão ou abra uma nova aba.`);
       } catch (e) {
-        store.setStatus(`Could not prepare the demo session: ${(e as Error).message}`);
+        store.setStatus(`Não foi possível preparar a demonstração: ${(e as Error).message}`);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -736,26 +1169,46 @@ function Workspace() {
 
   const viewport = (
     <div className="viewport-wrap">
-      <Teardown getViewer={getViewer} gen={viewerGen} onRecord={toggleRecording} recording={!!recording} />
-      <Present getViewer={getViewer} gen={viewerGen} />
+      <Teardown key={`teardown-${store.workspaceRevision}`} getViewer={getViewer} gen={viewerGen} onRecord={toggleRecording} recording={!!recording} />
+      <Present key={`present-${store.workspaceRevision}`} getViewer={getViewer} gen={viewerGen} />
       <div
         className={`viewport ${pathDraft ? "drawing" : ""}`}
-        ref={hostRef}
-        onPointerDown={(e) => (down.current = { x: e.clientX, y: e.clientY })}
+        ref={setViewportHost}
+        onPointerDown={(e) => {
+          down.current = e.isPrimary && e.button === 0 ? { x: e.clientX, y: e.clientY, pointer: e.pointerId } : null;
+          rightDown.current = e.isPrimary && e.button === 2 ? { x: e.clientX, y: e.clientY, pointer: e.pointerId } : null;
+        }}
+        onPointerMove={(e) => {
+          const start = down.current;
+          if (start?.pointer === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 4) down.current = null;
+          const right = rightDown.current;
+          if (right?.pointer === e.pointerId && Math.hypot(e.clientX - right.x, e.clientY - right.y) >= 4) rightDown.current = null;
+        }}
+        onPointerCancel={() => { down.current = null; rightDown.current = null; }}
+        onContextMenu={(e) => e.preventDefault()}
         onPointerUp={(e) => {
           const d = down.current;
-          if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) onViewportClick(e);
+          const right = rightDown.current;
           down.current = null;
+          rightDown.current = null;
+          if (e.button === 0 && d?.pointer === e.pointerId && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) onViewportClick(e);
+          if (e.button === 2 && right?.pointer === e.pointerId && Math.hypot(e.clientX - right.x, e.clientY - right.y) < 4) {
+            const id = viewerRef.current?.pick(e.clientX, e.clientY);
+            const current = useStore.getState();
+            const ids = id ? current.selectedElements.has(id) ? [...current.selectedElements] : [id] : [];
+            if (id && !current.selectedElements.has(id)) current.selectElements(new Set(ids));
+            setInspectionTarget({ ids, x: e.clientX, y: e.clientY, label: id ? current.elements.find((element) => element.id === id)?.name ?? "Elemento" : "" });
+          }
         }}
       />
       {elements.length === 0 && (
         <div className="viewport-hint">
-          <p>No model loaded. Try a sample project:</p>
+          <p>Nenhum modelo carregado. Experimente um projeto de exemplo.</p>
           <button className="primary" onClick={() => loadDemo("gis")}>
-            220 kV GIS substation (UAE)
+            Subestação GIS de 220 kV (EAU)
           </button>
           <button className="link" onClick={() => loadDemo("rc")}>
-            or a small RC building
+            ou um edifício de concreto armado
           </button>
         </div>
       )}
@@ -765,25 +1218,43 @@ function Workspace() {
   const canPush = !!schedule?.p6Source && schedule.p6Source.kind === "eppm";
   const dbLabel = backend.label;
   // Short form for the top bar; the full label is in the tooltip.
-  const dbShort = DEMO_SESSIONS ? "Demo session" : backend.kind === "server" ? "Server" : backend.kind === "desktop" ? "Local database" : "This browser";
+  const dbShort = DEMO_SESSIONS ? "Sessão de demonstração" : backend.kind === "server" ? "Servidor" : backend.kind === "desktop" ? "Banco de dados local" : "Neste navegador";
 
   // Buttons shared by every layout, so all three modes keep the same features.
   const I = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
   const btn = {
     importSchedule: (
-      <button className="tb" onClick={importSchedule} title="Import a Primavera P6 .xer or Microsoft Project .xml">
-        <FileUp {...I} />
-        <span>Import schedule</span>
-      </button>
+      <details className="menu">
+        <summary className="tb" title="Cronograma da obra"><FileUp {...I} /> Cronograma <ChevronDown {...I} /></summary>
+        <div className="menu-body" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute("open")}>
+          <button disabled={busy} onClick={() => void importSchedule()}>Importar cronograma (XER / XML)…</button>
+          <button disabled={busy || !schedule} onClick={() => void importSchedule(true)}>Atualizar cronograma…</button>
+          <button disabled={!store.revisions?.length} onClick={() => setShowHistory(true)}>Histórico de revisões…</button>
+        </div>
+      </details>
     ),
     importIfc: (
-      <button className="tb" onClick={importIfc} title="Import a 3D model: IFC, glTF / GLB, OBJ, STL or FBX">
-        <Box {...I} />
-        <span>Import model</span>
-      </button>
+      <details className="menu">
+        <summary className="tb" title="Modelos da obra">
+          <Box {...I} /> Modelos <ChevronDown {...I} />
+        </summary>
+        <div className="menu-body">
+          <button disabled={busy} onClick={() => void importIfc()}>Adicionar modelo…</button>
+          <button disabled={busy} onClick={() => void addIfcs()}>Adicionar vários IFCs…</button>
+          {store.models?.files.map((model) => (
+            <div key={model.id} className="model-menu-entry">
+              <b title={model.name}>{model.name}</b>
+              <small>{partsRef.current.has(model.id) ? `Revisão ${model.revision ?? 1} · Carregado` : "Arquivo pendente"}</small>
+              {!partsRef.current.has(model.id) && <button disabled={busy} onClick={() => void importIfc(model)}>Localizar arquivo…</button>}
+              <button disabled={busy} onClick={() => void importIfc(model, true)}>Substituir revisão…</button>
+              <button disabled={busy} onClick={() => removeModel(model)}>Remover da obra</button>
+            </div>
+          ))}
+        </div>
+      </details>
     ),
     run: (
-      <button className={`tb ${scheduleDirty ? "primary" : ""}`} onClick={runSchedule} disabled={!schedule} title={`${t.schedule} using CPM (F9)`}>
+      <button className={`tb ${scheduleDirty ? "primary" : ""}`} onClick={runSchedule} disabled={!schedule} title={`${t.schedule} pelo caminho crítico (F9)`}>
         <Calculator {...I} />
         <span>{t.schedule}</span>
         <kbd>F9</kbd>
@@ -791,74 +1262,74 @@ function Workspace() {
     ),
     exportMenu: (
       <details className="menu">
-        <summary className="tb collapse" title="Export">
+        <summary className="tb collapse" title="Exportar">
           <Download {...I} />
-          <span>Export</span>
+          <span>Exportar</span>
           <ChevronDown size={13} aria-hidden className="chev" />
         </summary>
         <div className="menu-body" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute("open")}>
           <button onClick={() => exportSchedule("xer")} disabled={!schedule}>P6 XER</button>
           <button onClick={() => exportSchedule("csv")} disabled={!schedule}>CSV (Excel)</button>
           <button onClick={() => exportSchedule("mspdi")} disabled={!schedule}>MS Project XML</button>
-          <button onClick={snapshot}>Snapshot PNG</button>
+          <button onClick={snapshot}>Captura PNG</button>
         </div>
       </details>
     ),
     projects: (
-      <button className="tb" onClick={() => setProjectsTab("database")} title={`Open or save ${t.projects.toLowerCase()} in ${dbLabel}`}>
+      <button className="tb" onClick={() => setProjectsTab("database")} title="Abrir a biblioteca de projetos">
         <FolderOpen {...I} />
-        <span>{t.projects}</span>
+        <span>Projetos</span>
       </button>
     ),
     save: (
-      <button className="tb" onClick={() => void saveToDb(false).catch((e) => window.alert(e.message))} disabled={!schedule} title="Save to the database (Ctrl+S)">
+      <button className="tb" onClick={() => void saveToDb(false).catch((e) => window.alert(e.message))} disabled={busy || (!schedule && !store.projectKey)} title="Salvar obra na biblioteca (Ctrl+S)">
         <Save {...I} />
-        <span>Save</span>
+        <span>Salvar</span>
       </button>
     ),
     p6: (
-      <button className="tb" onClick={() => setProjectsTab("p6")} title="Import a project from a P6 connection">
+      <button className="tb" onClick={() => setProjectsTab("p6")} title="Importar um projeto de uma conexão com o P6">
         <Database {...I} />
-        <span>Import from P6</span>
+        <span>Importar do P6</span>
       </button>
     ),
     push: canPush ? (
-      <button className="tb" onClick={pushToP6} title="Send progress back to P6 EPPM">
+      <button className="tb" onClick={pushToP6} title="Enviar o avanço para o P6 EPPM">
         <CloudUpload {...I} />
-        <span>Update P6</span>
+        <span>Atualizar P6</span>
       </button>
     ) : null,
     dashboards: (
-      <button className="tb" onClick={() => store.setView("dashboards")} title="Dashboards and reports">
+      <button className="tb" onClick={() => store.setView("dashboards")} title="Painéis e relatórios">
         <LayoutDashboard {...I} />
-        <span>Dashboards</span>
+        <span>Painéis</span>
       </button>
     ),
     fit: (
-      <button className="tb collapse" onClick={() => viewerRef.current?.fit(selectedElements.size ? selectedElements : undefined)} title="Zoom the 3D view to fit">
+      <button className="tb collapse" onClick={() => viewerRef.current?.fit(selectedElements.size ? selectedElements : undefined, 600)} title={selectedElements.size ? "Enquadrar seleção" : "Enquadrar tudo"}>
         <Maximize {...I} />
-        <span>Fit view</span>
+        <span>Enquadrar</span>
       </button>
     ),
     record: (
-      <button onClick={toggleRecording} disabled={!schedule} className={`tb collapse ${recording ? "danger" : ""}`} title="Record the 4D playback as video">
+      <button onClick={toggleRecording} disabled={!schedule} className={`tb collapse ${recording ? "danger" : ""}`} title="Gravar a simulação 4D em vídeo">
         {recording ? <Square {...I} /> : <Video {...I} />}
-        <span>{recording ? "Stop" : "Record"}</span>
+        <span>{recording ? "Parar" : "Gravar"}</span>
       </button>
     ),
     demo: (
-      <button className="tb" onClick={() => loadDemo("gis")} title="Load the 220 kV GIS substation sample project">
+      <button className="tb" onClick={() => loadDemo("gis")} title="Carregar o projeto de exemplo da subestação GIS de 220 kV">
         <Sparkles {...I} />
-        <span>Demo</span>
+        <span>Demonstração</span>
       </button>
     ),
     settings: (
-      <button className="tb icon-only" onClick={() => setSettingsTab("interface")} title="Settings: interface, fonts, database, P6, email">
+      <button className="tb icon-only" onClick={() => setSettingsTab("interface")} title="Configurações de interface, fontes, banco de dados, P6 e e-mail">
         <Settings {...I} />
       </button>
     ),
     help: (
-      <button className="tb icon-only" title="Getting started and shortcuts (?)" onClick={() => setHelpOpen(true)}>
+      <button className="tb icon-only" title="Primeiros passos e atalhos (?)" onClick={() => setHelpOpen(true)}>
         <CircleHelp {...I} />
       </button>
     ),
@@ -866,25 +1337,36 @@ function Workspace() {
 
   const fileMenu = (
     <details className="menu">
-      <summary className="tb" title="File">
+      <summary className="tb" title="Arquivo">
         <Menu {...I} />
-        <span>File</span>
+        <span>Arquivo</span>
         <ChevronDown size={13} aria-hidden className="chev" />
       </summary>
       <div className="menu-body" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute("open")}>
-        <button onClick={() => setProjectsTab("database")}>Open from database…</button>
-        <button onClick={() => void saveToDb(true).catch((e) => window.alert(e.message))} disabled={!schedule}>Save as new</button>
+        <button onClick={() => setProjectsTab("database")}>Abrir da biblioteca…</button>
+        <button onClick={() => void saveToDb(true).catch((e) => window.alert(e.message))} disabled={busy || (!schedule && !store.projectKey)}>Salvar como nova obra</button>
         <hr />
-        <button onClick={importSchedule}>Import schedule (XER / XML)…</button>
-        <button onClick={importIfc}>Import 3D model…</button>
+        <button disabled={busy} onClick={() => void importSchedule()}>Importar cronograma (XER / XML)…</button>
+        <button disabled={busy || !schedule} onClick={() => void importSchedule(true)}>Atualizar cronograma…</button>
+        <button disabled={!store.revisions?.length} onClick={() => setShowHistory(true)}>Histórico de revisões…</button>
+        <button onClick={() => void importIfc()}>Adicionar modelo 3D…</button>
         <button onClick={() => setProjectsTab("p6")}>Import from P6…</button>
         {canPush && <button onClick={pushToP6}>Update P6 with progress</button>}
         <hr />
-        <button onClick={openProject}>Open project file…</button>
-        <button onClick={saveProject} disabled={!schedule}>Save project file</button>
+        <button onClick={openProject}>Abrir arquivo de projeto…</button>
+        <button onClick={saveProject} disabled={busy || (!schedule && !store.projectKey)}>Salvar arquivo de projeto</button>
+        <button onClick={() => void backupProject()} disabled={busy || (!schedule && !store.projectKey)}>Gerar cópia de segurança…</button>
+        <button onClick={() => void importBackup()} disabled={busy}>Restaurar cópia de segurança…</button>
+        <button disabled={!store.projectKey} onClick={() => {
+          if (!window.confirm("Fechar esta obra? Salve as alterações que deseja guardar antes de fechar.")) return;
+          applyProject({ ...emptyProject(), projectKey: undefined });
+          setRestore(null);
+          void clearAutosave();
+          store.setStatus("Obra fechada.");
+        }}>Fechar obra</button>
         {SAMPLE_ORDER.map((k) => (
           <button key={k} onClick={() => loadDemo(k)}>
-            Sample: {SAMPLES[k].label}
+            Exemplo: {SAMPLES[k].label}
           </button>
         ))}
       </div>
@@ -901,11 +1383,11 @@ function Workspace() {
   const toolbarRight = (
     <>
       <span className="spacer" />
-      <span className="muted conn" title={`Projects are stored in: ${dbLabel}`}>
+      <span className="muted conn" title={`Local de armazenamento dos projetos: ${dbLabel}`}>
         {dbShort}
         {currentProjectId ? ` · v${currentVersion}` : ""}
       </span>
-      {savedAt && <span className="muted autosaved">Autosaved {savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+      {savedAt && <span className="muted autosaved">Salvo automaticamente às {savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
       <ModeSwitch />
       {!isNativeApp() && <DisplaysButton className="tb icon-label" />}
       <TrainingButton className="tb" />
@@ -919,20 +1401,16 @@ function Workspace() {
     <>
       {restore && (
         <div className="banner">
-          Restore your last session? <b>{restore.schedule?.projectCode}</b>, {restore.links.length} links
-          {restore.savedAt ? `, saved ${new Date(restore.savedAt).toLocaleString()}` : ""}.
-          {restore.modelFileName && !demoKindOf(restore.modelFileName) ? ` Re-open ${restore.modelFileName} afterwards to see the links.` : ""}
+          Restaurar a última sessão? <b>{restore.title ?? restore.schedule?.projectCode}</b>, {restore.links.length} vínculo(s)
+          {restore.savedAt ? `, salvo em ${new Date(restore.savedAt).toLocaleString("pt-BR")}` : ""}.
           <button
             className="primary"
             onClick={() => {
-              applyProject(restore);
-              const k = demoKindOf(restore.modelFileName);
-              if (k) loadDemoModelOnly(k);
-              store.setStatus("Previous session restored.");
+              void restoreProject(restore, ++projectAction.current);
               setRestore(null);
             }}
           >
-            Restore
+            Restaurar
           </button>
           <button
             onClick={() => {
@@ -940,13 +1418,13 @@ function Workspace() {
               setRestore(null);
             }}
           >
-            Discard
+            Descartar
           </button>
         </div>
       )}
       {scheduleDirty && (
         <div className="banner info">
-          The schedule has been edited. Press <b>Schedule (F9)</b> to recalculate dates and float.
+          O cronograma foi alterado. Pressione <b>Calcular cronograma (F9)</b> para recalcular as datas e folgas.
         </div>
       )}
     </>
@@ -955,24 +1433,19 @@ function Workspace() {
   const classicActions: ClassicActions = {
     projects: () => setProjectsTab("database"),
     openOne: openFromDb,
+    openCombined: (schedule) => applyProject({ ...emptyProject(), schedule }),
     importToDb: async (eps: string[]) => {
       const f = await pickFile(".xer,.xml");
       if (!f) return;
       const s = readScheduleFile(f.name, new Uint8Array(await f.arrayBuffer()));
       if (!s) return;
-      store.setSchedule({ ...s, eps });
-      store.setLinks([]);
-      store.setPaths([]);
-      store.setPresentation({ viewpoints: [], animations: [] });
-      store.setLastUpdate(null);
-      store.setScheduleReport(null);
-      store.setCurrentProject(null, null);
+      applyProject({ ...emptyProject(), schedule: { ...s, eps } });
       await saveToDb(true);
     },
     saveDb: () => saveToDb(false),
     save: () => void saveToDb(false).catch((e) => window.alert(e.message)),
     saveAsNew: () => void saveToDb(true).catch((e) => window.alert(e.message)),
-    importSchedule,
+    importSchedule: () => void importSchedule(),
     importP6: () => setProjectsTab("p6"),
     pushP6: canPush ? pushToP6 : null,
     schedule: runSchedule,
@@ -999,13 +1472,25 @@ function Workspace() {
           {fileMenu}
           {btn.projects}
           {btn.save}
+          {store.projectTitle && <span className="project-active" title={store.projectTitle}>{store.projectTitle}</span>}
           <span className="sep" />
           {btn.importIfc}
+          <button className="tb" aria-label="Árvore IFC" aria-pressed={showTree} title="Árvore IFC e visibilidade" onClick={() => setShowTree((open) => !open)}><ListTree {...I} /><span>Árvore IFC</span></button>
+          {btn.importSchedule}
           {btn.push}
           {btn.run}
           {btn.exportMenu}
           <span className="sep" />
           {btn.fit}
+          <details className="menu">
+            <summary className="tb" aria-label="Visibilidade" title="Visibilidade da vista 3D"><Eye {...I} /><span>Visibilidade</span><ChevronDown {...I} /></summary>
+            <div className="menu-body" onClick={(e) => e.currentTarget.parentElement?.removeAttribute("open")}>
+              <button disabled={!selectedElements.size} onClick={() => hideElements([...selectedElements])}>Ocultar seleção</button>
+              <button disabled={!selectedElements.size} onClick={() => focusElements([...selectedElements], "isolated")}>Isolar seleção</button>
+              <button disabled={!selectedElements.size} onClick={() => focusElements([...selectedElements], "ghost")}>Destacar com Ghost</button>
+              <button onClick={showElements}>Mostrar todos</button>
+            </div>
+          </details>
           {btn.record}
           {toolbarRight}
         </header>
@@ -1013,7 +1498,7 @@ function Workspace() {
       {mode === "4d" && bannersNode}
       {pathDraft && (
         <div className="banner info">
-          Drawing a path: click points in the 3D view ({pathDraft.length} so far). Finish or cancel in the <b>Tools</b> tab, or press Esc.
+          Para desenhar um trajeto, clique em pontos da vista 3D ({pathDraft.length} até agora). Finalize ou cancele na aba <b>Ferramentas</b> ou pressione Esc.
         </div>
       )}
       {helpOpen && (
@@ -1028,6 +1513,7 @@ function Workspace() {
       {mode === "4d" && (
         <main className="workspace">
           <section className="left">
+            {showTree && <ModelTree key={store.workspaceRevision} onClose={() => setShowTree(false)} onMenu={setInspectionTarget} />}
             <div className="tabs left-tabs">
               {LEFT_TABS.map((x) => (
                 <button key={x.id} className={leftTab === x.id ? "active" : ""} onClick={() => store.setLeftTab(x.id)}>
@@ -1064,8 +1550,8 @@ function Workspace() {
         <div className={`status ${busy ? "busy" : ""}`}>
           {status}
           <span className="muted">
-            {elements.length ? ` · ${elements.length} elements` : ""}
-            {links.length ? ` · ${links.length} links` : ""}
+            {elements.length ? ` · ${elements.length} elemento(s)` : ""}
+            {links.length ? ` · ${links.length} vínculo(s)` : ""}
           </span>
         </div>
       </footer>
@@ -1085,6 +1571,20 @@ function Workspace() {
             setProjectsTab(null);
           }}
           onSave={saveToDb}
+          onNew={createProject}
+          onMetadata={(id, project, previous, version) => {
+            const current = useStore.getState();
+            if (id === current.currentProjectId && current.currentVersion === previous) {
+              useStore.setState({ projectTitle: project.title ?? null, projectArchived: !!project.archived, currentVersion: version });
+            }
+          }}
+          onDeleted={(id) => {
+            if (id !== useStore.getState().currentProjectId) return;
+            applyProject({ ...emptyProject(), projectKey: undefined });
+            setRestore(null);
+            void clearAutosave();
+            store.setStatus("Obra excluída da biblioteca.");
+          }}
           onImportP6={(sch, c) => {
             importFromP6(sch, c);
             setProjectsTab(null);
@@ -1092,6 +1592,9 @@ function Workspace() {
         />
       )}
       {settingsTab && <SettingsDialog initialTab={settingsTab} onClose={() => setSettingsTab(null)} />}
+      {revisionOffer && <RevisionDialog offer={revisionOffer.review} onFinish={revisionOffer.finish} />}
+      {showHistory && <RevisionHistory entries={store.revisions ?? []} busy={busy} onClose={() => setShowHistory(false)} onRestore={(e) => void restoreRevision(e)} onDownload={(e) => void downloadRevision(e)} />}
+      {inspectionTarget && <InspectionMenu target={inspectionTarget} viewer={viewerRef.current} onClose={closeInspection} />}
       {!config.configured && (
         <SetupWizard
           onDone={(open) => {

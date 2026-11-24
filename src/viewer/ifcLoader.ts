@@ -6,9 +6,15 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import * as WebIFC from "web-ifc";
 import type { ModelElement } from "../core/types";
 
-export interface LoadedIfc {
+export interface LoadedGeometry {
   elements: ModelElement[];
   objects: Map<string, THREE.Object3D>;
+}
+
+export interface LoadedIfc extends LoadedGeometry {
+  coordination: number[];
+  geographicReference: string;
+  location?: { latitude: number; longitude: number; north?: number };
 }
 
 let api: WebIFC.IfcAPI | null = null;
@@ -28,15 +34,45 @@ function str(v: unknown): string {
   return String(v);
 }
 
-export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => void): Promise<LoadedIfc> {
+function compoundAngle(field: { value?: unknown } | undefined): number | null {
+  const parts = field?.value;
+  if (!Array.isArray(parts) || parts.length < 3 || parts.length > 4 || !parts.every(Number.isFinite)) return null;
+  const [degrees, minutes, seconds, millionths = 0] = parts.map(Math.abs);
+  if (minutes >= 60 || seconds >= 60 || millionths >= 1e6) return null;
+  return Math.sign(parts.find((part) => part !== 0) ?? 1) * (degrees + minutes / 60 + (seconds + millionths / 1e6) / 3600);
+}
+
+function siteLocation(ifc: WebIFC.IfcAPI, modelID: number): LoadedIfc["location"] {
+  const sites = ifc.GetLineIDsWithType(modelID, WebIFC.IFCSITE);
+  for (let i = 0; i < sites.size(); i++) {
+    const site = ifc.GetLine(modelID, sites.get(i));
+    const latitude = compoundAngle(site?.RefLatitude);
+    const longitude = compoundAngle(site?.RefLongitude);
+    if (latitude === null || longitude === null || Math.abs(latitude) > 90 || Math.abs(longitude) > 180 || (latitude === 0 && longitude === 0)) continue;
+    const contexts = ifc.GetLineIDsWithType(modelID, WebIFC.IFCGEOMETRICREPRESENTATIONCONTEXT);
+    for (let j = 0; j < contexts.size(); j++) {
+      const context = ifc.GetLine(modelID, contexts.get(j));
+      if (!context?.TrueNorth?.value) continue;
+      const direction = ifc.GetLine(modelID, context.TrueNorth.value)?.DirectionRatios;
+      if (Array.isArray(direction) && Number.isFinite(direction[0]) && Number.isFinite(direction[1])) {
+        return { latitude, longitude, north: Math.atan2(direction[0], direction[1]) * 180 / Math.PI };
+      }
+    }
+    return { latitude, longitude };
+  }
+}
+
+export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => void, coordination?: number[]): Promise<LoadedIfc> {
   const ifc = await getApi();
   onProgress?.("Opening model…");
-  const modelID = ifc.OpenModel(bytes, { COORDINATE_TO_ORIGIN: true });
+  const modelID = ifc.OpenModel(bytes, { COORDINATE_TO_ORIGIN: !coordination });
+  const objects = new Map<string, THREE.Object3D>();
+  const materials = new Map<string, THREE.MeshLambertMaterial>();
   try {
-    const objects = new Map<string, THREE.Object3D>();
+    if (coordination) ifc.SetGeometryTransformation(modelID, coordination);
     const expressToKey = new Map<number, string>();
     const elements: ModelElement[] = [];
-    const materials = new Map<string, THREE.MeshLambertMaterial>();
+    const duplicates = new Set<string>();
 
     onProgress?.("Reading geometry…");
     let streamed = 0;
@@ -86,13 +122,20 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
       if (++streamed % 2000 === 0) onProgress?.(`Reading geometry… ${streamed} elements`);
       const line = ifc.GetLine(modelID, mesh.expressID);
       const key = str(line?.GlobalId) || `express-${mesh.expressID}`;
+      if (objects.has(key)) {
+        duplicates.add(key);
+        for (const mesh of group.children as THREE.Mesh[]) mesh.geometry.dispose();
+        return;
+      }
       group.userData.elementId = key;
       objects.set(key, group);
       expressToKey.set(mesh.expressID, key);
     });
+    if (duplicates.size) throw new Error(`IFC com ${duplicates.size} GlobalId(s) duplicado(s). Corrija os IDs no modelo de origem: ${[...duplicates].slice(0, 4).join(", ")}`);
 
     onProgress?.(`Reading properties for ${objects.size} elements…`);
-    const storeyOf = await spatialStoreys(ifc, modelID);
+    const spatial = await spatialStructure(ifc, modelID);
+    const systems = modelSystems(ifc, modelID);
     let n = 0;
     for (const [expressID, key] of expressToKey) {
       const line = ifc.GetLine(modelID, expressID);
@@ -102,8 +145,9 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
       if (tag) props.Tag = tag;
       const objType = str(line?.ObjectType);
       if (objType) props.ObjectType = objType;
-      const storey = storeyOf.get(expressID);
-      if (storey) props.Storey = storey;
+      const place = spatial.get(expressID);
+      if (place?.storey) props.Storey = place.storey;
+      if (place?.path) props.SpatialPath = place.path;
       try {
         const psets = await ifc.properties.getPropertySets(modelID, expressID, true);
         for (const ps of psets ?? []) {
@@ -128,10 +172,24 @@ export async function loadIfc(bytes: Uint8Array, onProgress?: (msg: string) => v
         ifcType: ifc.GetNameFromTypeCode(typeCode) || String(typeCode),
         name: str(line?.Name) || `#${expressID}`,
         properties: props,
+        spatial: place?.ancestors,
+        systems: systems.get(expressID),
       });
       if (++n % 500 === 0) onProgress?.(`Reading properties… ${n}/${expressToKey.size}`);
     }
-    return { elements, objects };
+    const conversions = ifc.GetLineIDsWithType(modelID, WebIFC.IFCMAPCONVERSION);
+    const reference = [];
+    for (let i = 0; i < conversions.size(); i++) {
+      const m = ifc.GetLine(modelID, conversions.get(i));
+      const target = m?.TargetCRS?.value;
+      const crs = typeof target === "number" ? ifc.GetLine(modelID, target) : undefined;
+      reference.push([str(crs?.Name), ...["Eastings", "Northings", "OrthogonalHeight", "XAxisAbscissa", "XAxisOrdinate", "Scale"].map((k) => str(m?.[k]))].join("|"));
+    }
+    return { elements, objects, coordination: coordination ?? ifc.GetCoordinationMatrix(modelID), geographicReference: reference.sort().join(";"), location: siteLocation(ifc, modelID) };
+  } catch (error) {
+    for (const object of objects.values()) for (const mesh of object.children as THREE.Mesh[]) mesh.geometry.dispose();
+    for (const material of materials.values()) material.dispose();
+    throw error;
   } finally {
     ifc.CloseModel(modelID);
   }
@@ -143,19 +201,53 @@ interface SpatialNode {
   children: SpatialNode[];
 }
 
-async function spatialStoreys(ifc: WebIFC.IfcAPI, modelID: number): Promise<Map<number, string>> {
-  const out = new Map<number, string>();
+async function spatialStructure(ifc: WebIFC.IfcAPI, modelID: number) {
+  type Ancestors = NonNullable<ModelElement["spatial"]>;
+  const out = new Map<number, { storey: string | null; path: string; ancestors: Ancestors }>();
+  const spatialTypes = new Set(["IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY", "IFCSPACE"]);
   try {
     const root = (await ifc.properties.getSpatialStructure(modelID)) as unknown as SpatialNode;
-    const walk = (node: SpatialNode, storey: string | null) => {
-      let current = storey;
-      if (String(node.type).toUpperCase() === "IFCBUILDINGSTOREY") current = str(ifc.GetLine(modelID, node.expressID)?.Name) || `Storey #${node.expressID}`;
-      else if (current) out.set(node.expressID, current);
-      for (const c of node.children ?? []) walk(c, current);
+    const walk = (node: SpatialNode, storey: string | null, path: string, ancestors: Ancestors) => {
+      const type = String(node.type).toUpperCase();
+      if (path) out.set(node.expressID, { storey, path, ancestors });
+      if (spatialTypes.has(type)) {
+        const line = ifc.GetLine(modelID, node.expressID);
+        const name = str(line?.Name) || type;
+        const gid = str(line?.GlobalId);
+        path = [path, `${type} ${name} [${gid}]`].filter(Boolean).join(" / ");
+        ancestors = [...ancestors, { id: gid || `express-${node.expressID}`, name, type }];
+        if (type === "IFCBUILDINGSTOREY") storey = name;
+      }
+      for (const c of node.children ?? []) walk(c, storey, path, ancestors);
     };
-    walk(root, null);
+    walk(root, null, "", []);
   } catch {
     // Spatial structure is optional.
   }
   return out;
+}
+
+function modelSystems(ifc: WebIFC.IfcAPI, modelID: number) {
+  const assigned = new Map<number, string[]>();
+  const relations = ifc.GetLineIDsWithType(modelID, WebIFC.IFCRELASSIGNSTOGROUP);
+  for (let i = 0; i < relations.size(); i++) {
+    try {
+      const relation = ifc.GetLine(modelID, relations.get(i));
+      const id = relation?.RelatingGroup?.value;
+      if (typeof id !== "number") continue;
+      const type = ifc.GetNameFromTypeCode(ifc.GetLineType(modelID, id));
+      if (!/SYSTEM|CIRCUIT/i.test(type)) continue;
+      const name = str(ifc.GetLine(modelID, id)?.Name);
+      if (!name) continue;
+      for (const element of relation.RelatedObjects ?? []) {
+        if (typeof element?.value !== "number") continue;
+        const groups = assigned.get(element.value) ?? [];
+        if (!groups.includes(name)) groups.push(name);
+        assigned.set(element.value, groups);
+      }
+    } catch {
+      // Optional system assignments may reference missing IFC records.
+    }
+  }
+  return assigned;
 }

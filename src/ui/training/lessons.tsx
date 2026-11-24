@@ -7,6 +7,7 @@
 
 import { useConfig } from "../../backend/config";
 import { useStore, fmtDate } from "../store";
+import { useMsp } from "../msp/state";
 import { $, byText, click, row, setValue, wait, type Ctx, type Lesson } from "./engine";
 
 const hpd = (c: Ctx) => c.s.schedule?.calendars?.find((x) => x.id === c.s.schedule?.defaultCalendarId)?.hoursPerDay ?? 8;
@@ -24,151 +25,151 @@ const pick = async (code: string) => {
 };
 const findCleared = (c: Ctx) => c.s.ganttFilter.text === "";
 
-export const COURSES = ["Getting started", "Planning skills", "Project controls", "4D and reporting"];
+export const COURSES = ["Primeiros passos", "Prática de planejamento", "Controle de projetos", "4D e relatórios"];
 
 export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "tour",
-    course: "Getting started",
-    title: "A first look around",
+    course: "Primeiros passos",
+    title: "Conhecendo o aplicativo",
     minutes: 6,
     level: "Beginner",
-    summary: "The P6 layout, the data date, the Directory and Command bars, and how to read a Gantt chart.",
-    learn: ["Switch layouts", "Find the data date", "Read the activity table and bars", "Collapse WBS bands"],
+    summary: "Conheça o layout P6, a data de corte, as barras Diretório e Comandos e a leitura do gráfico de Gantt.",
+    learn: ["Alternar entre layouts", "Localizar a data de corte", "Ler a tabela de atividades e as barras", "Recolher grupos da EAP"],
     needs: { mode: "p6", sample: true },
     steps: [
       {
-        title: "Welcome to training mode",
+        title: "Bem-vindo ao treinamento",
         body: () => (
           <>
-            <p>Each lesson is a short, hands-on walk through the real application. The card explains one idea at a time and the highlighted area shows where it lives on screen.</p>
+            <p>Cada lição é um exercício rápido no próprio aplicativo. O cartão explica uma ideia de cada vez e destaca a área correspondente na tela.</p>
             <p>
-              When a step says <b>Your turn</b>, do it yourself. The card ticks it off and moves on as soon as it sees the change. If you get stuck, <b>Show me</b> does it for you.
+              Quando a etapa mostrar <b>Sua vez</b>, faça o exercício. O cartão avança ao reconhecer a mudança. Se precisar de ajuda, clique em <b>Mostrar como fazer</b> para executar a etapa automaticamente.
             </p>
-            <p>The example is a 220/33 kV GIS substation in Abu Dhabi: engineering, procurement and construction of a 9-bay GIS hall, two power transformers and a control building.</p>
+            <p>O exemplo é uma subestação GIS de 220/33 kV em Abu Dhabi. O cronograma inclui engenharia, suprimentos e construção de um edifício GIS com nove baias, dois transformadores de potência e um edifício de controle.</p>
           </>
         ),
       },
       {
-        title: "Three layouts and Reports",
+        title: "Três layouts e a área de relatórios",
         target: ".mode-switch",
         body: () => (
           <>
-            <p>This switch changes the layout, not the data. <b>P6</b> looks like Primavera P6 Professional, <b>Project</b> like Microsoft Project, and <b>4D</b> adds the 3D model and playback. <b>Reports</b> opens the dashboard builder.</p>
-            <p>Use the layout your company works in. Everything you learn here applies to all of them; only the words change (P6 says <i>activity</i> and <i>data date</i>, MS Project says <i>task</i> and <i>status date</i>).</p>
+            <p>Use o seletor para mudar o layout do mesmo projeto. <b>P6</b> segue o estilo do Primavera P6 Professional, <b>Projeto</b> segue o do Microsoft Project e <b>4D</b> reúne o modelo 3D e os controles de reprodução. <b>Relatórios</b> abre o editor de painéis.</p>
+            <p>Use o layout que sua equipe conhece. O fluxo é o mesmo e a terminologia varia. O P6 usa <i>atividade</i> e <i>data de corte</i>. O Microsoft Project usa <i>tarefa</i> e <i>data de status</i>.</p>
           </>
         ),
       },
       {
-        title: "The data date",
+        title: "Data de corte",
         target: ".p6-status",
         body: (c) => (
           <>
             <p>
-              The status bar shows the <b>data date</b>: <b>{fmtDate(c.s.schedule?.dataDate ?? null)}</b>. It is the line between the past and the future. Everything before it is actual (what happened), everything after it is forecast (what will happen if the plan holds).
+              A barra de status mostra a <b>data de corte</b>: <b>{fmtDate(c.s.schedule?.dataDate ?? null)}</b>. Essa data separa o avanço registrado da previsão para o trabalho restante.
             </p>
-            <p>Each update period, usually weekly or monthly, you record progress up to a new data date and reschedule. Remaining work can never start before the data date.</p>
+            <p>A cada atualização, normalmente semanal ou mensal, registre o avanço até uma nova data de corte e recalcule o cronograma. O trabalho restante é programado a partir dessa data.</p>
           </>
         ),
       },
       {
-        title: "The Directory bar (left)",
+        title: "Barra Diretório (à esquerda)",
         target: ".p6-rail-left",
         body: () => (
           <>
-            <p>As in P6, the left bar says <i>where to look</i>. Each button opens a window as a tab:</p>
+            <p>Como no P6, a barra à esquerda indica <i>onde consultar os dados</i>. Cada botão abre uma vista:</p>
             <ul>
               <li>
-                <b>Projects</b>, <b>Resources</b>, <b>Reports</b> and <b>Tracking</b>: the project list, the resource dictionary and the dashboards.
+                <b>Projetos</b>, <b>Recursos</b>, <b>Relatórios</b> e <b>Acompanhamento</b>: lista de projetos, cadastro de recursos e painéis de acompanhamento.
               </li>
               <li>
-                <b>WBS</b>, <b>Activities</b> and <b>Assignments</b>: edit the work breakdown, the activities, and every resource assignment.
+                <b>EAP</b>, <b>Atividades</b> e <b>Atribuições</b>: edição da estrutura analítica do projeto, das atividades e das atribuições de recursos.
               </li>
               <li>
-                <b>WPs &amp; Docs</b>, <b>Expenses</b>, <b>Thresholds</b>, <b>Issues</b> and <b>Risks</b>: the project registers.
+                <b>Entregáveis e documentos</b>, <b>Despesas</b>, <b>Limites</b>, <b>Pendências</b> e <b>Riscos</b>: registros do projeto.
               </li>
             </ul>
           </>
         ),
       },
       {
-        title: "The Command bar (right)",
+        title: "Barra Comandos (à direita)",
         target: ".p6-rail-right",
         body: () => (
           <>
-            <p>The right bar says <i>what to do</i> in the window you are in: add, delete, cut, copy, paste, dissolve, renumber and link activities, undo, fill down, assign predecessors, successors, resources and codes, expand or collapse the WBS, <b>Schedule (F9)</b> and <b>Commit</b>. Right-click the table for the same commands.</p>
-            <p>Most commands also have a keyboard shortcut. Hover a button to see it.</p>
+            <p>A barra à direita mostra <i>as ações disponíveis</i> para a vista atual. Você pode adicionar, excluir, recortar, copiar, colar, renumerar e vincular atividades, atribuir recursos e códigos, expandir ou recolher a EAP, usar <b>Calcular cronograma (F9)</b> e <b>Salvar</b>. Os mesmos comandos aparecem ao clicar com o botão direito na tabela.</p>
+            <p>A maioria dos comandos tem um atalho de teclado. Passe o mouse sobre o botão para vê-lo.</p>
           </>
         ),
       },
       {
-        title: "Reading the activity table",
+        title: "Como ler a tabela de atividades",
         target: ".gantt-cols",
         body: () => (
           <>
-            <p>These are P6's Classic Schedule Layout columns:</p>
+            <p>O layout clássico do P6 inclui estas colunas:</p>
             <ul>
               <li>
-                <b>Activity ID</b> and <b>Name</b>: the unique code and description.
+                <b>ID da atividade</b> e <b>Nome</b>: código exclusivo e descrição da atividade.
               </li>
               <li>
-                <b>Original Duration</b>: the planned working days. <b>Remaining Duration</b>: working days still to go.
+                <b>Duração original</b>: quantidade de dias úteis planejados. <b>Duração restante</b>: dias úteis que ainda faltam.
               </li>
               <li>
-                <b>Schedule % Complete</b>: how far through the work is.
+                <b>% concluído do cronograma</b>: medida do avanço da atividade.
               </li>
               <li>
-                <b>Start</b> and <b>Finish</b>: actual dates where they exist (marked <b>A</b>), forecast dates otherwise.
+                <b>Início</b> e <b>Término</b>: datas reais quando disponíveis (marcadas com <b>A</b>) ou datas previstas.
               </li>
               <li>
-                <b>Total Float</b>: how many days the activity can slip before the project finish moves. Zero or negative means critical.
+                <b>Folga total</b>: dias de atraso que a atividade pode absorver antes de adiar o término do projeto. Uma folga igual a zero ou negativa indica atividade crítica.
               </li>
             </ul>
           </>
         ),
       },
       {
-        title: "Reading the bars",
+        title: "Como ler as barras",
         target: ".gantt-body",
         body: () => (
           <>
             <p>
-              Each bar runs from start to finish. The <b style={{ color: "#2f6fd0" }}>blue</b> part is actual work up to the data date, <b style={{ color: "#3c9a3c" }}>green</b> is remaining work, and <b style={{ color: "#d03b3b" }}>red</b> is remaining work on the critical path. Diamonds are milestones: zero-duration events such as <i>220 kV energisation</i>.
+              Cada barra vai do início ao término da atividade. O trecho <b style={{ color: "#2f6fd0" }}>azul</b> representa o trabalho realizado até a data de corte. O trecho <b style={{ color: "#3c9a3c" }}>verde</b> representa o trabalho restante. O trecho <b style={{ color: "#d03b3b" }}>vermelho</b> representa o trabalho restante no caminho crítico. Os losangos indicam marcos, eventos sem duração como a <i>energização em 220 kV</i>.
             </p>
-            <p>The dashed vertical line is the data date. Shaded rows are WBS bands that group the activities.</p>
+            <p>A linha vertical tracejada é a data de corte. As linhas sombreadas agrupam as atividades por item da EAP.</p>
           </>
         ),
       },
       {
-        title: "Collapse a WBS band",
+        title: "Recolher um grupo da EAP",
         target: ".gantt-row.wbs",
-        task: "Click any WBS band (a shaded row) to collapse it.",
+        task: "Clique em qualquer linha sombreada da EAP para recolher o grupo.",
         done: (c) => c.s.collapsedWbs.size > 0,
         showMe: () => void click(".gantt-row.wbs"),
         body: () => (
           <>
-            <p>The <b>work breakdown structure</b> (WBS) splits the project into deliverables: here General, Engineering, Procurement and Construction, with Construction divided again into civil works, installation and commissioning.</p>
-            <p>Collapsing a band rolls it up into one summary bar. Managers read the schedule at this level; site teams read it at activity level.</p>
+            <p>The <b>estrutura analítica do projeto</b> (EAP) divide o projeto em entregas. Neste exemplo, as áreas são Geral, Engenharia, Suprimentos e Construção. A construção se divide em obras civis, instalação e comissionamento.</p>
+            <p>Ao recolher um grupo, o Gantt mostra uma única barra-resumo para ele. Expanda o grupo para consultar as atividades individuais.</p>
           </>
         ),
       },
       {
-        title: "Expand it again",
-        target: () => rail("Expand All")(),
-        task: "Click Expand All on the Command bar (or click the band again).",
+        title: "Expandir o grupo novamente",
+        target: () => rail("Expandir tudo")(),
+        task: "Clique em Expandir tudo na barra Comandos ou clique novamente na linha do grupo.",
         done: (c) => c.s.collapsedWbs.size === 0,
-        showMe: () => void click(rail("Expand All")),
-        body: () => <p>Expand All and Collapse All work on every band at once. Collapsing everything gives the WBS view, a one-page summary of the project.</p>,
+        showMe: () => void click(rail("Expandir tudo")),
+        body: () => <p>Os comandos Expandir tudo e Recolher tudo agem em todos os grupos. Recolher os grupos mostra um resumo do projeto por itens da EAP.</p>,
       },
       {
-        title: "Check yourself",
-        body: () => <p>One question before you move on.</p>,
+        title: "Confira seu entendimento",
+        body: () => <p>Responda antes de continuar.</p>,
         quiz: {
-          q: "An activity's bar is half blue and half red. What does that tell you?",
-          options: ["It is complete and was late", "It has started, and its remaining work is on the critical path", "It has not started and has float", "It is a milestone"],
+          q: "O que significa uma barra de atividade metade azul e metade vermelha?",
+          options: ["A atividade foi concluída com atraso", "A atividade começou e o trabalho restante está no caminho crítico", "A atividade ainda não começou e tem folga", "É um marco"],
           answer: 1,
-          explain: "Blue is actual work done before the data date, so it has started. Red remaining work means any delay to it delays the project finish.",
+          explain: "O azul indica trabalho realizado antes da data de corte. O restante em vermelho está no caminho crítico, portanto um atraso nessa atividade adia o término do projeto.",
         },
       },
     ],
@@ -177,34 +178,34 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "activity",
-    course: "Getting started",
-    title: "Reading one activity",
+    course: "Primeiros passos",
+    title: "Como ler uma atividade",
     minutes: 6,
     level: "Beginner",
-    summary: "Find an activity, select it, and read its details: type, WBS, durations, dates and relationships.",
+    summary: "Localize uma atividade e confira o tipo, a EAP, as durações, as datas e as dependências.",
     learn: ["Find by ID", "Use the detail tabs", "Predecessors and successors", "Relationship types and lag"],
     needs: { mode: "p6", sample: true },
     steps: [
       {
-        title: "Find an activity",
+        title: "Localize uma atividade",
         target: ".p6-find",
-        task: "Type C-5000 in the find box.",
+        task: "Digite C-5000 no campo de busca.",
         done: (c) => c.s.ganttFilter.text.toLowerCase().includes("c-5000"),
         showMe: () => void setValue(".p6-find", "C-5000"),
         body: () => <p>Big schedules run to thousands of activities. The find box filters the table by ID or name as you type. In P6 itself this is Ctrl+F, which works here too.</p>,
       },
       {
-        title: "Select it",
+        title: "Selecione a atividade",
         target: row("C-5000"),
-        task: "Click the C-5000 row.",
+        task: "Clique na linha C-5000.",
         done: (c) => c.sel()?.code === "C-5000",
         showMe: () => void click(row("C-5000")),
         body: () => <p>Selecting an activity fills the lower pane with its details, just as in P6.</p>,
       },
       {
-        title: "General tab",
+        title: "Aba Geral",
         target: ".p6-lower",
-        enter: () => void click(tab("General")),
+        enter: () => void click(tab("Geral")),
         body: (c) => (
           <>
             <p>
@@ -212,28 +213,28 @@ export const LESSONS: Lesson[] = [
             </p>
             <ul>
               <li>
-                <b>Type</b>: task dependent (uses its own calendar), resource dependent, level of effort (spans other work, such as site supervision), or start/finish milestone.
+                <b>Tipo</b>: task dependent (uses its own calendar), resource dependent, level of effort (spans other work, such as site supervision), or start/finish milestone.
               </li>
               <li>
-                <b>WBS</b>: where it sits in the breakdown.
+                <b>EAP</b>: where it sits in the breakdown.
               </li>
               <li>
-                <b>Calendar</b>: working days and hours. This project works a UAE week, Monday to Saturday.
+                <b>Calendário</b>: working days and hours. This project works a UAE week, Monday to Saturday.
               </li>
             </ul>
           </>
         ),
       },
       {
-        title: "Open the Status tab",
-        target: tab("Status"),
-        task: "Click the Status tab.",
-        done: () => tabOn("Status"),
-        showMe: () => void click(tab("Status")),
+        title: "Abra a aba Situação",
+        target: tab("Situação"),
+        task: "Clique na aba Situação.",
+        done: () => tabOn("Situação"),
+        showMe: () => void click(tab("Situação")),
         body: () => <p>The Status tab is where progress is recorded each update.</p>,
       },
       {
-        title: "Durations and progress",
+        title: "Durações e avanço",
         target: ".p6-lowerbody",
         body: (c) => {
           const a = c.sel();
@@ -244,13 +245,13 @@ export const LESSONS: Lesson[] = [
               </p>
               <ul>
                 <li>
-                  <b>Original duration</b> is the plan. It does not change during the job.
+                  <b>Duração original</b> is the plan. It does not change during the job.
                 </li>
                 <li>
                   <b>Remaining duration</b> is the planner's honest estimate of what is left. It drives the forecast finish.
                 </li>
                 <li>
-                  <b>% complete</b> measures progress; with costs loaded it also drives earned value.
+                  <b>% concluído</b> measures progress; with costs loaded it also drives earned value.
                 </li>
               </ul>
               <p>Below that, the dates table shows early, late and baseline dates and the total and free float.</p>
@@ -259,15 +260,15 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Predecessors",
-        target: tab("Predecessors"),
-        task: "Click the Predecessors tab.",
-        done: () => tabOn("Predecessors"),
-        showMe: () => void click(tab("Predecessors")),
+        title: "Predecessoras",
+        target: tab("Predecessoras"),
+        task: "Clique na aba Predecessoras.",
+        done: () => tabOn("Predecessoras"),
+        showMe: () => void click(tab("Predecessoras")),
         body: () => <p>Predecessors are the activities that must happen before this one can start or finish. They are the logic that turns a list of tasks into a schedule.</p>,
       },
       {
-        title: "Relationship types",
+        title: "Tipos de dependência",
         target: ".p6-lowerbody",
         body: () => (
           <>
@@ -292,15 +293,15 @@ export const LESSONS: Lesson[] = [
         ),
       },
       {
-        title: "Successors",
-        target: tab("Successors"),
-        task: "Click the Successors tab.",
-        done: () => tabOn("Successors"),
-        showMe: () => void click(tab("Successors")),
+        title: "Sucessoras",
+        target: tab("Sucessoras"),
+        task: "Clique na aba Sucessoras.",
+        done: () => tabOn("Sucessoras"),
+        showMe: () => void click(tab("Sucessoras")),
         body: () => <p>Successors are the activities waiting on this one. A delay here flows into each of them, unless they have float to absorb it.</p>,
       },
       {
-        title: "Check yourself",
+        title: "Confira seu entendimento",
         body: () => <p>A typical site situation:</p>,
         quiz: {
           q: "Formwork can be stripped 7 days after the concrete pour finishes. How do you link Pour → Strip?",
@@ -310,9 +311,9 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Clear the find box",
+        title: "Limpar a busca",
         target: ".p6-find",
-        task: "Clear the find box so all activities show again.",
+        task: "Limpe o campo de busca para exibir todas as atividades novamente.",
         done: findCleared,
         showMe: () => void setValue(".p6-find", ""),
         body: () => <p>Filters stay on until you clear them, in every layout.</p>,
@@ -323,12 +324,12 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "cpm",
-    course: "Planning skills",
-    title: "Critical path and float",
+    course: "Prática de planejamento",
+    title: "Caminho crítico e folgas",
     minutes: 8,
     level: "Beginner",
-    summary: "How the critical path method works, what total and free float mean, and how to find the critical path.",
-    learn: ["Forward and backward pass", "Total float and free float", "Filter the critical path", "Negative float"],
+    summary: "Entenda como funciona o método do caminho crítico e o que significam as folgas total e livre.",
+    learn: ["Forward and backward pass", "Folga total e folga livre", "Filter the critical path", "Negative float"],
     needs: { mode: "p6", sample: true },
     steps: [
       {
@@ -375,22 +376,22 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Run the schedule",
-        target: () => rail("Schedule")(),
-        task: "Click Schedule on the Command bar (or press F9).",
+        title: "Calcular o cronograma",
+        target: () => rail("Calcular cronograma")(),
+        task: "Clique em Calcular cronograma na barra Comandos ou pressione F9.",
         done: (c) => c.act("P-3040")?.lateStart != null,
-        showMe: () => void click(rail("Schedule")),
+        showMe: () => void click(rail("Calcular cronograma")),
         body: () => <p>Late dates and float come from the backward pass, so they only exist after scheduling. Imported projects carry P6's float; pressing F9 recalculates it here.</p>,
       },
       {
         title: "Read the float of a critical activity",
         task: "Select P-3040 and open its Status tab.",
         target: () => row("P-3040")() ?? $(".gantt-body"),
-        done: (c) => c.sel()?.code === "P-3040" && tabOn("Status"),
+        done: (c) => c.sel()?.code === "P-3040" && tabOn("Situação"),
         showMe: async () => {
           click(row("P-3040"));
           await wait(200);
-          click(tab("Status"));
+          click(tab("Situação"));
         },
         body: (c) => {
           const a = c.act("P-3040");
@@ -402,13 +403,13 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Total float and free float",
+        title: "Folga total e folga livre",
         target: ".p6-lowerbody",
         body: () => (
           <>
             <ul>
               <li>
-                <b>Total float</b>: how far an activity can slip before the <i>project finish</i> moves.
+                <b>Folga total</b>: how far an activity can slip before the <i>project finish</i> moves.
               </li>
               <li>
                 <b>Free float</b>: how far it can slip before its <i>next activity</i> moves.
@@ -430,7 +431,7 @@ export const LESSONS: Lesson[] = [
         body: () => <p>Now look for activities with small float, such as C-4090 cable trenches with a few days: these are "near-critical" and can become critical after one bad week.</p>,
       },
       {
-        title: "Check yourself",
+        title: "Confira seu entendimento",
         body: () => <p>Float in practice:</p>,
         quiz: {
           q: "An activity has 10 days of total float and slips by 4 days. What happens?",
@@ -440,7 +441,7 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Check yourself",
+        title: "Confira seu entendimento",
         body: () => <p>One more:</p>,
         quiz: {
           q: "What is the critical path?",
@@ -455,12 +456,12 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "update",
-    course: "Planning skills",
-    title: "The weekly progress update",
+    course: "Prática de planejamento",
+    title: "Atualização semanal de avanço",
     minutes: 7,
     level: "Intermediate",
-    summary: "Record progress on an activity, reschedule with F9, and see what moved.",
-    learn: ["The update cycle", "Enter % complete and remaining", "Schedule (F9)", "Commit to the database"],
+    summary: "Registre o avanço de uma atividade, recalcule com F9 e veja quais datas mudaram.",
+    learn: ["The update cycle", "Enter % complete and remaining", "Calcular cronograma (F9)", "Commit to the database"],
     needs: { mode: "p6", sample: true },
     steps: [
       {
@@ -502,11 +503,11 @@ export const LESSONS: Lesson[] = [
         body: () => <p>GIS installation for bays 1–5 is in progress on site.</p>,
       },
       {
-        title: "Open the Status tab",
-        target: tab("Status"),
-        task: "Click the Status tab.",
-        done: () => tabOn("Status"),
-        showMe: () => void click(tab("Status")),
+        title: "Abra a aba Situação",
+        target: tab("Situação"),
+        task: "Clique na aba Situação.",
+        done: () => tabOn("Situação"),
+        showMe: () => void click(tab("Situação")),
         body: (c) => (
           <p>
             It is at <b>{String(c.mem.pct ?? c.act("C-5000")?.percentComplete)}%</b>. The site engineer reports that bays 1–5 are now 45% installed.
@@ -531,11 +532,11 @@ export const LESSONS: Lesson[] = [
         ),
       },
       {
-        title: "Reschedule",
-        target: () => rail("Schedule")(),
-        task: "Click Schedule on the Command bar (or press F9).",
+        title: "Recalcular cronograma",
+        target: () => rail("Calcular cronograma")(),
+        task: "Clique em Calcular cronograma na barra Comandos ou pressione F9.",
         done: (c) => !c.s.scheduleDirty,
-        showMe: () => void click(rail("Schedule")),
+        showMe: () => void click(rail("Calcular cronograma")),
         body: () => <p>Editing marks the schedule as changed. Scheduling runs CPM again: forward pass, backward pass, float, critical path. Always reschedule before you report.</p>,
       },
       {
@@ -554,8 +555,8 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Saving the update",
-        target: () => rail("Commit")(),
+        title: "Salvar a atualização",
+        target: () => rail("Salvar")(),
         body: () => (
           <p>
             <b>Commit (Ctrl+S)</b> writes the project to the database so the team and the reports see it. You do not need to commit for this lesson. If you would rather not keep the change, reload the sample from the start screen or reopen the last committed version from Projects.
@@ -563,7 +564,7 @@ export const LESSONS: Lesson[] = [
         ),
       },
       {
-        title: "Check yourself",
+        title: "Confira seu entendimento",
         body: () => <p>About the data date:</p>,
         quiz: {
           q: "After you reschedule, can remaining work start before the data date?",
@@ -578,16 +579,16 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "baseline",
-    course: "Project controls",
-    title: "Baselines and variance",
+    course: "Controle de projetos",
+    title: "Linhas de base e desvios",
     minutes: 6,
     level: "Intermediate",
-    summary: "Compare the current schedule with the baseline, see slippage and filter late work.",
-    learn: ["What a baseline is", "Show baseline bars", "Finish variance", "Filter late activities"],
+    summary: "Compare o cronograma atual com a linha de base. Identifique desvios e filtre atividades atrasadas.",
+    learn: ["O que é uma linha de base", "Show baseline bars", "Finish variance", "Filter late activities"],
     needs: { mode: "p6", sample: true },
     steps: [
       {
-        title: "What a baseline is",
+        title: "O que é uma linha de base",
         body: () => (
           <>
             <p>The <b>baseline</b> is the approved plan, frozen at the start of the project (and re-baselined only with the client's agreement, for example after an approved extension of time).</p>
@@ -598,9 +599,9 @@ export const LESSONS: Lesson[] = [
         ),
       },
       {
-        title: "Show the baseline bars",
+        title: "Mostrar as barras da linha de base",
         target: ".p6-layoutbar button.p6-blbtn",
-        task: "Click Baseline bars on the layout bar.",
+        task: "Clique em Barras da linha de base na barra de layout.",
         done: (c) => c.s.ganttTracking,
         showMe: () => void click(".p6-layoutbar button.p6-blbtn"),
         body: () => <p>In P6 this is the baseline bar option on the Bars dialog; in MS Project it is the Tracking Gantt.</p>,
@@ -621,7 +622,7 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Late against baseline",
+        title: "Atrasado em relação à linha de base",
         target: ".p6-layoutbar select",
         task: "Set the Filter to Late against Baseline.",
         done: (c) => c.s.ganttFilter.kind === "late",
@@ -638,7 +639,7 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
-        title: "Reset the view",
+        title: "Restaurar a exibição",
         target: ".p6-layoutbar",
         task: "Set the Filter back to All Activities and switch the Layout back.",
         done: (c) => c.s.ganttFilter.kind === "all" && !c.s.ganttTracking,
@@ -650,7 +651,7 @@ export const LESSONS: Lesson[] = [
         body: () => <p>A delay is only half the story; the next step is to explain it (cause, responsibility, recovery). The delay analysis practices used for extension of time claims start from exactly this comparison.</p>,
       },
       {
-        title: "Check yourself",
+        title: "Confira seu entendimento",
         body: () => <p>Variance:</p>,
         quiz: {
           q: "Baseline finish 31-Jul-27, forecast finish 14-Aug-27. What is the finish variance?",
@@ -665,11 +666,11 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "evm",
-    course: "Project controls",
-    title: "Cost, resources and earned value",
+    course: "Controle de projetos",
+    title: "Custos, recursos e valor agregado",
     minutes: 8,
     level: "Intermediate",
-    summary: "Planned value, earned value and actual cost; SPI and CPI; resource usage.",
+    summary: "Valor planejado, valor agregado e custo real, além dos índices SPI e CPI e do uso de recursos.",
     learn: ["PV, EV and AC", "SPI and CPI", "Read the cost S-curve", "Resource usage profile"],
     needs: { mode: "p6", sample: true },
     steps: [
@@ -741,7 +742,7 @@ export const LESSONS: Lesson[] = [
         body: () => <p>The Resources detail tab of any activity shows its assignments: budgeted, actual and remaining units and cost.</p>,
       },
       {
-        title: "Check yourself",
+        title: "Confira seu entendimento",
         body: () => <p>Earned value:</p>,
         quiz: {
           q: "PV = 100, EV = 90, AC = 120. Which is true?",
@@ -756,11 +757,11 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "logic",
-    course: "Planning skills",
-    title: "Adding an activity and its logic",
+    course: "Prática de planejamento",
+    title: "Como adicionar e vincular uma atividade",
     minutes: 8,
     level: "Intermediate",
-    summary: "Add an activity, name it, give it a duration and predecessors, schedule it, then remove it.",
+    summary: "Adicione uma atividade, informe nome, duração e predecessoras, recalcule o cronograma e depois remova a atividade de teste.",
     learn: ["Add after the selected activity", "Durations", "Add a predecessor with lag", "Schedule and check dates", "Delete safely"],
     needs: { mode: "p6", sample: true },
     steps: [
@@ -777,10 +778,10 @@ export const LESSONS: Lesson[] = [
       },
       {
         title: "Add an activity",
-        target: () => rail("Add")(),
+        target: () => rail("Adicionar")(),
         task: "Click Add on the Command bar (or press Ins).",
         done: (c) => (c.s.schedule?.activities ?? []).some((a) => !(c.mem.ids as Set<string>)?.has(a.id)),
-        showMe: () => void click(rail("Add")),
+        showMe: () => void click(rail("Adicionar")),
         enter: (c) => {
           if (!c.mem.ids) c.mem.ids = new Set((c.s.schedule?.activities ?? []).map((a) => a.id));
         },
@@ -790,7 +791,7 @@ export const LESSONS: Lesson[] = [
         title: "Name it",
         target: ".p6-lowerbody label.span2 input",
         task: "On the General tab, change the name to: Bays 1–5 punch-list walk-down",
-        enter: () => void click(tab("General")),
+        enter: () => void click(tab("Geral")),
         done: (c) => {
           const n = (c.s.schedule?.activities ?? []).find((a) => !(c.mem.ids as Set<string>)?.has(a.id));
           return !!n && n.name !== "New activity" && n.name.trim().length > 3;
@@ -800,14 +801,14 @@ export const LESSONS: Lesson[] = [
       },
       {
         title: "Set the duration",
-        target: tab("Status"),
+        target: tab("Situação"),
         task: "Open the Status tab and set Original duration to 3 days.",
         done: (c) => {
           const n = (c.s.schedule?.activities ?? []).find((a) => !(c.mem.ids as Set<string>)?.has(a.id));
           return !!n && Math.abs((n.originalDurationHours ?? 0) - 3 * hpd(c)) < 0.01;
         },
         showMe: async () => {
-          click(tab("Status"));
+          click(tab("Situação"));
           await wait(200);
           setValue('.p6-lowerbody input[type="number"]', "3");
         },
@@ -815,7 +816,7 @@ export const LESSONS: Lesson[] = [
       },
       {
         title: "Add a second predecessor",
-        target: tab("Predecessors"),
+        target: tab("Predecessoras"),
         task: "On the Predecessors tab, add C-5060 as an SS predecessor with 5 days lag, then click Add.",
         done: (c) => {
           const n = (c.s.schedule?.activities ?? []).find((a) => !(c.mem.ids as Set<string>)?.has(a.id));
@@ -823,7 +824,7 @@ export const LESSONS: Lesson[] = [
           return !!n && !!p && (c.s.schedule?.relationships ?? []).some((r) => r.successorId === n.id && r.predecessorId === p.id);
         },
         showMe: async () => {
-          click(tab("Predecessors"));
+          click(tab("Predecessoras"));
           await wait(200);
           setValue('.p6-lowerbody input[list="activity-codes"]', "C-5060");
           const sel = $(".p6-lowerbody section .row select");
@@ -831,7 +832,7 @@ export const LESSONS: Lesson[] = [
           const lag = $('.p6-lowerbody section .row input[type="number"]');
           if (lag) setValue(() => lag, "5");
           await wait(150);
-          click(() => byText(".p6-lowerbody section .row button", "Add", true));
+          click(() => byText(".p6-lowerbody section .row button", "Adicionar", true));
         },
         body: () => (
           <p>
@@ -841,16 +842,16 @@ export const LESSONS: Lesson[] = [
       },
       {
         title: "Schedule it",
-        target: () => rail("Schedule")(),
+        target: () => rail("Calcular cronograma")(),
         task: "Press F9 or click Schedule.",
         done: (c) => !c.s.scheduleDirty,
-        showMe: () => void click(rail("Schedule")),
+        showMe: () => void click(rail("Calcular cronograma")),
         body: () => <p>Until you schedule, the new activity sits at the data date with no float.</p>,
       },
       {
         title: "Read its dates",
         target: ".p6-lower",
-        enter: () => void click(tab("Status")),
+        enter: () => void click(tab("Situação")),
         body: (c) => {
           const n = (c.s.schedule?.activities ?? []).find((a) => !(c.mem.ids as Set<string>)?.has(a.id));
           return (
@@ -862,7 +863,7 @@ export const LESSONS: Lesson[] = [
       },
       {
         title: "Remove the practice activity",
-        target: () => rail("Delete")(),
+        target: () => rail("Excluir")(),
         task: "With it selected, click Delete on the Command bar and confirm.",
         done: (c) => !(c.s.schedule?.activities ?? []).some((a) => !(c.mem.ids as Set<string>)?.has(a.id)),
         showMe: (c) => {
@@ -882,7 +883,7 @@ export const LESSONS: Lesson[] = [
         showMe: async () => {
           setValue(".p6-find", "");
           await wait(100);
-          click(rail("Schedule"));
+          click(rail("Calcular cronograma"));
         },
         body: () => <p>That is the full cycle of building logic: add, describe, estimate, link, schedule, check.</p>,
       },
@@ -892,50 +893,49 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "msp",
-    course: "Getting started",
-    title: "The MS Project layout",
+    course: "Primeiros passos",
+    title: "Layout do Microsoft Project",
     minutes: 5,
     level: "Beginner",
-    summary: "The same project laid out like Microsoft Project, and how its terms map to P6.",
-    learn: ["Switch to Project", "Ribbon and Timeline", "Tracking Gantt", "P6 ↔ MS Project terms"],
+    summary: "Veja o mesmo projeto no layout do Microsoft Project e compare seus termos com os do P6.",
+    learn: ["Trocar para o layout Projeto", "Faixa de opções e linha do tempo", "Gantt de acompanhamento", "Termos do P6 e do Microsoft Project"],
     needs: { sample: true },
     steps: [
       {
-        title: "Switch to the Project layout",
+        title: "Abra o layout Projeto",
         target: ".mode-switch",
-        task: "Click Project in the layout switch (or Ctrl+Alt+2).",
+        task: "Clique em Projeto no seletor de layout ou pressione Ctrl+Alt+2.",
         done: (c) => c.cfg.mode === "msp",
         showMe: () => useConfig.getState().update({ mode: "msp" }),
-        body: () => <p>Same project, same dates; the screen now looks and reads like Microsoft Project.</p>,
+        body: () => <p>As datas e o projeto são os mesmos. A tela agora usa o layout e os termos do Microsoft Project.</p>,
       },
       {
-        title: "The ribbon",
+        title: "Faixa de opções",
         target: ".msp-tabrow",
         body: () => (
           <p>
-            The ribbon tabs group commands as in MS Project: <b>Task</b> (progress, add tasks, scroll to task), <b>Resource</b>, <b>Report</b>, <b>Project</b> (information, calculate project) and <b>View</b> (Gantt, Tracking Gantt, Resource Usage, Timeline and Details).
+            Faixa de opções tabs group commands as in MS Project: <b>Tarefa</b> reúne comandos de avanço e edição de tarefas. <b>Recurso</b> e <b>Relatório</b> organizam atribuições e relatórios. Em <b>Projeto</b> você encontra informações e comandos de cálculo. Em <b>Exibir</b>, acesse o Gantt, a linha do tempo e outras vistas.
           </p>
         ),
       },
       {
-        title: "The Timeline",
+        title: "Linha do tempo",
         target: ".msp-tl",
-        body: () => <p>The Timeline shows the whole project span, the key milestones and the status date: the one-line picture managers like to paste into reports.</p>,
+        body: () => <p>A linha do tempo resume a duração do projeto, os marcos principais e a data de status. Use essa vista para ilustrar relatórios.</p>,
       },
       {
-        title: "Tracking Gantt",
-        target: () => byText(".msp-tabrow button", "View", true),
-        task: "Open the View tab and click Tracking Gantt.",
-        done: () => !!byText(".rb-big.active", "Tracking Gantt"),
-        showMe: async () => {
-          click(() => byText(".msp-tabrow button", "View", true));
-          await wait(200);
-          click(() => byText(".rb-big", "Tracking Gantt"));
+        title: "Gantt de acompanhamento",
+        target: () => byText(".msp-tabrow button", "Exibir", true),
+        task: "Na aba Exibir, abra Outras exibições e escolha Gantt de acompanhamento.",
+        done: () => useMsp.getState().view === "tracking",
+        showMe: () => {
+          click(() => byText(".msp-tabrow button", "Exibir", true));
+          useMsp.getState().set({ view: "tracking" });
         },
-        body: () => <p>Tracking Gantt draws the baseline under each task and colours critical tasks red: the MS Project equivalent of the P6 layout with baseline bars.</p>,
+        body: () => <p>O Gantt de acompanhamento mostra a linha de base abaixo de cada tarefa e destaca as tarefas críticas em vermelho. No layout P6, o resultado equivalente aparece ao ativar as barras da linha de base.</p>,
       },
       {
-        title: "Same ideas, different words",
+        title: "Termos equivalentes",
         body: () => (
           <table className="tr-table">
             <thead>
@@ -946,52 +946,52 @@ export const LESSONS: Lesson[] = [
             </thead>
             <tbody>
               <tr>
-                <td>Activity</td>
-                <td>Task</td>
+                <td>Atividade</td>
+                <td>Tarefa</td>
               </tr>
               <tr>
-                <td>WBS band</td>
-                <td>Summary task</td>
+                <td>Grupo da EAP</td>
+                <td>Tarefa-resumo</td>
               </tr>
               <tr>
-                <td>Data date</td>
-                <td>Status date</td>
+                <td>Data de corte</td>
+                <td>Data de status</td>
               </tr>
               <tr>
-                <td>Total float</td>
-                <td>Total slack</td>
+                <td>Folga total</td>
+                <td>Folga total</td>
               </tr>
               <tr>
-                <td>Schedule (F9)</td>
-                <td>Calculate Project</td>
+                <td>Calcular cronograma (F9)</td>
+                <td>Calcular projeto</td>
               </tr>
               <tr>
-                <td>Relationship</td>
-                <td>Dependency / link</td>
+                <td>Relação</td>
+                <td>Dependência / vínculo</td>
               </tr>
               <tr>
-                <td>Original duration</td>
-                <td>Duration (baseline duration)</td>
+                <td>Duração original</td>
+                <td>Duração (duração da linha de base)</td>
               </tr>
               <tr>
-                <td>Activity code</td>
-                <td>Custom field / outline code</td>
+                <td>Código da atividade</td>
+                <td>Campo personalizado / código da estrutura de tópicos</td>
               </tr>
             </tbody>
           </table>
         ),
       },
       {
-        title: "Back to Gantt Chart and P6",
+        title: "Voltar ao gráfico de Gantt e ao P6",
         target: ".mode-switch",
-        task: "Click Gantt Chart on the View tab, then P6 in the layout switch.",
+        task: "Na aba Exibir, clique em Gráfico de Gantt. Depois escolha P6 no seletor de layout.",
         done: (c) => c.cfg.mode === "p6",
         showMe: async () => {
-          click(() => byText(".rb-big", "Gantt Chart", true));
+          click(() => byText(".rb-big", "Gráfico de Gantt", true));
           await wait(150);
           useConfig.getState().update({ mode: "p6" });
         },
-        body: () => <p>You can switch at any time; the selection and filters carry over.</p>,
+        body: () => <p>Você pode mudar de layout a qualquer momento. A seleção e os filtros são preservados.</p>,
       },
     ],
   },
@@ -999,90 +999,90 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "sim4d",
-    course: "4D and reporting",
-    title: "4D simulation",
+    course: "4D e relatórios",
+    title: "Simulação 4D",
     minutes: 7,
     level: "Intermediate",
-    summary: "Play the schedule against the 3D model and read what is being built on any date.",
-    learn: ["Switch to 4D", "Navigate the model", "Play and step the timeline", "Linking rules and profiles"],
+    summary: "Reproduza o cronograma com o modelo 3D e veja o que está em execução em cada data.",
+    learn: ["Mudar para o layout 4D", "Navegar pelo modelo", "Reproduzir e avançar pela linha do tempo", "Usar regras de vínculo e perfis"],
     needs: { sample: true },
     steps: [
       {
-        title: "Switch to 4D",
+        title: "Mudar para o layout 4D",
         target: ".mode-switch",
-        task: "Click 4D in the layout switch (or Ctrl+Alt+3).",
+        task: "Clique em 4D no seletor de layout ou pressione Ctrl+Alt+3.",
         done: (c) => c.cfg.mode === "4d",
         showMe: () => useConfig.getState().update({ mode: "4d" }),
-        body: () => <p>The 4D layout adds the 3D model, a timeline and the linking tools. A 4D model is a 3D model in which every element is tied to the activity that builds it, so time becomes the fourth dimension.</p>,
+        body: () => <p>O layout 4D reúne o modelo 3D, a linha do tempo e as ferramentas de vínculo. Ao associar os elementos do modelo às atividades do cronograma, você consegue visualizar como a obra evolui ao longo do tempo.</p>,
       },
       {
-        title: "The model",
+        title: "O modelo",
         target: ".center .viewport",
         body: () => (
           <>
             <p>
-              Drag to orbit, right-drag to pan, scroll to zoom. Colours follow the <b>appearance profile</b> of each activity: elements being installed show green, finished elements their normal colour, and elements whose activity has not started are hidden.
+              Arraste para girar a vista, arraste com o botão direito para deslocá-la e use a roda do mouse para dar zoom. As cores seguem o <b>perfil de aparência</b> de cada atividade. Os elementos em instalação ficam verdes, os concluídos aparecem na cor original e os que ainda não começaram ficam ocultos.
             </p>
-            <p>At the data date you can see the GIS hall built, transformer bays waiting for their transformers, and cable trenches in progress.</p>
+            <p>Na data de corte, o edifício da subestação já está construído, as baias aguardam os transformadores e as valas de cabos estão em execução.</p>
           </>
         ),
       },
       {
-        title: "Play the schedule",
+        title: "Reproduzir o cronograma",
         target: ".timeline-controls",
-        task: "Press the play button (or Space).",
+        task: "Clique em Reproduzir ou pressione Espaço.",
         done: (c) => c.s.playing,
         showMe: () => useStore.getState().setPlaying(true),
-        body: () => <p>Playback moves the date forward and rebuilds the model day by day.</p>,
+        body: () => <p>A reprodução avança a data e atualiza o modelo dia a dia.</p>,
       },
       {
-        title: "Pause",
+        title: "Pausar",
         target: ".timeline-controls",
-        task: "Press play again to pause.",
+        task: "Clique novamente no botão para pausar.",
         done: (c) => !c.s.playing,
         showMe: () => useStore.getState().setPlaying(false),
-        body: () => <p>Use ◀ ▶ to step a day and ◀◀ ▶▶ for a week (Shift + arrow keys do the same). The list under the slider shows which activities are active on that date.</p>,
+        body: () => <p>Use ◀ ou ▶ para mudar um dia e ◀◀ ou ▶▶ para mudar uma semana. Você também pode usar as setas do teclado, com Shift para mudar uma semana. A lista abaixo do controle mostra as atividades em andamento na data exibida.</p>,
       },
       {
-        title: "Why planners use 4D",
+        title: "Por que usar o 4D no planejamento",
         target: ".center .viewport",
         body: () => (
           <ul>
-            <li>Check the sequence is buildable: no roof before columns, no cable pulling before trenches.</li>
-            <li>Spot space clashes: a 200 t crane placing transformers while the access road is being built.</li>
-            <li>Explain the plan to people who do not read Gantt charts: clients, site crews, authorities.</li>
-            <li>Show progress visually in reviews and claims.</li>
+            <li>Confira se a sequência é executável. Por exemplo, o telhado vem depois dos pilares e a passagem dos cabos vem depois da abertura das valas.</li>
+            <li>Identifique conflitos de espaço, como a instalação de transformadores por uma grua de 200 t durante a construção da via de acesso.</li>
+            <li>Explique o plano a clientes, equipes de campo e autoridades sem depender da leitura do gráfico de Gantt.</li>
+            <li>Mostre o avanço da obra em revisões e análises de pleitos.</li>
           </ul>
         ),
       },
       {
-        title: "How elements get linked",
+        title: "Como vincular elementos",
         target: ".right .tabs",
         body: () => (
           <>
             <p>
-              The right-hand tabs hold the 4D tools. <b>Rules</b> link model elements to activities automatically, for example "elements whose Activity property equals the activity ID". <b>Profiles</b> decide how each kind of work appears (install, demolish, temporary). <b>Selection</b> shows what is linked to the selected activity; Alt-click an activity to select its elements.
+              As abas à direita reúnem as ferramentas 4D. <b>Regras</b> vincula os elementos do modelo às atividades automaticamente. Por exemplo, uma regra pode procurar elementos cuja propriedade Activity seja igual ao ID da atividade. <b>Perfis</b> define como cada tipo de trabalho aparece no modelo, como instalação, demolição e obras temporárias. <b>Seleção</b> mostra os vínculos da atividade selecionada. Clique em uma atividade com Alt para selecionar seus elementos.
             </p>
-            <p>In the sample, 202 elements are linked by one rule.</p>
+            <p>No exemplo, uma única regra vincula 202 elementos.</p>
           </>
         ),
       },
       {
-        title: "Back to P6",
+        title: "Voltar ao P6",
         target: ".mode-switch",
-        task: "Click P6 in the layout switch.",
+        task: "Clique em P6 no seletor de layout.",
         done: (c) => c.cfg.mode === "p6",
         showMe: () => useConfig.getState().update({ mode: "p6" }),
-        body: () => <p>The 4D layout keeps its own dark theme; the P6 and MS Project layouts are light, like the applications they copy.</p>,
+        body: () => <p>Por padrão, o layout 4D usa tema escuro. Os layouts P6 e Microsoft Project usam tema claro.</p>,
       },
       {
-        title: "Check yourself",
+        title: "Confira seu entendimento",
         body: () => <p>4D:</p>,
         quiz: {
-          q: "What makes a 3D model a 4D model?",
-          options: ["A higher level of detail", "Each element is linked to the activity that builds it, so the model can be shown at any date", "It includes costs", "It is viewed in VR"],
+          q: "O que torna um modelo 3D um modelo 4D?",
+          options: ["Um nível de detalhamento maior", "Os elementos são vinculados às atividades correspondentes, o que permite visualizar o modelo em diferentes datas", "O modelo inclui custos", "O modelo é exibido em realidade virtual"],
           answer: 1,
-          explain: "4D = 3D + time. Cost would make it 5D.",
+          explain: "4D combina geometria 3D e tempo. A inclusão de custos acrescentaria a quinta dimensão.",
         },
       },
     ],
@@ -1091,11 +1091,11 @@ export const LESSONS: Lesson[] = [
   // ==================================================================
   {
     id: "reports",
-    course: "4D and reporting",
-    title: "Dashboards and reports",
+    course: "4D e relatórios",
+    title: "Painéis e relatórios",
     minutes: 8,
     level: "Beginner",
-    summary: "Create a planning dashboard, filter it with slicers, customise widgets and share the result.",
+    summary: "Crie um painel de planejamento, aplique filtros, personalize componentes e compartilhe o resultado.",
     learn: ["Open Reports", "Start from a template", "Slicers", "Customise, add and style widgets", "PDF, Excel and email"],
     needs: { sample: true },
     steps: [
@@ -1109,10 +1109,10 @@ export const LESSONS: Lesson[] = [
       },
       {
         title: "Start from a template",
-        target: () => byText(".dash-new", "Planning dashboard"),
-        task: "Click + Planning dashboard under New.",
+        target: () => byText(".dash-new", "Painel de planejamento"),
+        task: "Em Novo, clique em Painel de planejamento.",
         done: () => !!$(".widget.kind-gauge"),
-        showMe: () => void click(() => byText(".dash-new", "Planning dashboard")),
+        showMe: () => void click(() => byText(".dash-new", "Painel de planejamento")),
         body: () => <p>Templates give you a complete dashboard to adapt. This one has the views planners most often share every week.</p>,
       },
       {
@@ -1134,10 +1134,10 @@ export const LESSONS: Lesson[] = [
       },
       {
         title: "Clear the filter",
-        target: () => byText(".dash-bar button", "Clear filters"),
+        target: () => byText(".dash-bar button", "Limpar filtros"),
         task: "Click Clear filters in the bar at the top.",
         done: () => !$(".slicer button.on"),
-        showMe: () => void click(() => byText(".dash-bar button", "Clear filters")),
+        showMe: () => void click(() => byText(".dash-bar button", "Limpar filtros")),
         body: () => <p>Slicer choices are saved with the dashboard, so clear them before you send a report you want to show the whole project.</p>,
       },
       {
@@ -1146,51 +1146,51 @@ export const LESSONS: Lesson[] = [
         task: "The dashboard is in Customise mode. Click the 'Plan vs actual by discipline' card.",
         done: () => !!$(".widget.selected"),
         enter: () => {
-          if (!$(".inspector")) click(() => byText(".dash-bar button", "Customise"));
+          if (!$(".inspector")) click(() => byText(".dash-bar button", "Personalizar"));
         },
         showMe: () => void click(".widget.kind-groupbars"),
         body: () => (
           <p>
-            In Customise mode, clicking a card opens its settings on the right: <b>Data</b> (what it shows), <b>Look</b> (how it looks) and <b>Filter</b> (which part of the project). Drag a card by its title to move it; drag its bottom-right corner to resize.
+            In Customise mode, clicking a card opens its settings on the right: <b>Dados</b> (what it shows), <b>Aparência</b> (how it looks) and <b>Filtro</b> (which part of the project). Drag a card by its title to move it; drag its bottom-right corner to resize.
           </p>
         ),
       },
       {
         title: "Change its look",
-        target: () => byText(".inspector .tabs button", "Look", true),
+        target: () => byText(".inspector .tabs button", "Aparência", true),
         task: "Open the Look tab and choose the Filled title bar.",
         done: () => !!$(".widget.selected.head-filled"),
         showMe: async () => {
-          click(() => byText(".inspector .tabs button", "Look", true));
+          click(() => byText(".inspector .tabs button", "Aparência", true));
           await wait(150);
-          click(() => byText(".inspector .seg button", "Filled", true));
+          click(() => byText(".inspector .seg button", "Preenchida", true));
         },
         body: () => <p>Colours, card style, text size and which chart series show are all here. Page-wide settings (theme, logo, header, footer, PDF orientation) are under Add / Page → Page &amp; theme.</p>,
       },
       {
         title: "Add a milestone tracker",
         target: ".inspector",
-        task: "Close the widget settings (✕), then click Milestone tracker in the gallery.",
+        task: "Feche as configurações do componente (✕) e clique em Acompanhamento de marcos na galeria.",
         enter: (c) => {
           c.mem.ms = document.querySelectorAll(".widget.kind-milestones").length;
         },
         done: (c) => document.querySelectorAll(".widget.kind-milestones").length > (c.mem.ms as number),
         showMe: async () => {
-          click('.inspector button[title="Close (Esc)"]');
+          click('.inspector button[title="Fechar (Esc)"]');
           await wait(150);
-          click(() => byText(".gallery-item", "Milestone tracker"));
+          click(() => byText(".gallery-item", "Acompanhamento de marcos"));
         },
         body: () => <p>New widgets go to the end of the page and are selected, ready to set up. Milestones are marked on track, at risk (little float left) or late.</p>,
       },
       {
         title: "Finish customising",
-        target: () => byText(".dash-bar button", "Done"),
+        target: () => byText(".dash-bar button", "Concluído"),
         task: "Click Done.",
         done: () => !$(".inspector"),
-        showMe: () => void click(() => byText(".dash-bar button", "Done")),
+        showMe: () => void click(() => byText(".dash-bar button", "Concluído")),
         body: () => (
           <p>
-            Changes save as you go. Ctrl+Z undoes the last change while customising. Under <b>More</b> you can duplicate the dashboard, save it as a template for your team, or export it as a file.
+            Changes save as you go. Ctrl+Z undoes the last change while customising. Under <b>Mais</b> you can duplicate the dashboard, save it as a template for your team, or export it as a file.
           </p>
         ),
       },
@@ -1199,12 +1199,12 @@ export const LESSONS: Lesson[] = [
         target: ".dash-bar",
         body: () => (
           <p>
-            <b>PDF</b> prints the dashboard with your header and footer, <b>Excel</b> exports the data behind it, and <b>Email</b> sends it on a schedule (for example every Monday 08:00) to the project manager and director. On a Stratum Server, schedules run even when nobody has the app open.
+            <b>PDF</b> prints the dashboard with your header and footer, <b>Excel</b> exports the data behind it, and <b>E-mail</b> sends it on a schedule (for example every Monday 08:00) to the project manager and director. On a Stratum Server, schedules run even when nobody has the app open.
           </p>
         ),
       },
       {
-        title: "Back to the schedule",
+        title: "Voltar ao cronograma",
         target: ".reports-topbar .mode-switch",
         task: "Click P6 in the switch at the top.",
         done: (c) => c.s.view === "workspace",
