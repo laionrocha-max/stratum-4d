@@ -16,24 +16,11 @@ O aplicativo atual já é útil e funcional. Evoluir sem regressão. A branch de
 10. Ao encontrar bug, escrever teste reproduzindo-o ANTES da correção, corrigir, repetir teste e toda suíte de regressão.
 11. Não efetuar merge na main, exclusão de branch, mudança destrutiva ou deploy sem aprovação explícita.
 
-## Evidências preliminares, NÃO auditoria completa
-- `src/viewer/Viewer.ts`: Three.js, OrbitControls, seleção Set, setFocus com Ghost, câmera, estados por elemento, raycasting.
-- `src/viewer/ifcLoader.ts`: web-ifc, geometria por elemento, GlobalId, MeshLambertMaterial, propriedades.
-- `src/core/project.ts`: formato de projeto registra modelFileName; modelo não embutido. Reabertura pode requerer reimportação.
-- `src/core/multiproject.ts`: combinação de cronogramas P6, que não deve ser perdida.
-- `src/ui/ProjectsDialog.tsx`: persistência e abertura de projetos de cronograma.
-- `src/ui/App.tsx`: fluxos de importação, save/load e seleção.
-- Repositório comparativo `laionrocha-max/BIM4D`: ViewerToolbar, ViewerShell, ProjectDialog, ScheduleLinkPanel, Gantt e persistência; usar apenas como referência, sem copiar cegamente.
-Esses achados vêm de inspeção parcial de arquivos. Nenhum teste ou execução foi realizado nesta preparação.
-
-## Ordem de trabalho
-Etapa 0 auditoria e baseline; 1 projetos e persistência; 2 câmera; 3 seleção e visibilidade; 4 vínculos 4D; 5 visual realista; 6 vídeo; 7 validação integrada. Consulte `01-ETAPAS-E-ACEITE.md`, `02-UX-E-ARQUITETURA.md` e `03-TESTES-E-REGRESSAO.md`.
+## Estado e ordem vigente
+Consulte `AUDITORIA-DE-ACEITE.md` para evidências históricas e `04-ORDEM-PARA-CODEX.md` para diagnóstico atual, prioridades e prompt único vigente. As etapas 2 e 3 foram reabertas quanto à utilização real. A prova visual mínima foi antecipada, em paralelo e isolada, sem dispensar os gates de estabilidade e precisão. Os documentos 01–03 e 05–07 preservam os requisitos técnicos e critérios de aceite.
 
 ## Entrega obrigatória por etapa
 Criar relatório `docs/EVOLUCAO_4D/RELATORIO-ETAPA-N.md` com: SHA inicial/final; arquivos alterados; comportamento antes/depois; decisões e alternativas rejeitadas; riscos; testes e saídas reais; bugs encontrados/corrigidos; testes pendentes; screenshots ou gravações quando cabível; impacto em performance; checklist de aceite; instruções de rollback. Abrir PR draft sem mesclar.
 
 ## Prompt de execução para Codex
-'Leia integralmente docs/EVOLUCAO_4D/00-LEIA-PRIMEIRO.md, 01-ETAPAS-E-ACEITE.md, 02-UX-E-ARQUITETURA.md e 03-TESTES-E-REGRESSAO.md. Execute APENAS a Etapa 0. Antes de editar código, audite fluxos e testes atuais, registre baseline com evidências e reporte riscos. Não faça alterações funcionais, não faça merge, não avance sem aprovação. Após aprovação explícita, prossiga para a etapa indicada, sempre com testes de regressão e relatório de evidências.'
-
-## ADENDO OBRIGATÓRIO — Revisões, realizado e entregas
-Leia também integralmente `docs/EVOLUCAO_4D/05-REVISOES-PROGRESSO-E-ENTREGAS.md`. Este documento amplia o escopo e introduz Etapa 4B; prevalece para requisitos de atualização IFC/XML, baseline, percentual físico, data de corte, forecast, viewpoints e exportação separada de fotos/vídeo. Na Etapa 0, auditar esses fluxos. Não avançar ou implementar sem aprovação.
+Utilize exclusivamente o prompt vigente em [04-ORDEM-PARA-CODEX.md](04-ORDEM-PARA-CODEX.md). Leia também 05, 06, 07 e AUDITORIA-DE-ACEITE. Não repetir a Etapa 0 do zero nem seguir instruções históricas conflitantes.
